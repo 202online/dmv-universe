@@ -1,0 +1,1859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DMV 2.5D Isometric Open-World Arcade & Lounge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0d0f18; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; touch-action: none; }
+        html, body { height: 100%; margin: 0; }
+        body { display: flex; flex-direction: column; justify-content: space-between; }
+        main { position: relative; flex: 1 1 0; min-height: 0; overflow: hidden; }
+        /* Absolute fill: canvas size never depends on Tailwind or its own intrinsic size */
+        canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; background: #0b0f19; }
+        .hidden { display: none !important; }
+        header, footer { flex-shrink: 0; padding: 10px 16px; background: #0b0b13; }
+        header { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+        footer { display: flex; justify-content: space-between; font-size: 12px; }
+        button { cursor: pointer; }
+        #movement-pad { position: absolute; bottom: 24px; left: 24px; z-index: 10; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; width: 128px; height: 128px; }
+        #movement-pad button, #movement-pad div { display: flex; align-items: center; justify-content: center; }
+        #movement-pad button { background: #4c1d95; color: white; border: 1px solid #c084fc; border-radius: 6px; touch-action: none; }
+        #interaction-banner { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); z-index: 20; padding: 10px 20px; background: #070b0b; border: 1px solid #10b981; border-radius: 12px; text-align: center; }
+        #interaction-banner p { margin: 0 0 6px; }
+        #interaction-btn { background: #059669; color: white; border: 0; border-radius: 6px; padding: 7px 14px; }
+        #modal-overlay { position: absolute; inset: 0; z-index: 30; display: flex; justify-content: center; align-items: center; padding: 16px; background: rgba(0,0,0,.85); }
+        #modal-overlay > div { position: relative; box-sizing: border-box; width: min(100%, 672px); max-height: 90%; overflow-y: auto; padding: 24px; background: #111827; border: 1px solid #a855f7; border-radius: 16px; }
+        #modal-overlay .modal-close { position: absolute; top: 12px; right: 16px; color: white; background: transparent; border: 0; font-size: 24px; }
+        .sports-game { color: #f8fafc; }
+        .sports-game h2 { margin: 0 36px 8px 0; font-size: 24px; }
+        .sports-game p { margin: 8px 0; }
+        .sports-game button { color: white; background: #5a1414; border: 1px solid #fbbf24; border-radius: 8px; padding: 10px 16px; font-weight: bold; }
+        .sports-game button:disabled { opacity: .5; cursor: default; }
+        .sports-game button[aria-pressed="true"] { background: #047857; border-color: #6ee7b7; }
+        .sports-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .shot-meter { position: relative; height: 30px; margin: 16px 0; background: #7f1d1d; border: 2px solid #e5e7eb; border-radius: 5px; }
+        .shot-target { position: absolute; left: 40%; width: 20%; height: 100%; background: #16a34a; }
+        .shot-marker { position: absolute; top: -4px; width: 4px; height: 38px; background: white; }
+        .football-lanes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 14px 0; }
+        .football-lane { padding: 14px 4px; text-align: center; background: #166534; border: 2px solid #86efac; border-radius: 6px; }
+        .football-lane.blocked { background: #991b1b; border-color: #fca5a5; }
+        .game-result { min-height: 1.5em; color: #fde68a; font-weight: bold; }
+        .boxing-gym { position: relative; overflow: hidden; height: 150px; margin: 12px 0; border: 2px solid #64748b; border-radius: 6px; background: linear-gradient(#1e293b 0 62%, #92400e 62%); }
+        .boxing-gym::before { content: 'SE BOXING GYM'; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); color: #fde68a; font-size: 13px; font-weight: 900; letter-spacing: 2px; white-space: nowrap; }
+        .boxing-ring { position: absolute; left: 12%; right: 12%; bottom: 12px; height: 64px; background: #1d4e89; border: 4px solid #e2e8f0; box-shadow: inset 0 16px #b91c1c, inset 0 19px #e2e8f0, inset 0 35px #b91c1c, inset 0 38px #e2e8f0; }
+        .boxing-opponent { position: absolute; left: 50%; bottom: 25px; transform: translateX(-50%); font-size: 42px; filter: drop-shadow(0 3px 2px #111); }
+        .shop-list { display: grid; gap: 8px; margin: 14px 0; }
+        .shop-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; background: #1f2937; border-radius: 8px; }
+        .shop-row button { padding: 8px 12px; color: white; background: #5b21b6; border: 1px solid #c084fc; border-radius: 6px; }
+        .shop-row button:disabled { opacity: .65; }
+        #save-warning { color: #fca5a5; }
+        #avatar-selection { position: absolute; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.88); }
+        #avatar-selection > div { box-sizing: border-box; width: min(100%, 480px); max-height: 100%; overflow-y: auto; padding: 20px; color: #f8fafc; background: #111827; border: 1px solid #a855f7; border-radius: 16px; text-align: center; }
+        #avatar-selection h1 { margin: 0 0 10px; font-size: 24px; }
+        #avatar-selection p { margin: 0 0 20px; color: #cbd5e1; }
+        #avatar-selection button { padding: 10px 20px; color: white; background: #5b21b6; border: 1px solid #c084fc; border-radius: 8px; font-weight: bold; }
+        #avatar-selection .creator-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; text-align: left; }
+        #avatar-selection label { display: grid; gap: 4px; font-size: 13px; font-weight: bold; }
+        #avatar-selection select { box-sizing: border-box; width: 100%; padding: 8px; color: white; background: #1f2937; border: 1px solid #94a3b8; border-radius: 6px; }
+        #avatar-preview { position: static; width: 96px; height: 128px; display: block; margin: 0 auto 10px; background: #263345; border-radius: 8px; }
+        #avatar-selection .creator-actions { display: flex; justify-content: center; gap: 10px; margin-top: 16px; }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between select-none">
+
+    <header class="bg-black/85 backdrop-blur border-b border-purple-900/40 px-4 py-2.5 flex justify-between items-center z-20">
+        <div class="flex items-center space-x-3">
+            <span class="text-lg sm:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-purple-400 to-pink-500">DMV 2.5D UNIVERSE</span>
+            <span id="current-quadrant-badge" class="px-2.5 py-1 text-xs font-bold rounded bg-purple-900/80 text-purple-200 border border-purple-500/50">NW: Uptown</span>
+        </div>
+        <div class="flex items-center space-x-1.5">
+            <span class="text-xs text-gray-400 hidden md:inline">🧭 Metro:</span>
+            <button onclick="switchQuadrant('NW')" class="px-2.5 py-1 text-xs font-extrabold rounded bg-[#002B49] hover:bg-[#003f6b] text-white border border-red-500 shadow">NW</button>
+            <button onclick="switchQuadrant('NE')" class="px-2.5 py-1 text-xs font-extrabold rounded bg-[#5A1414] hover:bg-[#7a1c1c] text-[#FFB612] border border-amber-400 shadow">NE</button>
+            <button onclick="switchQuadrant('SE')" class="px-2.5 py-1 text-xs font-extrabold rounded bg-blue-700 hover:bg-blue-600 text-white border border-red-400 shadow">SE</button>
+            <button onclick="switchQuadrant('SW')" class="px-2.5 py-1 text-xs font-extrabold rounded bg-[#AB0003] hover:bg-[#cb0004] text-white border border-blue-900 shadow">SW</button>
+        </div>
+    </header>
+
+    <main class="relative flex-1 flex justify-center items-center overflow-hidden">
+        <canvas id="gameCanvas" tabindex="0" aria-label="Game world" class="w-full h-full cursor-pointer"></canvas>
+
+        <div id="movement-pad" class="absolute bottom-6 left-6 z-10 grid grid-cols-3 gap-1 w-32 h-32 opacity-85 hover:opacity-100 transition-opacity">
+            <div></div>
+            <button data-dir="up" class="dpad bg-purple-900/90 active:bg-purple-600 border border-purple-400 rounded-t-lg flex items-center justify-center text-white font-bold text-lg shadow-lg">▲</button>
+            <div></div>
+            <button data-dir="left" class="dpad bg-purple-900/90 active:bg-purple-600 border border-purple-400 rounded-l-lg flex items-center justify-center text-white font-bold text-lg shadow-lg">◀</button>
+            <div class="bg-purple-950/80 border border-purple-700 rounded flex items-center justify-center text-[10px] font-bold text-purple-300">PAD</div>
+            <button data-dir="right" class="dpad bg-purple-900/90 active:bg-purple-600 border border-purple-400 rounded-r-lg flex items-center justify-center text-white font-bold text-lg shadow-lg">▶</button>
+            <div></div>
+            <button data-dir="down" class="dpad bg-purple-900/90 active:bg-purple-600 border border-purple-400 rounded-b-lg flex items-center justify-center text-white font-bold text-lg shadow-lg">▼</button>
+            <div></div>
+        </div>
+
+        <div id="interaction-banner" class="absolute top-6 left-1/2 transform -translate-x-1/2 bg-black/90 border border-emerald-500/70 px-5 py-2.5 rounded-xl shadow-2xl hidden z-20 text-center">
+            <p id="interaction-text" class="text-sm font-bold text-emerald-300 mb-1">Press [E] or Tap to Open Building</p>
+            <button id="interaction-btn" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold rounded-lg shadow">Enter Venue</button>
+        </div>
+
+        <div id="modal-overlay" class="absolute inset-0 bg-black/85 backdrop-blur-md hidden z-30 flex justify-center items-center p-4">
+            <div class="bg-gray-900 border border-purple-500/60 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 relative shadow-2xl">
+                <button onclick="closeModal()" aria-label="Close" class="modal-close absolute top-4 right-4 text-gray-400 hover:text-white text-xl font-bold">✕</button>
+                <div id="modal-content"></div>
+                <p id="modal-toast" class="mt-4 text-sm font-bold text-emerald-300 min-h-[1.25rem]"></p>
+            </div>
+        </div>
+        <div id="avatar-selection" role="dialog" aria-modal="true" aria-labelledby="avatar-title" aria-describedby="avatar-description">
+            <div>
+                <h1 id="avatar-title">Create your character</h1>
+                <p id="avatar-description">Choose your look. You can change it later in your wardrobe.</p>
+                <canvas id="avatar-preview" width="192" height="256" role="img" aria-label="Character preview"></canvas>
+                <div class="creator-fields">
+                    <label>Character
+                        <select id="creator-body"><option value="boy">Boy</option><option value="girl">Girl</option></select>
+                    </label>
+                    <label>Hair style
+                        <select id="creator-hair"><option value="short">Short</option><option value="curly">Curly</option><option value="long">Long</option></select>
+                    </label>
+                    <label>Hair color
+                        <select id="creator-color"><option value="black">Black</option><option value="brown">Brown</option><option value="blond">Blond</option></select>
+                    </label>
+                    <label>Skin tone
+                        <select id="creator-skin"><option value="light">Light</option><option value="medium">Medium</option><option value="dark">Dark</option></select>
+                    </label>
+                    <label>Facial hair
+                        <select id="creator-facial"><option value="none">None</option><option value="mustache">Mustache</option><option value="beard">Beard</option></select>
+                    </label>
+                </div>
+                <div class="creator-actions">
+                    <button type="button" id="creator-confirm">Start game</button>
+                    <button type="button" id="creator-cancel" class="hidden">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-black/90 border-t border-purple-900/40 px-4 py-2.5 flex justify-between items-center text-xs text-gray-300 z-20">
+        <div class="flex items-center space-x-4">
+            <span>⭐ Stars: <strong id="stat-stars" class="text-yellow-400">12</strong></span>
+            <span>🏠 Property: <strong id="stat-property" class="text-purple-300">Tier 1 Studio</strong></span>
+            <span>🚲 Ride: <strong id="stat-car" class="text-emerald-400">Bicycle</strong></span>
+            <span id="save-warning" role="status"></span>
+        </div>
+        <div>
+            <span class="text-purple-400 font-bold hidden sm:inline">Controls: WASD / Arrow Keys / D-Pad | [E] Interact / Exit ride | [Esc] Close</span>
+        </div>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let W = 0, H = 0;
+
+        function resize() {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+            W = canvas.width; H = canvas.height;
+        }
+        // Observe the element so we resize after Tailwind's async CSS applies
+        new ResizeObserver(resize).observe(canvas);
+        window.addEventListener('load', resize);
+        resize();
+
+        // ---------- Isometric projection ----------
+        const KX = 0.87, KY = 0.5, WORLD = 1000, TILE = 50;
+        const cam = { x: 0, y: 0 };
+        function P(x, y, z = 0) {
+            return [(x - y) * KX - cam.x + W / 2, (x + y) * KY - z - cam.y + H / 2];
+        }
+        function poly(pts, fill, stroke, lw = 1) {
+            ctx.beginPath();
+            pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
+            ctx.closePath();
+            if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+            if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+        }
+        function shade(hex, f) {
+            const n = parseInt(hex.slice(1), 16);
+            const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => Math.min(255, Math.round(v * f)));
+            return `rgb(${c[0]},${c[1]},${c[2]})`;
+        }
+        // Visible faces: "L" is the y+d side (lower-left), "R" is the x+w side (lower-right)
+        function faceL(x, y, w, d, u0, u1, z0, z1) {
+            const Y = y + d;
+            return [P(x + u0 * w, Y, z0), P(x + u1 * w, Y, z0), P(x + u1 * w, Y, z1), P(x + u0 * w, Y, z1)];
+        }
+        function faceR(x, y, w, d, u0, u1, z0, z1) {
+            const X = x + w;
+            return [P(X, y + u0 * d, z0), P(X, y + u1 * d, z0), P(X, y + u1 * d, z1), P(X, y + u0 * d, z1)];
+        }
+        function box(x, y, z, w, d, h, color, stroke) {
+            poly([P(x, y + d, z), P(x + w, y + d, z), P(x + w, y + d, z + h), P(x, y + d, z + h)], shade(color, 0.85), stroke);
+            poly([P(x + w, y, z), P(x + w, y + d, z), P(x + w, y + d, z + h), P(x + w, y, z + h)], shade(color, 0.62), stroke);
+            poly([P(x, y, z + h), P(x + w, y, z + h), P(x + w, y + d, z + h), P(x, y + d, z + h)], shade(color, 1.18), stroke);
+        }
+        // Text laid flat on the left face so it skews with the wall
+        function faceText(b, text, u, z, maxSize, color, glow) {
+            const [ox, oy] = P(b.x + u * b.w, b.y + b.d, z);
+            ctx.save();
+            ctx.setTransform(KX, KY, 0, 1, ox, oy);
+            ctx.font = 'bold 10px sans-serif';
+            const size = Math.min(maxSize, (b.w * 0.82) / ctx.measureText(text).width * 10);
+            ctx.font = `900 ${size}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = 12; }
+            ctx.fillStyle = color;
+            ctx.fillText(text, 0, 0);
+            ctx.restore();
+        }
+
+        // ---------- World data ----------
+        const rng = n => { const s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s); };
+
+        const commonTrees = [[60,60],[380,80],[560,90],[900,70],[80,650],[300,720],[700,680],[900,760],[150,880],[600,900],[850,900],[380,850]];
+        const commonLamps = [[395,395],[605,395],[395,605],[605,605],[395,330],[605,330]];
+
+        const quadrants = {
+            NW: {
+                name: "NW: Uptown",
+                lot: ['#1d3a2b', '#21412f'], hoodie: '#002B49', accent: '#E31837',
+                buildings: [
+                    { name: "The 202 Venue", x: 110, y: 215, w: 200, d: 130, h: 150, color: '#292332', trim: '#c63838', neon: '#ff7070', style: 'club', type: 'venue' },
+                    { name: "Wizards Fan Lounge", x: 650, y: 230, w: 190, d: 120, h: 130, color: '#29435b', trim: '#9dc5c8', neon: '#7dd3fc', style: 'lounge', type: 'gogo' }
+                ],
+                cars: [{ x: 640, y: 380, w: 90, d: 40, color: '#cbd5e1', trim: '#475569' }, { x: 80, y: 365, w: 90, d: 40, color: '#1e3a8a', trim: '#e2e8f0' }],
+                activities: [
+                    { name: 'NW Soccer Field', type: 'soccer', x: 80, y: 650, w: 260, d: 240 },
+                    { name: 'NW Tennis Court', type: 'tennis', x: 650, y: 650, w: 230, d: 240 }
+                ]
+            },
+            NE: {
+                name: "NE: Norf Eatz",
+                lot: ['#26351f', '#2b3b23'], hoodie: '#5A1414', accent: '#FFB612',
+                buildings: [
+                    { name: "Capital Centre Mall", x: 100, y: 190, w: 240, d: 150, h: 120, color: '#b59a7d', trim: '#71483e', neon: '#fcd34d', style: 'mall', type: 'retail' },
+                    { name: "Carryout Craze", x: 640, y: 220, w: 170, d: 120, h: 95, color: '#a34d36', trim: '#f1bf74', neon: '#fcd34d', style: 'carryout', type: 'carryout' },
+                    { name: "Sub Shop", x: 810, y: 220, w: 150, d: 120, h: 95, color: '#527653', trim: '#e9d8a6', neon: '#86efac', style: 'subshop', type: 'subshop' },
+                    { name: "Lemonade Stand", x: 900, y: 520, w: 80, d: 55, h: 50, color: '#e9c764', trim: '#8b5434', neon: '#fff2a1', style: 'stand', type: 'lemonade' }
+                ],
+                cars: [{ x: 65, y: 365, w: 90, d: 40, color: '#facc15', trim: '#1f2937' }, { x: 210, y: 365, w: 90, d: 40, color: '#e2e8f0', trim: '#475569' }, { x: 700, y: 385, w: 90, d: 40, color: '#5A1414', trim: '#FFB612' }],
+                activities: [
+                    { name: 'NE Football Field', type: 'football', x: 80, y: 650, w: 260, d: 240 },
+                    { name: 'NE Basketball Court', type: 'basketball', x: 650, y: 650, w: 230, d: 240 }
+                ]
+            },
+            SE: {
+                name: "SE: Souf East",
+                lot: ['#1d3a2b', '#21412f'], hoodie: '#1d4ed8', accent: '#ef4444',
+                buildings: [
+                    { name: "The Crib (Apartment)", x: 120, y: 210, w: 170, d: 130, h: 175, color: '#9b6653', trim: '#e3b997', neon: '#fca5a5', style: 'apartment', type: 'crib' },
+                    { name: "Apartment Garage", x: 290, y: 210, w: 120, d: 130, h: 95, color: '#746c65', trim: '#bb9c84', neon: '#ead1b3', style: 'garage', type: 'crib', garage: true }
+                ],
+                cars: [],
+                activities: [
+                    { name: 'SE Boxing Gym', type: 'boxing', x: 90, y: 680, w: 220, d: 200, h: 140, color: '#795a53', trim: '#ce6c5c', neon: '#fca5a5', style: 'gym' },
+                    { name: 'SE Putting Green', type: 'golf', x: 650, y: 650, w: 230, d: 240 }
+                ]
+            },
+            SW: {
+                name: "SW: Souf West",
+                lot: ['#2a4a2a', '#2f522f'], hoodie: '#AB0003', accent: '#ffffff',
+                buildings: [
+                    { name: "Waterfront Sports Arena", x: 90, y: 170, w: 260, d: 170, h: 110, color: '#566b76', trim: '#d8b8a0', neon: '#ffffff', style: 'arena', type: 'sports' },
+                    { name: "Nationals Park Fan Hub", x: 650, y: 240, w: 170, d: 110, h: 120, color: '#803e43', trim: '#e2c8a9', neon: '#bfdbfe', style: 'fanhub', type: 'sports' }
+                ],
+                cars: [{ x: 660, y: 380, w: 90, d: 40, color: '#0C2340', trim: '#AB0003' }]
+            }
+        };
+        for (const q of Object.values(quadrants)) {
+            q.activities = q.activities || [];
+            q.trees = commonTrees
+                .filter(([x, y]) => !q.activities.some(a => x >= a.x - 20 && x <= a.x + a.w + 20 && y >= a.y - 20 && y <= a.y + a.d + 20))
+                .map(([x, y]) => ({ x, y }));
+            q.lamps = commonLamps.map(([x, y]) => ({ x, y }));
+            q.solids = [
+                ...q.buildings.map(b => ({ x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.d })),
+                ...q.activities.filter(a => a.type === 'boxing').map(a => ({ x0: a.x, y0: a.y, x1: a.x + a.w, y1: a.y + a.d })),
+                ...q.cars.map(c => ({ x0: c.x, y0: c.y, x1: c.x + c.w, y1: c.y + c.d })),
+                ...q.trees.map(t => ({ x0: t.x - 6, y0: t.y - 6, x1: t.x + 6, y1: t.y + 6 }))
+            ];
+        }
+
+        // ---------- State & input ----------
+        let currentQuadrant = 'NW';
+        const player = { x: 500, y: 480, speed: 3.6 / 5, r: 9, fx: 0, fy: 1, moving: false, appearance: null };
+        const keys = { up: false, down: false, left: false, right: false };
+        const vehicles = {
+            bike: { name: 'Bicycle', price: 0, speed: 1.2, w: 52, d: 16, color: '#38bdf8', trim: '#f8fafc', kind: 'bike' },
+            scooter: { name: 'Electric scooter', price: 15, speed: 1.4, w: 48, d: 16, color: '#a855f7', trim: '#e5e7eb', kind: 'scooter' },
+            ebike: { name: 'Electric bike', price: 30, speed: 1.6, w: 54, d: 18, color: '#10b981', trim: '#f8fafc', kind: 'ebike' },
+            impala: { name: "'96 Impala SS", price: 60, speed: 1.8, w: 96, d: 42, color: '#5A1414', trim: '#FFB612', kind: 'car' },
+            truck: { name: 'Pickup truck', price: 90, speed: 1.8, w: 108, d: 46, color: '#475569', trim: '#e2e8f0', kind: 'truck' }
+        };
+        const ownCar = { ...vehicles.bike, x: 535, y: 500, ownRide: true };
+        quadrants.NW.cars.push(ownCar);
+        const driving = { active: false, quadrant: 'NW' };
+        const SAVE_KEY = 'dmv-universe-save-v1';
+        const shirts = {
+            basic: { name: 'Basic T-shirt', color: '#e5e7eb', price: 0 },
+            burgundy: { name: 'Burgundy T-shirt', color: '#a11d33', price: 6 },
+            blue: { name: 'Blue T-shirt', color: '#2563eb', price: 8 }
+        };
+        const hairColors = { black: '#25170f', brown: '#795034', blond: '#d8b15d' };
+        const skinColors = { light: '#f0c49f', medium: '#c68642', dark: '#805035' };
+        const defaultFeatures = appearance => ({ hair: appearance === 'girl' ? 'long' : 'short', color: 'black', skin: 'medium', facial: 'none' });
+        const validFeatures = features => features && ['short', 'curly', 'long'].includes(features.hair) &&
+            Object.hasOwn(hairColors, features.color) && Object.hasOwn(skinColors, features.skin) &&
+            ['none', 'mustache', 'beard'].includes(features.facial);
+        player.features = defaultFeatures('boy');
+        const progress = { stars: 12, property: 1, owned: ['basic'], shirt: 'basic', ownedVehicles: ['bike'], vehicle: 'bike' };
+        let saveEnabled = true, lastCarSave = 0;
+        const saveWarning = document.getElementById('save-warning');
+
+        function saveProgress() {
+            if (!saveEnabled || !player.appearance) return;
+            const data = {
+                version: 1, appearance: player.appearance, features: player.features, stars: progress.stars,
+                property: progress.property, owned: progress.owned, shirt: progress.shirt,
+                vehicle: { id: progress.vehicle, owned: progress.ownedVehicles, quadrant: driving.quadrant, x: ownCar.x, y: ownCar.y, heading: ownCar.heading || [1, 0] }
+            };
+            try {
+                localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+                saveWarning.textContent = '';
+            } catch (error) {
+                console.error('Unable to save progress:', error);
+                saveWarning.textContent = 'Saving unavailable; progress may be lost.';
+            }
+        }
+
+        function updateProgressHud() {
+            document.getElementById('stat-stars').textContent = progress.stars;
+            document.getElementById('stat-property').textContent = progress.property === 2 ? 'Tier 2 Navy Yard Loft' : 'Tier 1 Studio';
+            document.getElementById('stat-car').textContent = vehicles[progress.vehicle].name;
+        }
+
+        function loadProgress() {
+            try {
+                const raw = localStorage.getItem(SAVE_KEY);
+                if (!raw) return;
+                const data = JSON.parse(raw);
+                const ride = data.vehicle;
+                const headingLength = Array.isArray(ride?.heading) && ride.heading.length === 2 &&
+                    ride.heading.every(Number.isFinite) ? Math.hypot(...ride.heading) : 0;
+                if (data.version !== 1 || !['boy', 'girl'].includes(data.appearance) ||
+                    (data.features !== undefined && !validFeatures(data.features)) ||
+                    !Number.isSafeInteger(data.stars) || data.stars < 0 ||
+                    ![1, 2].includes(data.property) || !Array.isArray(data.owned) ||
+                    !data.owned.includes('basic') || data.owned.some(id => !Object.hasOwn(shirts, id)) ||
+                    !data.owned.includes(data.shirt) ||
+                    (ride !== undefined && (!ride || !Object.hasOwn(vehicles, ride.id) ||
+                    !Array.isArray(ride.owned) || !ride.owned.includes('bike') || !ride.owned.includes(ride.id) ||
+                    ride.owned.some(id => !Object.hasOwn(vehicles, id)) ||
+                    !Object.hasOwn(quadrants, ride.quadrant) || !Number.isFinite(ride.x) || !Number.isFinite(ride.y) ||
+                    Math.abs((ride.x + vehicles[ride.id].w / 2) - (ride.y + vehicles[ride.id].d / 2)) > WORLD ||
+                    Math.abs((ride.x + vehicles[ride.id].w / 2) + (ride.y + vehicles[ride.id].d / 2) - WORLD) > WORLD ||
+                    Math.abs(headingLength - 1) > 0.001))) {
+                    throw new Error('Invalid save data');
+                }
+                if (ride) {
+                    const vehicle = vehicles[ride.id];
+                    let cx = ride.x + vehicle.w / 2, cy = ride.y + vehicle.d / 2;
+                    if (carBlocked(cx, cy, ride.quadrant, ride.heading, vehicle)) {
+                        const q = quadrants[ride.quadrant];
+                        const relocatedBuildingSolids = q.buildings
+                            .map((b, i) => b.garage || ['carryout', 'subshop', 'lemonade'].includes(b.type) ? q.solids[i] : null)
+                            .filter(Boolean);
+                        const displacedByBuilding =
+                            relocatedBuildingSolids.some(s => carIntersectsRect(cx, cy, s, ride.heading, vehicle)) &&
+                            !q.solids.some(s => !relocatedBuildingSolids.includes(s) && carIntersectsRect(cx, cy, s, ride.heading, vehicle));
+                        if (!displacedByBuilding) throw new Error('Invalid save data');
+                        const candidates = [];
+                        for (let dx = -300; dx <= 300; dx += 20) {
+                            for (let dy = -300; dy <= 300; dy += 20) candidates.push([dx, dy]);
+                        }
+                        candidates.sort((a, b) => Math.hypot(...a) - Math.hypot(...b));
+                        const spot = candidates.find(([dx, dy]) =>
+                            Math.abs(cx + dx - cy - dy) <= WORLD &&
+                            Math.abs(cx + dx + cy + dy - WORLD) <= WORLD &&
+                            !carBlocked(cx + dx, cy + dy, ride.quadrant, ride.heading, vehicle));
+                        if (!spot) throw new Error('No room to relocate saved ride');
+                        cx += spot[0]; cy += spot[1];
+                        ride.x = cx - vehicle.w / 2; ride.y = cy - vehicle.d / 2;
+                    }
+                }
+                player.appearance = data.appearance;
+                player.features = data.features === undefined ? defaultFeatures(data.appearance) : { ...data.features };
+                progress.stars = data.stars;
+                progress.property = data.property;
+                progress.owned = [...new Set(data.owned)];
+                progress.shirt = data.shirt;
+                if (ride) {
+                    progress.vehicle = ride.id;
+                    progress.ownedVehicles = [...new Set(ride.owned)];
+                    Object.assign(ownCar, vehicles[ride.id]);
+                    moveCarToQuadrant(ride.quadrant);
+                    ownCar.x = ride.x; ownCar.y = ride.y; ownCar.heading = ride.heading;
+                }
+                if (blocked(player.x, player.y)) {
+                    for (let y = 50; y <= 950; y += 50) {
+                        let found = false;
+                        for (let x = 50; x <= 950; x += 50) {
+                            if (!blocked(x, y)) {
+                                player.x = x; player.y = y; found = true; break;
+                            }
+                        }
+                        if (found) break;
+                    }
+                }
+                avatarSelection.classList.add('hidden');
+                updateProgressHud();
+            } catch (error) {
+                console.error('Unable to load progress:', error);
+                saveEnabled = false;
+                saveWarning.textContent = 'Save could not be loaded; saving is disabled to protect it.';
+            }
+        }
+        let drivingMessage = '', drivingMessageUntil = 0;
+        const avatarSelection = document.getElementById('avatar-selection');
+        const creator = {
+            body: document.getElementById('creator-body'),
+            hair: document.getElementById('creator-hair'),
+            color: document.getElementById('creator-color'),
+            skin: document.getElementById('creator-skin'),
+            facial: document.getElementById('creator-facial')
+        };
+        const creatorPreview = document.getElementById('avatar-preview');
+        let editingAppearance = false;
+        function creatorFeatures() {
+            return { hair: creator.hair.value, color: creator.color.value, skin: creator.skin.value, facial: creator.facial.value };
+        }
+        function drawCreatorPreview() {
+            const previewCtx = creatorPreview.getContext('2d');
+            previewCtx.clearRect(0, 0, creatorPreview.width, creatorPreview.height);
+            previewCtx.save();
+            previewCtx.scale(3.2, 3.2);
+            drawAvatar(previewCtx, 30, 70, creator.body.value, creatorFeatures(), shirts[progress.shirt].color, 0, 0, 0, 1);
+            previewCtx.restore();
+        }
+        function openCreator(editing) {
+            editingAppearance = editing;
+            creator.body.value = player.appearance || 'boy';
+            const features = player.appearance ? player.features : defaultFeatures(creator.body.value);
+            for (const key of ['hair', 'color', 'skin', 'facial']) creator[key].value = features[key];
+            document.getElementById('creator-confirm').textContent = editing ? 'Save changes' : 'Start game';
+            document.getElementById('creator-cancel').classList.toggle('hidden', !editing);
+            avatarSelection.classList.remove('hidden');
+            for (const k in keys) keys[k] = false;
+            drawCreatorPreview();
+            creator.body.focus();
+        }
+        Object.values(creator).forEach(select => select.addEventListener('change', drawCreatorPreview));
+        creator.body.addEventListener('change', () => {
+            creator.hair.value = defaultFeatures(creator.body.value).hair;
+            drawCreatorPreview();
+        });
+        document.getElementById('creator-confirm').addEventListener('click', () => {
+            player.appearance = creator.body.value;
+            player.features = creatorFeatures();
+            avatarSelection.classList.add('hidden');
+            for (const k in keys) keys[k] = false;
+            if (editingAppearance) renderShirtShop(false);
+            else canvas.focus();
+            saveProgress();
+        });
+        document.getElementById('creator-cancel').addEventListener('click', () => {
+            avatarSelection.classList.add('hidden');
+            renderShirtShop(false);
+        });
+        loadProgress();
+        if (!player.appearance) openCreator(false);
+        window.addEventListener('pagehide', saveProgress);
+
+        function showDrivingMessage(message) {
+            drivingMessage = message;
+            drivingMessageUntil = performance.now() + 2500;
+        }
+
+        function snapCamera() {
+            cam.x = (player.x - player.y) * KX;
+            cam.y = (player.x + player.y) * KY - 20;
+        }
+        snapCamera();
+
+        // Map layout:  NW | NE
+        //              SW | SE
+        const NEIGHBORS = {
+            NW: { E: 'NE', S: 'SW' },
+            NE: { W: 'NW', S: 'SE' },
+            SW: { E: 'SE', N: 'NW' },
+            SE: { W: 'SW', N: 'NE' }
+        };
+        let fade = 0;
+
+        function enterQuadrant(quad) {
+            currentQuadrant = quad;
+            document.getElementById('current-quadrant-badge').innerText = quadrants[quad].name;
+            fade = 1;
+        }
+
+        // Use the projected horizontal and vertical axes as compass coordinates.
+        function crossInto(edge, eastWest, northSouth) {
+            if (edge === 'E') eastWest = -WORLD + 30;
+            if (edge === 'W') eastWest = WORLD - 30;
+            if (edge === 'S') northSouth = -WORLD + 30;
+            if (edge === 'N') northSouth = WORLD - 30;
+            const x = (WORLD + northSouth + eastWest) / 2;
+            const y = (WORLD + northSouth - eastWest) / 2;
+            const destination = NEIGHBORS[currentQuadrant][edge];
+            if (driving.active && carBlocked(x, y, destination)) {
+                showDrivingMessage('The road ahead is blocked. Try crossing at another position.');
+                return false;
+            }
+            if (driving.active) moveCarToQuadrant(destination);
+            enterQuadrant(destination);
+            player.x = x;
+            player.y = y;
+            snapCamera();
+            return true;
+        }
+
+        function switchQuadrant(quad) {
+            if (!player.appearance || !avatarSelection.classList.contains('hidden')) return;
+            if (driving.active) {
+                if (carBlocked(500, 480, quad)) {
+                    showDrivingMessage('Metro destination is blocked. Exit your ride to travel on foot.');
+                    return;
+                }
+                moveCarToQuadrant(quad);
+            }
+            enterQuadrant(quad);
+            player.x = 500; player.y = 480;
+            if (driving.active) syncCarPosition();
+            snapCamera();
+            closeModal();
+            if (driving.active) saveProgress();
+        }
+
+        // Signs use screen-relative compass directions, matching movement controls.
+        function drawEdgeSign(e, x, y) {
+            const [sx, sy] = P(x, y);
+            const arrow = { E: '→', W: '←', S: '↓', N: '↑' }[e];
+            const label = `${arrow} ${NEIGHBORS[currentQuadrant][e]}`;
+            ctx.font = '900 15px sans-serif';
+            const tw = ctx.measureText(label).width + 18;
+            ctx.fillStyle = '#111827'; ctx.fillRect(sx - 2, sy - 60, 4, 60);
+            ctx.fillStyle = '#065f46'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.roundRect(sx - tw / 2, sy - 86, tw, 26, 4); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(label, sx, sy - 73);
+            ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+        }
+
+        function setMove(dir, val) { keys[dir] = val; }
+
+        document.querySelectorAll('.dpad').forEach(btn => {
+            btn.addEventListener('pointerdown', e => { e.preventDefault(); setMove(btn.dataset.dir, true); });
+        });
+        // Window-level release so dragging off a button never leaves movement stuck
+        ['pointerup', 'pointercancel', 'blur'].forEach(ev =>
+            window.addEventListener(ev, () => { for (const k in keys) keys[k] = false; })
+        );
+
+        const keyMap = { w: 'up', arrowup: 'up', s: 'down', arrowdown: 'down', a: 'left', arrowleft: 'left', d: 'right', arrowright: 'right' };
+        window.addEventListener('keydown', e => {
+            const k = e.key.toLowerCase();
+            if (!player.appearance || !avatarSelection.classList.contains('hidden')) return;
+            if (modalOpen()) {
+                if (k === 'escape') closeModal();
+                else if (sportsGame && !e.repeat && e.code === 'Space') { e.preventDefault(); sportsAction(); }
+                else if (sportsGame && sportsGame.type === 'football' && (k === 'arrowleft' || k === 'arrowright')) {
+                    e.preventDefault();
+                    selectLane(Math.max(0, Math.min(2, sportsGame.lane + (k === 'arrowleft' ? -1 : 1))));
+                }
+                return;
+            }
+            if (keyMap[k]) { keys[keyMap[k]] = true; e.preventDefault(); }
+            if (k === 'e' && !e.repeat) checkInteraction();
+        });
+        window.addEventListener('keyup', e => {
+            const k = e.key.toLowerCase();
+            if (keyMap[k]) keys[keyMap[k]] = false;
+        });
+
+        let activeBuilding = null;
+        let sportsGame = null;
+        let lemonadeGame = null;
+        const modalEl = document.getElementById('modal-overlay');
+        const bannerEl = document.getElementById('interaction-banner');
+        function modalOpen() { return !modalEl.classList.contains('hidden'); }
+        function checkInteraction() {
+            if (!player.appearance || modalOpen()) return;
+            if (driving.active) {
+                exitCar();
+                return;
+            }
+            if (activeBuilding === ownCar) {
+                driving.active = true;
+                drivingMessageUntil = 0;
+                player.x = ownCar.x + ownCar.w / 2;
+                player.y = ownCar.y + ownCar.d / 2;
+                for (const k in keys) keys[k] = false;
+                update();
+                return;
+            }
+            if (!activeBuilding) return;
+            if (quadrants[currentQuadrant].activities.includes(activeBuilding)) openSportsGame(activeBuilding.type);
+            else openBuildingModal(activeBuilding.type);
+        }
+        document.getElementById('interaction-btn').addEventListener('click', checkInteraction);
+
+        function overlaps(rect, s) {
+            return rect.x1 > s.x0 && rect.x0 < s.x1 && rect.y1 > s.y0 && rect.y0 < s.y1;
+        }
+
+        function carCorners(cx, cy, heading = ownCar.heading || [1, 0], vehicle = ownCar) {
+            const [fx, fy] = heading;
+            const sx = -fy, sy = fx;
+            return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([f, s]) => [
+                cx + f * vehicle.w / 2 * fx + s * vehicle.d / 2 * sx,
+                cy + f * vehicle.w / 2 * fy + s * vehicle.d / 2 * sy
+            ]);
+        }
+
+        function carBounds(cx, cy, heading) {
+            const corners = carCorners(cx, cy, heading);
+            return {
+                x0: Math.min(...corners.map(p => p[0])), y0: Math.min(...corners.map(p => p[1])),
+                x1: Math.max(...corners.map(p => p[0])), y1: Math.max(...corners.map(p => p[1]))
+            };
+        }
+
+        function carIntersectsRect(cx, cy, rect, heading = ownCar.heading || [1, 0], vehicle = ownCar) {
+            const corners = carCorners(cx, cy, heading, vehicle);
+            const rectCorners = [[rect.x0, rect.y0], [rect.x1, rect.y0], [rect.x1, rect.y1], [rect.x0, rect.y1]];
+            const axes = [[1, 0], [0, 1], heading, [-heading[1], heading[0]]];
+            return axes.every(([ax, ay]) => {
+                const carProjection = corners.map(([x, y]) => x * ax + y * ay);
+                const rectProjection = rectCorners.map(([x, y]) => x * ax + y * ay);
+                return Math.max(...carProjection) > Math.min(...rectProjection) &&
+                       Math.max(...rectProjection) > Math.min(...carProjection);
+            });
+        }
+
+        function blocked(px, py, quadrant = currentQuadrant) {
+            const rect = { x0: px - player.r, y0: py - player.r, x1: px + player.r, y1: py + player.r };
+            return quadrants[quadrant].solids.some(s => overlaps(rect, s)) ||
+                (driving.quadrant === quadrant && carIntersectsRect(ownCar.x + ownCar.w / 2, ownCar.y + ownCar.d / 2, rect));
+        }
+
+        function carBlocked(x, y, quadrant = currentQuadrant, heading = ownCar.heading || [1, 0], vehicle = ownCar) {
+            return quadrants[quadrant].solids.some(s => carIntersectsRect(x, y, s, heading, vehicle));
+        }
+
+        function syncCarPosition() {
+            ownCar.x = player.x - ownCar.w / 2;
+            ownCar.y = player.y - ownCar.d / 2;
+        }
+
+        function moveCarToQuadrant(quad) {
+            if (quad === driving.quadrant) return;
+            const cars = quadrants[driving.quadrant].cars;
+            cars.splice(cars.indexOf(ownCar), 1);
+            quadrants[quad].cars.push(ownCar);
+            driving.quadrant = quad;
+        }
+
+        function exitCar() {
+            const margin = player.r + 5;
+            const cx = ownCar.x + ownCar.w / 2, cy = ownCar.y + ownCar.d / 2;
+            const bounds = carBounds(cx, cy);
+            const spots = [
+                [cx, bounds.y1 + margin], [cx, bounds.y0 - margin],
+                [bounds.x1 + margin, cy], [bounds.x0 - margin, cy]
+            ];
+            const spot = spots.find(([x, y]) =>
+                Math.abs(x - y) <= WORLD && Math.abs(x + y - WORLD) <= WORLD && !blocked(x, y));
+            if (!spot) {
+                showDrivingMessage('No room to exit. Move your ride to an open area.');
+                return;
+            }
+            driving.active = false;
+            [player.x, player.y] = spot;
+            for (const k in keys) keys[k] = false;
+            saveProgress();
+            update();
+        }
+
+        function update() {
+            let dx = 0, dy = 0, sx = 0, sy = 0;
+            if (player.appearance && !modalOpen()) {
+                // Screen-relative controls mapped onto the isometric world axes
+                if (keys.up) { dx -= 1; dy -= 1; sy -= 1; }
+                if (keys.down) { dx += 1; dy += 1; sy += 1; }
+                if (keys.left) { dx -= 1; dy += 1; sx -= 1; }
+                if (keys.right) { dx += 1; dy -= 1; sx += 1; }
+            }
+            const len = Math.hypot(dx, dy);
+            player.moving = len > 0;
+            if (len) {
+                if (driving.active) {
+                    const heading = [dx / len, dy / len];
+                    if (!carBlocked(player.x, player.y, currentQuadrant, heading)) {
+                        ownCar.heading = heading;
+                    } else {
+                        dx = 0; dy = 0;
+                        showDrivingMessage('Not enough room to turn. Move away from obstacles.');
+                    }
+                }
+                const speed = driving.active ? player.speed * ownCar.speed : player.speed;
+                dx = dx / len * speed; dy = dy / len * speed;
+                const collision = driving.active ? carBlocked : blocked;
+                if (!collision(player.x + dx, player.y)) player.x += dx;
+                if (!collision(player.x, player.y + dy)) player.y += dy;
+            }
+            if (sx || sy) { player.fx = sx; player.fy = sy; }
+            let eastWest = player.x - player.y;
+            let northSouth = player.x + player.y - WORLD;
+            const edge = eastWest > WORLD ? 'E' : eastWest < -WORLD ? 'W' :
+                         northSouth > WORLD ? 'S' : northSouth < -WORLD ? 'N' : null;
+            eastWest = Math.max(-WORLD, Math.min(WORLD, eastWest));
+            northSouth = Math.max(-WORLD, Math.min(WORLD, northSouth));
+            if (!edge || !NEIGHBORS[currentQuadrant][edge] || !crossInto(edge, eastWest, northSouth)) {
+                player.x = (WORLD + northSouth + eastWest) / 2;
+                player.y = (WORLD + northSouth - eastWest) / 2;
+            }
+            if (driving.active) syncCarPosition();
+            if (driving.active && performance.now() - lastCarSave >= 1000) {
+                lastCarSave = performance.now();
+                saveProgress();
+            }
+
+            cam.x += ((player.x - player.y) * KX - cam.x) * 0.15;
+            cam.y += ((player.x + player.y) * KY - 20 - cam.y) * 0.15;
+
+            activeBuilding = null;
+            let nearest = 60;
+            for (const b of [...quadrants[currentQuadrant].buildings, ...quadrants[currentQuadrant].activities]) {
+                const ddx = Math.max(b.x - player.x, 0, player.x - (b.x + b.w));
+                const ddy = Math.max(b.y - player.y, 0, player.y - (b.y + b.d));
+                const distance = Math.hypot(ddx, ddy);
+                if (distance < nearest) { activeBuilding = b; nearest = distance; }
+            }
+
+            if (!driving.active && driving.quadrant === currentQuadrant) {
+                const bounds = carBounds(ownCar.x + ownCar.w / 2, ownCar.y + ownCar.d / 2);
+                const dx = Math.max(bounds.x0 - player.x, 0, player.x - bounds.x1);
+                const dy = Math.max(bounds.y0 - player.y, 0, player.y - bounds.y1);
+                if (Math.hypot(dx, dy) < 40) activeBuilding = ownCar;
+            }
+            if (driving.active && !modalOpen()) {
+                document.getElementById('interaction-text').textContent = performance.now() < drivingMessageUntil ?
+                    drivingMessage : `Riding ${ownCar.name} — press [E] to get off`;
+                document.getElementById('interaction-btn').textContent = 'Get Off';
+                bannerEl.classList.remove('hidden');
+            } else if (activeBuilding && !modalOpen()) {
+                if (activeBuilding === ownCar) {
+                    document.getElementById('interaction-text').textContent = `Near your ${ownCar.name} — press [E] to ride`;
+                    document.getElementById('interaction-btn').textContent = 'Ride';
+                    bannerEl.classList.remove('hidden');
+                    return;
+                }
+                document.getElementById('interaction-text').innerText = `Near ${activeBuilding.name} — press [E]`;
+                document.getElementById('interaction-btn').textContent = quadrants[currentQuadrant].activities.includes(activeBuilding) ? 'Play Game' : 'Enter Venue';
+                bannerEl.classList.remove('hidden');
+            } else {
+                bannerEl.classList.add('hidden');
+            }
+        }
+
+        // ---------- Rendering: ground ----------
+        function drawGround(q) {
+            for (let ty = -WORLD / (2 * TILE); ty < 3 * WORLD / (2 * TILE); ty++) {
+                for (let tx = -WORLD / (2 * TILE); tx < 3 * WORLD / (2 * TILE); tx++) {
+                    const x = tx * TILE, y = ty * TILE, cx = x + TILE / 2, cy = y + TILE / 2;
+                    const [screenX, screenY] = P(cx, cy);
+                    if (screenX < -TILE || screenX > W + TILE || screenY < -TILE || screenY > H + TILE) continue;
+                    const alt = (tx + ty) & 1;
+                    const nearX = Math.abs(cx - 500), nearY = Math.abs(cy - 500);
+                    let col;
+                    if (nearX < 50 || nearY < 50) col = alt ? '#2b303b' : '#2e3340';
+                    else if (nearX < 100 || nearY < 100) col = alt ? '#918b89' : '#a09a97';
+                    else col = q.lot[alt];
+                    poly([P(x, y), P(x + TILE, y), P(x + TILE, y + TILE), P(x, y + TILE)], col, col, 0.6);
+                }
+            }
+            // Lane dashes
+            for (let t = -WORLD / 2; t < 1.5 * WORLD; t += 100) {
+                if (t > 400 && t < 600) continue;
+                poly([P(498, t + 30), P(502, t + 30), P(502, t + 70), P(498, t + 70)], '#fbbf24');
+                poly([P(t + 30, 498), P(t + 70, 498), P(t + 70, 502), P(t + 30, 502)], '#fbbf24');
+            }
+            // Crosswalks
+            for (let i = 0; i < 6; i++) {
+                const o = 455 + i * 16;
+                poly([P(o, 408), P(o + 8, 408), P(o + 8, 436), P(o, 436)], 'rgba(255,255,255,.65)');
+                poly([P(o, 564), P(o + 8, 564), P(o + 8, 592), P(o, 592)], 'rgba(255,255,255,.65)');
+                poly([P(408, o), P(436, o), P(436, o + 8), P(408, o + 8)], 'rgba(255,255,255,.65)');
+                poly([P(564, o), P(592, o), P(592, o + 8), P(564, o + 8)], 'rgba(255,255,255,.65)');
+            }
+            // Small cocoa-toned utility covers along the sidewalks.
+            [[420, 290], [580, 710], [290, 580], [710, 420]].forEach(([x, y]) => {
+                groundRect(x - 9, y - 9, 18, 18, '#59443e', '#79615a');
+                groundRect(x - 6, y - 1, 12, 2, '#8a6c5e');
+                groundRect(x - 1, y - 6, 2, 12, '#8a6c5e');
+            });
+        }
+
+        function groundRect(x, y, w, d, fill, stroke, width = 1) {
+            poly([P(x, y), P(x + w, y), P(x + w, y + d), P(x, y + d)], fill, stroke, width);
+        }
+
+        function groundCircle(x, y, radius, stroke) {
+            const points = [];
+            for (let i = 0; i <= 40; i++) {
+                const angle = i * Math.PI * 2 / 40;
+                points.push(P(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius));
+            }
+            poly(points, null, stroke, 2);
+        }
+
+        function drawActivityGround(a) {
+            const { x, y, w, d } = a;
+            groundRect(x - 5, y - 5, w + 10, d + 10, '#374151');
+            if (a.type === 'football') {
+                groundRect(x, y, w, d, '#237343', '#e5e7eb', 2);
+                groundRect(x, y, 28, d, '#5a1414');
+                groundRect(x + w - 28, y, 28, d, '#5a1414');
+                for (let i = 0; i <= 6; i++) {
+                    groundRect(x + 28 + i * (w - 56) / 6, y + 4, 2, d - 8, '#e5e7eb');
+                }
+                for (let i = 0; i < 6; i++) {
+                    const px = x + 44 + i * 32;
+                    groundRect(px, y + d / 2 - 26, 2, 8, '#e5e7eb');
+                    groundRect(px, y + d / 2 + 18, 2, 8, '#e5e7eb');
+                }
+            } else if (a.type === 'basketball') {
+                groundRect(x, y, w, d, '#a1583d', '#f8fafc', 2);
+                groundRect(x + 10, y + 10, w - 20, d - 20, null, '#f8fafc', 2);
+                groundRect(x + w / 2 - 1, y + 10, 2, d - 20, '#f8fafc');
+                groundCircle(x + w / 2, y + d / 2, 24, '#f8fafc');
+                groundRect(x + 10, y + d / 2 - 35, 44, 70, null, '#f8fafc', 2);
+                groundRect(x + w - 54, y + d / 2 - 35, 44, 70, null, '#f8fafc', 2);
+                groundCircle(x + 54, y + d / 2, 20, '#f8fafc');
+                groundCircle(x + w - 54, y + d / 2, 20, '#f8fafc');
+            } else if (a.type === 'golf') {
+                groundRect(x, y, w, d, '#328349', '#a7f3d0', 2);
+                groundCircle(x + w / 2, y + d / 2, 65, '#86efac');
+                groundCircle(x + w / 2, y + d / 2, 4, '#111827');
+                groundCircle(x + 35, y + d - 35, 7, '#f8fafc');
+            } else if (a.type === 'soccer') {
+                groundRect(x, y, w, d, '#237343', '#e5e7eb', 2);
+                groundRect(x + w / 2 - 1, y, 2, d, '#e5e7eb');
+                groundCircle(x + w / 2, y + d / 2, 28, '#e5e7eb');
+                groundRect(x, y + d / 2 - 48, 40, 96, null, '#e5e7eb', 2);
+                groundRect(x + w - 40, y + d / 2 - 48, 40, 96, null, '#e5e7eb', 2);
+            } else if (a.type === 'tennis') {
+                groundRect(x, y, w, d, '#2563a0', '#e5e7eb', 2);
+                groundRect(x + 12, y + 12, w - 24, d - 24, null, '#e5e7eb', 2);
+                groundRect(x + 12, y + 30, w - 24, d - 60, null, '#e5e7eb', 2);
+                groundRect(x + w / 2 - 1, y + 12, 2, d - 24, '#e5e7eb');
+                groundRect(x + 55, y + d / 2 - 1, w - 110, 2, '#e5e7eb');
+            }
+        }
+
+        function drawActivityEquipment(a) {
+            const { x, y, w, d } = a;
+            const line = (points, color, width) => {
+                ctx.beginPath();
+                points.forEach(([px, py, z], i) => {
+                    const [sx, sy] = P(px, py, z);
+                    if (i) ctx.lineTo(sx, sy); else ctx.moveTo(sx, sy);
+                });
+                ctx.strokeStyle = color; ctx.lineWidth = width; ctx.stroke();
+            };
+            if (a.type === 'football') {
+                for (const gx of [x + 12, x + w - 12]) {
+                    line([[gx, y + d / 2, 0], [gx, y + d / 2, 38]], '#facc15', 4);
+                    line([[gx, y + d / 2 - 25, 38], [gx, y + d / 2 + 25, 38]], '#facc15', 4);
+                    for (const gy of [y + d / 2 - 25, y + d / 2 + 25])
+                        line([[gx, gy, 38], [gx, gy, 58]], '#facc15', 3);
+                }
+            } else if (a.type === 'basketball') {
+                for (const gx of [x + 15, x + w - 15]) {
+                    line([[gx, y + d / 2, 0], [gx, y + d / 2, 42]], '#cbd5e1', 4);
+                    poly([P(gx, y + d / 2 - 16, 38), P(gx, y + d / 2 + 16, 38),
+                          P(gx, y + d / 2 + 16, 56), P(gx, y + d / 2 - 16, 56)], '#e2e8f0', '#334155', 2);
+                    const rimX = gx + (gx < x + w / 2 ? 10 : -10);
+                    const [sx, sy] = P(rimX, y + d / 2, 36);
+                    ctx.beginPath(); ctx.ellipse(sx, sy, 8, 4, 0, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#f97316'; ctx.lineWidth = 3; ctx.stroke();
+                }
+            } else if (a.type === 'golf') {
+                const gx = x + w / 2, gy = y + d / 2;
+                line([[gx, gy, 0], [gx, gy, 42]], '#f8fafc', 2);
+                poly([P(gx, gy, 42), P(gx + 24, gy, 36), P(gx, gy, 30)], '#ef4444');
+            } else if (a.type === 'soccer') {
+                for (const gx of [x, x + w]) {
+                    line([[gx, y + d / 2 - 30, 0], [gx, y + d / 2 - 30, 27],
+                          [gx, y + d / 2 + 30, 27], [gx, y + d / 2 + 30, 0]], '#f8fafc', 3);
+                }
+            } else if (a.type === 'tennis') {
+                line([[x + w / 2, y + 12, 0], [x + w / 2, y + 12, 24],
+                      [x + w / 2, y + d - 12, 24], [x + w / 2, y + d - 12, 0]], '#f8fafc', 2);
+                for (let i = 1; i < 10; i++) {
+                    const gy = y + 12 + i * (d - 24) / 10;
+                    line([[x + w / 2, gy, 0], [x + w / 2, gy, 24]], '#cbd5e1', 1);
+                }
+            }
+            const [sx, sy] = P(x + w / 2, y + d, 25);
+            ctx.save();
+            ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+            const label = { football: 'FOOTBALL FIELD', basketball: 'BASKETBALL COURT', golf: 'PUTTING GREEN', soccer: 'SOCCER FIELD', tennis: 'TENNIS COURT' }[a.type];
+            const width = ctx.measureText(label).width + 16;
+            ctx.fillStyle = '#111827'; ctx.fillRect(sx - width / 2, sy - 16, width, 22);
+            ctx.strokeStyle = a === activeBuilding ? '#34d399' : '#fbbf24'; ctx.strokeRect(sx - width / 2, sy - 16, width, 22);
+            ctx.fillStyle = '#fff'; ctx.fillText(label, sx, sy);
+            ctx.restore();
+        }
+
+        // ---------- Rendering: objects ----------
+        function drawBuilding(b, active, t) {
+            const { x, y, w, d, h } = b, Y = y + d;
+            if (b.style === 'stand') {
+                poly([P(x + 4, y + 4), P(x + w + 8, y + 4), P(x + w + 8, Y + 8), P(x + 4, Y + 8)], 'rgba(0,0,0,.3)');
+                box(x, y, 0, w, d, 24, b.color, 'rgba(0,0,0,.45)');
+                box(x + 4, Y - 4, 24, 4, 4, 30, b.trim);
+                box(x + w - 8, Y - 4, 24, 4, 4, 30, b.trim);
+                box(x - 3, y - 3, 54, w + 6, d + 6, 5, '#fff1bb', b.trim);
+                for (let i = 0; i < 4; i++) {
+                    poly(faceL(x - 3, y - 3, w + 6, d + 6, i / 4, i / 4 + 0.125, 54, 59), '#e3b645');
+                }
+                poly(faceL(x, y, w, d, 0.08, 0.92, 5, 21), '#49362c', b.trim);
+                faceText(b, 'LEMONADE', 0.5, 13, 12, '#fff4bd', null);
+                if (active) {
+                    const a = P(x + w / 2, Y + 8, 68 + Math.sin(t * 5) * 3);
+                    poly([[a[0] - 8, a[1] - 10], [a[0] + 8, a[1] - 10], [a[0], a[1]]], '#34d399', 'rgba(0,0,0,.6)');
+                }
+                return;
+            }
+            poly([P(x + 8, y + 8), P(x + w + 16, y + 8), P(x + w + 16, y + d + 16), P(x + 8, y + d + 16)], 'rgba(0,0,0,.35)');
+            box(x, y, 0, w, d, h, b.color, 'rgba(0,0,0,.45)');
+
+            // plinth + parapet
+            poly(faceL(x, y, w, d, 0, 1, 0, 5), shade(b.color, 0.5));
+            poly(faceR(x, y, w, d, 0, 1, 0, 5), shade(b.color, 0.35));
+            poly(faceL(x, y, w, d, 0, 1, h - 8, h), b.trim);
+            poly(faceR(x, y, w, d, 0, 1, h - 8, h), shade(b.trim, 0.7));
+            poly([P(x + 6, y + 6, h), P(x + w - 6, y + 6, h), P(x + w - 6, y + d - 6, h), P(x + 6, y + d - 6, h)], '#2a2f3a');
+
+            if (['club', 'arena', 'fanhub'].includes(b.style)) {
+                for (let i = 0; i < 5; i++) {
+                    const u = 0.08 + i * 0.19;
+                    poly(faceR(x, y, w, d, u, u + 0.035, 42, h - 12), b.trim);
+                }
+            } else if (['lounge', 'gym', 'garage'].includes(b.style)) {
+                for (let z = 48; z < h - 12; z += b.style === 'gym' ? 16 : 22) {
+                    poly(faceR(x, y, w, d, 0.04, 0.96, z, z + 3), b.trim);
+                }
+            } else if (['mall', 'carryout', 'subshop', 'apartment'].includes(b.style)) {
+                const panel = b.style === 'mall' ? '#486771' : shade(b.trim, 0.72);
+                poly(faceR(x, y, w, d, 0.08, 0.92, 45, h - 12), panel, 'rgba(0,0,0,.25)');
+                for (let i = 1; i < 4; i++) {
+                    const u = 0.08 + i * 0.21;
+                    poly(faceR(x, y, w, d, u, u + 0.015, 45, h - 12), b.trim);
+                }
+            }
+
+            // upper-floor windows
+            const rows = Math.max(0, Math.floor((h - 8 - 80) / 34));
+            const colsL = Math.max(2, Math.floor(w / 34)), colsR = Math.max(2, Math.floor(d / 34));
+            const win = (i, j, k) => { const v = (i * 73 + j * 31 + k * 17 + b.x) % 7; return v < 3 ? '#fde68a' : v < 5 ? '#93c5fd' : '#1e293b'; };
+            for (let r = 0; r < rows; r++) {
+                const z0 = 80 + r * 34;
+                for (let c = 0; c < colsL; c++)
+                    poly(faceL(x, y, w, d, (c + 0.18) / colsL, (c + 0.82) / colsL, z0, z0 + 22), win(r, c, 1), 'rgba(0,0,0,.55)');
+                for (let c = 0; c < colsR; c++)
+                    poly(faceR(x, y, w, d, (c + 0.18) / colsR, (c + 0.82) / colsR, z0, z0 + 22), win(r, c, 2), 'rgba(0,0,0,.55)');
+            }
+            // right-face ground-floor windows
+            for (let c = 0; c < colsR; c++)
+                poly(faceR(x, y, w, d, (c + 0.15) / colsR, (c + 0.85) / colsR, 10, 36), 'rgba(125,211,252,.45)', 'rgba(0,0,0,.5)');
+
+            // ground floor on the left face
+            if (b.garage) {
+                poly(faceL(x, y, w, d, 0.12, 0.88, 0, 38), '#cbd5e1', 'rgba(0,0,0,.6)');
+                for (let i = 1; i < 6; i++) {
+                    const z = i * 6.3;
+                    ctx.beginPath();
+                    const a = P(x + 0.12 * w, Y, z), c2 = P(x + 0.88 * w, Y, z);
+                    ctx.moveTo(a[0], a[1]); ctx.lineTo(c2[0], c2[1]);
+                    ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1; ctx.stroke();
+                }
+            } else if (b.style === 'club') {
+                poly(faceL(x, y, w, d, 0.06, 0.37, 8, 39), '#261e31', b.trim, 1.5);
+                poly(faceL(x, y, w, d, 0.63, 0.94, 8, 39), '#261e31', b.trim, 1.5);
+                poly(faceL(x, y, w, d, 0.4, 0.6, 0, 40), '#101018', active ? '#34d399' : b.trim, 2);
+                poly(faceL(x, y, w, d, 0.495, 0.505, 1, 39), b.trim);
+                poly([P(x + 0.3 * w, Y, 44), P(x + 0.7 * w, Y, 44), P(x + 0.72 * w, Y + 20, 39), P(x + 0.28 * w, Y + 20, 39)], '#16131d', b.trim, 2);
+                poly([P(x + 0.28 * w, Y + 20, 39), P(x + 0.72 * w, Y + 20, 39), P(x + 0.72 * w, Y + 20, 35), P(x + 0.28 * w, Y + 20, 35)], b.trim);
+                groundRect(x + 0.4 * w, Y, w * 0.2, 26, '#663342', b.trim);
+            } else {
+                poly(faceL(x, y, w, d, 0.06, 0.36, 8, 36), 'rgba(253,224,71,.35)', b.trim, 1.5);
+                poly(faceL(x, y, w, d, 0.64, 0.94, 8, 36), 'rgba(253,224,71,.35)', b.trim, 1.5);
+                poly(faceL(x, y, w, d, 0.07, 0.35, 12, 32), 'rgba(125,211,252,.35)');
+                poly(faceL(x, y, w, d, 0.65, 0.93, 12, 32), 'rgba(125,211,252,.35)');
+                poly(faceL(x, y, w, d, 0.42, 0.58, 0, 34), '#0b0f1a', active ? '#34d399' : b.trim, active ? 3 : 1.5);
+                // awning
+                poly([P(x + 0.34 * w, Y, 40), P(x + 0.66 * w, Y, 40), P(x + 0.7 * w, Y + 16, 31), P(x + 0.3 * w, Y + 16, 31)], b.trim, 'rgba(0,0,0,.5)');
+                poly([P(x + 0.3 * w, Y + 16, 31), P(x + 0.7 * w, Y + 16, 31), P(x + 0.7 * w, Y + 16, 27), P(x + 0.3 * w, Y + 16, 27)], shade(b.trim, 0.65));
+                if (b.style === 'subshop' || b.style === 'carryout') {
+                    for (let i = 0; i < 4; i++) {
+                        const u = 0.34 + i * 0.08;
+                        poly([P(x + u * w, Y, 40), P(x + (u + 0.04) * w, Y, 40),
+                            P(x + (u + 0.04) * w + 4, Y + 16, 31), P(x + u * w + 4, Y + 16, 31)],
+                            b.style === 'subshop' ? '#567b57' : '#9a4032');
+                    }
+                }
+            }
+
+            if (b.style === 'apartment') {
+                for (let z = 82; z < h - 16; z += 34) {
+                    poly(faceL(x, y, w, d, 0.12, 0.88, z, z + 3), '#e3b997');
+                }
+            }
+
+            // neon signboard
+            ctx.save();
+            ctx.shadowColor = b.neon; ctx.shadowBlur = 14;
+            poly(faceL(x, y, w, d, 0.06, 0.94, 46, 72), '#07070f', b.neon, 2);
+            ctx.restore();
+            faceText(b, b.name, 0.5, 59, 15, '#ffffff', b.neon);
+
+            // rooftop details
+            box(x + w * 0.15, y + d * 0.25, h, 22, 16, 8, '#94a3b8', 'rgba(0,0,0,.4)');
+            box(x + w * 0.6, y + d * 0.4, h, 18, 14, 6, '#94a3b8', 'rgba(0,0,0,.4)');
+            if (b.style === 'club') {
+                const sign = { x: x + w * 0.08, y: y + d * 0.32, w: w * 0.84, d: 10 };
+                box(sign.x, sign.y, h, sign.w, sign.d, 26, '#24151c', b.trim);
+                poly(faceL(sign.x, sign.y, sign.w, sign.d, 0.02, 0.98, h + 2, h + 24), '#24151c', b.trim, 2);
+                faceText(sign, 'Live-Go-Go and Music', 0.5, h + 13, 12, '#ffe1e1', b.neon);
+            } else if (b.style === 'mall') {
+                box(x + w * 0.35, y + d * 0.25, h, w * 0.35, d * 0.3, 12, '#7b9aa1', 'rgba(0,0,0,.4)');
+            } else if (b.style === 'gym') {
+                box(x + w * 0.38, y + d * 0.3, h, w * 0.25, d * 0.18, 14, '#4a3b39', 'rgba(0,0,0,.4)');
+            } else if (b.style === 'arena') {
+                box(x + w * 0.25, y + d * 0.22, h, w * 0.5, d * 0.48, 16, '#778b90', 'rgba(0,0,0,.4)');
+            } else if (b.style === 'fanhub') {
+                box(x + w * 0.42, y + d * 0.25, h, 20, 20, 24, b.trim, 'rgba(0,0,0,.4)');
+            }
+            if (b.type === 'sports') {
+                const base = P(x + w - 20, y + 20, h), top = P(x + w - 20, y + 20, h + 50);
+                ctx.beginPath(); ctx.moveTo(base[0], base[1]); ctx.lineTo(top[0], top[1]);
+                ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 2; ctx.stroke();
+                const wave = Math.sin(t * 3) * 3;
+                poly([[top[0], top[1]], [top[0] + 26, top[1] + 4 + wave], [top[0] + 22, top[1] + 10 - wave], [top[0] + 26, top[1] + 16 + wave], [top[0], top[1] + 14]], '#AB0003', '#ffffff');
+            }
+            if (active) {
+                const a = P(x + w / 2, Y + 8, 52 + Math.sin(t * 5) * 3);
+                poly([[a[0] - 8, a[1] - 10], [a[0] + 8, a[1] - 10], [a[0], a[1]]], '#34d399', 'rgba(0,0,0,.6)');
+            }
+        }
+
+        function wheel(wx, wy, z, hub) {
+            const [ox, oy] = P(wx, wy, z);
+            ctx.save();
+            ctx.setTransform(KX, KY, 0, 1, ox, oy);
+            ctx.fillStyle = '#0a0a0a'; ctx.beginPath(); ctx.arc(0, 0, 8, 0, 7); ctx.fill();
+            ctx.fillStyle = '#d1d5db'; ctx.beginPath(); ctx.arc(0, 0, 4.5, 0, 7); ctx.fill();
+            ctx.fillStyle = hub; ctx.beginPath(); ctx.arc(0, 0, 1.8, 0, 7); ctx.fill();
+            ctx.restore();
+        }
+
+        function drawCar(c) {
+            if (c.ownRide) {
+                if (c.kind === 'car' || c.kind === 'truck') drawOwnCar(c);
+                else drawTwoWheeler(c);
+                return;
+            }
+            const { x, y, w, d } = c;
+            poly([P(x - 3, y - 2), P(x + w + 3, y - 2), P(x + w + 3, y + d + 3), P(x - 3, y + d + 3)], 'rgba(0,0,0,.4)');
+            box(x, y, 4, w, d, 12, c.color, 'rgba(0,0,0,.45)');
+            poly(faceL(x, y, w, d, 0.02, 0.98, 9, 10.5), c.trim);
+            const cx = x + w * 0.28, cw = w * 0.46, cy = y + 4, cd = d - 8;
+            box(cx, cy, 16, cw, cd, 12, c.color, 'rgba(0,0,0,.45)');
+            poly(faceL(cx, cy, cw, cd, 0.06, 0.94, 18, 26), '#0f172a');
+            poly(faceL(cx, cy, cw, cd, 0.48, 0.52, 18, 26), c.color);
+            poly(faceR(cx, cy, cw, cd, 0.08, 0.92, 18, 26), '#1e293b');
+            poly(faceR(x, y, w, d, 0.08, 0.28, 8, 12), '#fef9c3', 'rgba(0,0,0,.4)');
+            poly(faceR(x, y, w, d, 0.72, 0.92, 8, 12), '#fef9c3', 'rgba(0,0,0,.4)');
+            poly(faceR(x, y, w, d, 0.32, 0.68, 6, 10), '#111');
+            wheel(x + w * 0.2, y + d, 7, c.trim);
+            wheel(x + w * 0.8, y + d, 7, c.trim);
+        }
+
+        function drawTwoWheeler(c) {
+            const cx = c.x + c.w / 2, cy = c.y + c.d / 2;
+            const [fx, fy] = c.heading || [1, 0];
+            const point = (forward, z) => P(cx + forward * fx, cy + forward * fy, z);
+            const line = (points, color, width) => {
+                ctx.beginPath();
+                points.forEach(([f, z], i) => {
+                    const [x, y] = point(f, z);
+                    if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+                });
+                ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineCap = 'round'; ctx.stroke();
+            };
+            const axle = c.w * .38;
+            for (const f of [-axle, axle]) {
+                const [x, y] = point(f, 7);
+                ctx.fillStyle = '#111827'; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
+            }
+            if (c.kind === 'scooter') {
+                line([[-axle, 9], [axle, 9], [axle, 32], [axle - 6, 32]], c.color, 4);
+            } else {
+                line([[-axle, 7], [0, 7], [-6, 22], [-axle, 7]], c.color, 3);
+                line([[0, 7], [axle, 7], [10, 23], [-6, 22]], c.color, 3);
+                line([[10, 23], [12, 31], [6, 31]], '#e5e7eb', 3);
+                line([[-10, 24], [-3, 24]], '#111827', 3);
+                if (c.kind === 'ebike') line([[-3, 12], [5, 20]], '#fbbf24', 5);
+            }
+            if (driving.active && c === ownCar) {
+                const [x, y] = point(0, 15);
+                drawAvatar(ctx, x, y, player.appearance, player.features, shirts[progress.shirt].color, 0, 0, player.fx, player.fy);
+            }
+        }
+
+        function drawOwnCar(c) {
+            const cx = c.x + c.w / 2, cy = c.y + c.d / 2;
+            const [fx, fy] = c.heading || [1, 0];
+            const sx = -fy, sy = fx;
+            const point = (forward, side, z = 0) =>
+                P(cx + forward * fx + side * sx, cy + forward * fy + side * sy, z);
+            const face = (points, color, stroke = 'rgba(0,0,0,.5)') =>
+                poly(points.map(([f, s, z]) => point(f, s, z)), color, stroke);
+            const prism = (f0, f1, s0, s1, z0, z1, color) => {
+                const sides = [
+                    { depth: (f0 * fx + (s0 + s1) / 2 * sx) + (f0 * fy + (s0 + s1) / 2 * sy), points: [[f0,s0,z0],[f0,s1,z0],[f0,s1,z1],[f0,s0,z1]], color: shade(color, .65) },
+                    { depth: (f1 * fx + (s0 + s1) / 2 * sx) + (f1 * fy + (s0 + s1) / 2 * sy), points: [[f1,s0,z0],[f1,s1,z0],[f1,s1,z1],[f1,s0,z1]], color: shade(color, .8) },
+                    { depth: ((f0 + f1) / 2 * fx + s0 * sx) + ((f0 + f1) / 2 * fy + s0 * sy), points: [[f0,s0,z0],[f1,s0,z0],[f1,s0,z1],[f0,s0,z1]], color: shade(color, .85) },
+                    { depth: ((f0 + f1) / 2 * fx + s1 * sx) + ((f0 + f1) / 2 * fy + s1 * sy), points: [[f0,s1,z0],[f1,s1,z0],[f1,s1,z1],[f0,s1,z1]], color: shade(color, .7) }
+                ];
+                sides.sort((a, b) => a.depth - b.depth).forEach(side => face(side.points, side.color));
+                face([[f0,s0,z1],[f1,s0,z1],[f1,s1,z1],[f0,s1,z1]], shade(color, 1.18));
+            };
+            const halfW = c.w / 2, halfD = c.d / 2;
+            face([[-halfW,-halfD,0],[halfW,-halfD,0],[halfW,halfD,0],[-halfW,halfD,0]], 'rgba(0,0,0,.4)', null);
+            prism(-halfW, halfW, -halfD, halfD, 4, 16, c.color);
+            prism(c.kind === 'truck' ? -c.w * .05 : -c.w * .22, c.w * .24, -halfD + 4, halfD - 4, 16, 28, c.color);
+            if (c.kind === 'truck') face([[-halfW*.9,-halfD*.7,17],[-c.w*.12,-halfD*.7,17],[-c.w*.12,halfD*.7,17],[-halfW*.9,halfD*.7,17]], '#1f2937');
+            for (const side of [-1, 1]) {
+                const s = side * (halfD - 3.9);
+                face([[-c.w*.19,s,18],[c.w*.21,s,18],[c.w*.21,s,25],[-c.w*.19,s,25]], '#17283e');
+                const outer = side * (halfD + .1);
+                face([[-halfW*.9,outer,9],[halfW*.9,outer,9],[halfW*.9,outer,10.5],[-halfW*.9,outer,10.5]], c.trim, null);
+                for (const f of [-c.w * .3, c.w * .3]) {
+                    const [wx, wy] = point(f, outer, 7);
+                    ctx.fillStyle = '#0a0a0a'; ctx.beginPath(); ctx.arc(wx, wy, 6, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#d1d5db'; ctx.beginPath(); ctx.arc(wx, wy, 3, 0, Math.PI * 2); ctx.fill();
+                }
+            }
+            face([[halfW + .1,-halfD*.8,8],[halfW + .1,-halfD*.35,8],[halfW + .1,-halfD*.35,12],[halfW + .1,-halfD*.8,12]], '#fef9c3');
+            face([[halfW + .1,halfD*.35,8],[halfW + .1,halfD*.8,8],[halfW + .1,halfD*.8,12],[halfW + .1,halfD*.35,12]], '#fef9c3');
+            face([[-halfW-.1,-halfD*.8,8],[-halfW-.1,halfD*.8,8],[-halfW-.1,halfD*.8,11],[-halfW-.1,-halfD*.8,11]], '#ef4444');
+        }
+
+        function drawTree(t) {
+            const [sx, sy] = P(t.x, t.y);
+            ctx.fillStyle = 'rgba(0,0,0,.3)';
+            ctx.beginPath(); ctx.ellipse(sx + 4, sy + 2, 16, 7, 0, 0, 7); ctx.fill();
+            ctx.fillStyle = '#5c392e'; ctx.fillRect(sx - 3, sy - 24, 6, 24);
+            ctx.fillStyle = '#805748'; ctx.fillRect(sx - 2, sy - 21, 1, 17);
+            ctx.fillStyle = '#432a25';
+            for (let y = sy - 18; y < sy - 3; y += 6) ctx.fillRect(sx + 1, y, 2, 1);
+            [[0, -44, 17, '#166534'], [-10, -34, 12, '#15803d'], [10, -34, 12, '#15803d'], [0, -52, 11, '#22c55e']].forEach(([ox, oy, r, col]) => {
+                ctx.fillStyle = col; ctx.beginPath(); ctx.arc(sx + ox, sy + oy, r, 0, 7); ctx.fill();
+            });
+        }
+
+        function drawLamp(l) {
+            const [sx, sy] = P(l.x, l.y);
+            const g = ctx.createRadialGradient(sx, sy - 66, 2, sx, sy - 66, 46);
+            g.addColorStop(0, 'rgba(253,224,71,.45)'); g.addColorStop(1, 'rgba(253,224,71,0)');
+            ctx.fillStyle = g; ctx.fillRect(sx - 50, sy - 116, 100, 100);
+            ctx.fillStyle = '#49322c'; ctx.fillRect(sx - 2, sy - 64, 4, 64);
+            ctx.fillStyle = '#785547'; ctx.fillRect(sx - 1, sy - 60, 1, 53);
+            ctx.fillStyle = '#65483c'; ctx.fillRect(sx - 3, sy - 8, 6, 3);
+            ctx.fillStyle = '#fde68a'; ctx.beginPath(); ctx.arc(sx, sy - 66, 5, 0, 7); ctx.fill();
+        }
+
+        function drawAvatar(ctx, sx, sy, appearance, features, shirtColor, bob, sw, fx, fy) {
+            const line = (x1, y1, x2, y2, col, w) => {
+                ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+                ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.stroke();
+            };
+            const skin = skinColors[features.skin], hair = hairColors[features.color];
+            ctx.fillStyle = 'rgba(0,0,0,.4)';
+            ctx.beginPath(); ctx.ellipse(sx, sy + 1, 12, 5, 0, 0, 7); ctx.fill();
+
+            // legs + sneakers
+            line(sx - 3, sy - 16 - bob, sx - 3 + sw * 0.6, sy - 2, '#31527b', 5);
+            line(sx + 3, sy - 16 - bob, sx + 3 - sw * 0.6, sy - 2, '#31527b', 5);
+            ctx.fillStyle = '#f8fafc';
+            ctx.beginPath(); ctx.ellipse(sx - 3 + sw * 0.6, sy - 1, 4.5, 2.5, 0, 0, 7); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(sx + 3 - sw * 0.6, sy - 1, 4.5, 2.5, 0, 0, 7); ctx.fill();
+
+            // Short sleeves and visible arms
+            line(sx - 9, sy - 30 - bob, sx - 11, sy - 19 - bob + sw * 0.5, skin, 4);
+            line(sx + 9, sy - 30 - bob, sx + 11, sy - 19 - bob - sw * 0.5, skin, 4);
+            ctx.fillStyle = shirtColor; ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 1;
+            ctx.beginPath();
+            if (appearance === 'girl') {
+                ctx.moveTo(sx - 8, sy - 37 - bob); ctx.lineTo(sx + 8, sy - 37 - bob);
+                ctx.lineTo(sx + 6, sy - 26 - bob); ctx.lineTo(sx + 9, sy - 15 - bob);
+                ctx.lineTo(sx - 9, sy - 15 - bob); ctx.lineTo(sx - 6, sy - 26 - bob);
+                ctx.closePath();
+            } else {
+                ctx.roundRect(sx - 9, sy - 37 - bob, 18, 22, 4);
+            }
+            ctx.fill(); ctx.stroke();
+            line(sx - 7, sy - 34 - bob, sx - 10, sy - 29 - bob, shirtColor, 5);
+            line(sx + 7, sy - 34 - bob, sx + 10, sy - 29 - bob, shirtColor, 5);
+
+            const hy = sy - 45 - bob;
+            if (features.hair === 'long') {
+                ctx.fillStyle = hair;
+                ctx.beginPath(); ctx.roundRect(sx - 9, hy - 6, 4, 20, 2); ctx.fill();
+                ctx.beginPath(); ctx.roundRect(sx + 5, hy - 6, 4, 20, 2); ctx.fill();
+            }
+            ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(sx, hy, 7, 0, Math.PI * 2); ctx.fill();
+            if (fy >= 0) {
+                ctx.fillStyle = '#111';
+                ctx.fillRect(sx - 3 + fx * 1.5, hy - 1, 2, 2);
+                ctx.fillRect(sx + 1 + fx * 1.5, hy - 1, 2, 2);
+                if (features.facial === 'beard') {
+                    ctx.fillStyle = hair;
+                    ctx.beginPath(); ctx.arc(sx, hy + 2, 5, 0, Math.PI); ctx.fill();
+                }
+                if (features.facial !== 'none') {
+                    line(sx - 3, hy + 3, sx + 3, hy + 3, hair, 1.5);
+                }
+            }
+            ctx.fillStyle = hair;
+            ctx.beginPath(); ctx.arc(sx, hy - 2, 7, Math.PI, 0); ctx.fill();
+            if (features.hair === 'curly') {
+                for (const [ox, oy] of [[-6, -6], [-3, -9], [1, -10], [5, -8], [7, -5]]) {
+                    ctx.beginPath(); ctx.arc(sx + ox, hy + oy, 3, 0, Math.PI * 2); ctx.fill();
+                }
+            }
+            if (features.hair === 'long') {
+                ctx.fillRect(sx - 9, hy - 3, 3, 13);
+                ctx.fillRect(sx + 6, hy - 3, 3, 13);
+            }
+        }
+
+        function drawPlayer() {
+            const [sx, sy] = P(player.x, player.y);
+            const t = performance.now() / 1000;
+            const bob = player.moving ? Math.abs(Math.sin(t * 10)) * 2 : 0;
+            const sw = player.moving ? Math.sin(t * 10) * 5 : 0;
+            drawAvatar(ctx, sx, sy, player.appearance, player.features, shirts[progress.shirt].color, bob, sw, player.fx, player.fy);
+        }
+
+        function drawScene() {
+            const q = quadrants[currentQuadrant];
+            const t = performance.now() / 1000;
+            ctx.fillStyle = '#0b0f19';
+            ctx.fillRect(0, 0, W, H);
+            drawGround(q);
+            q.activities.filter(a => a.type !== 'boxing').forEach(drawActivityGround);
+
+            const objs = [];
+            q.activities.forEach(a => objs.push({ x0: a.x, y0: a.y, x1: a.x + a.w, y1: a.y + a.d, draw: () => {
+                if (a.type === 'boxing') drawBuilding(a, a === activeBuilding, t);
+                else drawActivityEquipment(a);
+            } }));
+            q.buildings.forEach(b => objs.push({ x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.d, draw: () => drawBuilding(b, b === activeBuilding, t) }));
+            q.cars.forEach(c => {
+                const bounds = c.ownRide ? carBounds(c.x + c.w / 2, c.y + c.d / 2) :
+                    { x0: c.x, y0: c.y, x1: c.x + c.w, y1: c.y + c.d };
+                objs.push({ ...bounds, draw: () => drawCar(c) });
+            });
+            q.trees.forEach(tr => objs.push({ x0: tr.x - 6, y0: tr.y - 6, x1: tr.x + 6, y1: tr.y + 6, draw: () => drawTree(tr) }));
+            const sg = NEIGHBORS[currentQuadrant];
+            Object.keys(sg).forEach(e => {
+                const [x, y] = { E: [WORLD - 40, 40], W: [40, WORLD - 40], S: [WORLD - 40, WORLD - 40], N: [40, 40] }[e];
+                objs.push({ x0: x - 2, y0: y - 2, x1: x + 2, y1: y + 2, draw: () => drawEdgeSign(e, x, y) });
+            });
+            q.lamps.forEach(l => objs.push({ x0: l.x - 2, y0: l.y - 2, x1: l.x + 2, y1: l.y + 2, draw: () => drawLamp(l) }));
+
+            const behind = (a, b) => a.x1 <= b.x0 || a.y1 <= b.y0;
+            const key = o => o.x0 + o.x1 + o.y0 + o.y1;
+            objs.sort((a, b) => behind(a, b) ? -1 : behind(b, a) ? 1 : key(a) - key(b));
+
+            // Anything with a larger x or y than the player is in front of them
+            const inFront = o => o.x0 >= player.x || o.y0 >= player.y;
+            objs.filter(o => !inFront(o)).forEach(o => o.draw());
+            if (player.appearance && !driving.active) drawPlayer();
+            objs.filter(inFront).forEach(o => o.draw());
+
+            const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+            v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)');
+            ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+
+            if (fade > 0) {
+                ctx.fillStyle = `rgba(0,0,0,${fade})`; ctx.fillRect(0, 0, W, H);
+                fade = Math.max(0, fade - 0.05);
+            }
+        }
+
+        function loop() {
+            update();
+            drawScene();
+            updateSportsGame();
+            updateLemonadeGame();
+            requestAnimationFrame(loop);
+        }
+        loop();
+
+        // One shared AudioContext; short kick/conga pattern
+        let audioCtx = null;
+        function playGoGoBeat() {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) { toast("Audio not supported in this browser."); return; }
+            audioCtx = audioCtx || new AC();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const t0 = audioCtx.currentTime;
+            [0, 0.25, 0.5, 0.625, 0.875, 1.0, 1.25, 1.5].forEach((offset, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const t = t0 + offset;
+                const kick = i % 2 === 0;
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(kick ? 150 : 320, t);
+                osc.frequency.exponentialRampToValueAtTime(kick ? 40 : 180, t + 0.2);
+                gain.gain.setValueAtTime(0.5, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(t);
+                osc.stop(t + 0.22);
+            });
+            toast("🥁 Playing Go-Go pocket conga beat!");
+        }
+
+        function toast(msg) {
+            document.getElementById('modal-toast').innerText = msg;
+        }
+
+        const btn = (label, msg, cls, extra = '') =>
+            `<button data-msg="${msg.replace(/"/g, '&quot;')}" class="game-action p-3 ${cls} rounded-xl text-left font-bold text-sm text-white ${extra}">${label}</button>`;
+
+        const timingGames = {
+            basketball: { title: 'Basketball Shootout', instruction: 'Stop the moving marker in the green zone to make a basket.', action: 'Shoot', hit: 'Basket!', miss: 'Missed shot.', unit: 'baskets' },
+            boxing: { title: 'SE Boxing Gym', instruction: 'Step into the ring and time your counter in the green zone to land a punch.', action: 'Counter', hit: 'Counter landed!', miss: 'Counter missed.', unit: 'counters' },
+            golf: { title: 'Golf Putting Green', instruction: 'Stop the marker in the green zone to sink a putt.', action: 'Putt', hit: 'Putt sunk!', miss: 'Putt missed.', unit: 'putts' },
+            soccer: { title: 'Soccer Corner Sniper', instruction: 'Stop the marker in the green zone to score a goal.', action: 'Kick', hit: 'Goal!', miss: 'Shot missed.', unit: 'goals' },
+            tennis: { title: 'Tennis Baseline Rally', instruction: 'Time your swing in the green zone to return the ball.', action: 'Swing', hit: 'Return made!', miss: 'Return missed.', unit: 'returns' }
+        };
+
+        function openSportsGame(type) {
+            const config = timingGames[type];
+            sportsGame = { type, attempts: 0, score: 0, lane: 1, started: performance.now(), done: false };
+            const content = document.getElementById('modal-content');
+            toast('');
+            modalEl.classList.remove('hidden');
+            for (const k in keys) keys[k] = false;
+            if (type === 'football') {
+                content.innerHTML = `
+                    <div class="sports-game">
+                        <h2>🏈 Football Lane Dodge</h2>
+                        <p>Pick a lane, then run when the defender is somewhere else. Make 4 safe runs out of 5 for a touchdown.</p>
+                        <p>Use the lane buttons or left/right arrows. Tap Run or press Space.</p>
+                        <p id="sports-score"></p>
+                        <div class="football-lanes" aria-label="Defender positions">
+                            <div class="football-lane"></div><div class="football-lane"></div><div class="football-lane"></div>
+                        </div>
+                        <div class="sports-controls" aria-label="Choose a lane">
+                            <button type="button" data-lane="0">Left</button>
+                            <button type="button" data-lane="1">Middle</button>
+                            <button type="button" data-lane="2">Right</button>
+                        </div>
+                        <div class="sports-controls"><button type="button" id="sports-action">Run</button><button type="button" id="sports-replay" hidden>Play again</button></div>
+                        <p id="sports-result" class="game-result" role="status"></p>
+                    </div>`;
+                content.querySelectorAll('[data-lane]').forEach(button => button.addEventListener('click', () => selectLane(Number(button.dataset.lane))));
+                selectLane(1);
+            } else {
+                content.innerHTML = `
+                    <div class="sports-game">
+                        <h2>${config.title}</h2>
+                        ${type === 'boxing' ? '<div class="boxing-gym" role="img" aria-label="Boxing ring inside the SE gym"><div class="boxing-ring"></div><div class="boxing-opponent" aria-hidden="true">🥊</div></div>' : ''}
+                        <p>${config.instruction} ${type === 'basketball' ? 'Take 10 shots; the meter gets faster each time. Earn 1 star for finishing plus 1 per 2 baskets.' : 'Get at least 3 out of 5 to win.'}</p>
+                        <p>Tap ${config.action} or press Space.</p>
+                        <p id="sports-score"></p>
+                        <div class="shot-meter" aria-label="Timing meter">
+                            <div class="shot-target"></div><div id="shot-marker" class="shot-marker"></div>
+                        </div>
+                        <div class="sports-controls"><button type="button" id="sports-action">${config.action}</button><button type="button" id="sports-replay" hidden>Play again</button></div>
+                        <p id="sports-result" class="game-result" role="status"></p>
+                    </div>`;
+            }
+            document.getElementById('sports-action').addEventListener('click', sportsAction);
+            document.getElementById('sports-replay').addEventListener('click', () => openSportsGame(type));
+            updateSportsGame();
+        }
+
+        function selectLane(lane) {
+            if (!sportsGame || sportsGame.done) return;
+            sportsGame.lane = lane;
+            document.querySelectorAll('#modal-content [data-lane]').forEach(button => {
+                button.setAttribute('aria-pressed', String(Number(button.dataset.lane) === lane));
+            });
+        }
+
+        function timingPosition(now) {
+            const period = sportsGame.type === 'basketball' ? 1800 - sportsGame.attempts * 90 : 1800;
+            const phase = ((now - sportsGame.started) % period) / (period / 2);
+            return phase <= 1 ? phase : 2 - phase;
+        }
+
+        function defenderLane(now) {
+            return Math.floor((now - sportsGame.started) / 700) % 3;
+        }
+
+        function updateSportsGame() {
+            if (!sportsGame || sportsGame.done || !modalOpen()) return;
+            const now = performance.now();
+            const score = document.getElementById('sports-score');
+            if (sportsGame.type === 'football') {
+                score.textContent = `Runs: ${sportsGame.attempts}/5 · Safe: ${sportsGame.score}`;
+                const defender = defenderLane(now);
+                document.querySelectorAll('.football-lane').forEach((lane, i) => {
+                    lane.classList.toggle('blocked', i === defender);
+                    lane.textContent = i === defender ? 'Defender' : 'Clear';
+                });
+            } else {
+                const total = sportsGame.type === 'basketball' ? 10 : 5;
+                score.textContent = `Attempts: ${sportsGame.attempts}/${total} · ${timingGames[sportsGame.type].unit}: ${sportsGame.score}`;
+                document.getElementById('shot-marker').style.left = `calc(${timingPosition(now) * 100}% - 2px)`;
+            }
+        }
+
+        function sportsAction() {
+            if (!sportsGame || sportsGame.done || !modalOpen()) return;
+            const now = performance.now();
+            const football = sportsGame.type === 'football';
+            const hit = football ? sportsGame.lane !== defenderLane(now) : Math.abs(timingPosition(now) - 0.5) <= 0.1;
+            sportsGame.attempts++;
+            if (hit) sportsGame.score++;
+            let message = football ? (hit ? 'Safe run!' : 'Tackled!') : (hit ? timingGames[sportsGame.type].hit : timingGames[sportsGame.type].miss);
+            const total = sportsGame.type === 'basketball' ? 10 : 5;
+            if (sportsGame.attempts === total) {
+                if (sportsGame.type === 'basketball') {
+                    const reward = 1 + Math.floor(sportsGame.score / 2);
+                    progress.stars += reward;
+                    updateProgressHud();
+                    saveProgress();
+                    message += ` Round complete: ${sportsGame.score}/10 baskets. You earned ${reward} ${reward === 1 ? 'star' : 'stars'}!`;
+                } else {
+                    const won = sportsGame.score >= (football ? 4 : 3);
+                    message += football ? (won ? ' Touchdown!' : ' Drive stopped.') : (won ? ' You win!' : ' Try again!');
+                }
+                updateSportsGame();
+                sportsGame.done = true;
+                document.getElementById('sports-action').disabled = true;
+                document.getElementById('sports-replay').hidden = false;
+            } else if (sportsGame.type === 'basketball') {
+                sportsGame.started = now;
+            }
+            document.getElementById('sports-result').textContent = message;
+            updateSportsGame();
+        }
+
+        const lemonadeSupplies = {
+            lemons: { name: 'Lemons', cost: 4 },
+            sugar: { name: 'Sugar', cost: 2 },
+            cups: { name: 'Cups', cost: 2 },
+            ice: { name: 'Ice', cost: 2 }
+        };
+        const lemonadeArrival = { 2: 2000, 3: 3000, 4: 5000 };
+
+        function openLemonadeGame() {
+            lemonadeGame = {
+                cash: 20, expenses: 0, revenue: 0, sold: 0,
+                stock: { lemons: 0, sugar: 0, cups: 0, ice: 0 },
+                price: 3, started: null, nextCustomer: 0, customer: false, done: false
+            };
+            const content = document.getElementById('modal-content');
+            toast('');
+            modalEl.classList.remove('hidden');
+            for (const k in keys) keys[k] = false;
+            content.innerHTML = `
+                <div class="sports-game">
+                    <h2>🍋 Lemonade Stand</h2>
+                    <p>Start with $20 in stand money. Each cup needs one lemon, sugar, cup and ice. Buy packs of five, choose a price, and serve customers for 60 seconds.</p>
+                    <p>Customers arrive every 2 seconds at $2, 3 seconds at $3, or 5 seconds at $4. Only one waits at a time. Earn 1 star per $5 of profit. Closing early forfeits the round.</p>
+                    <p id="lemonade-clock"></p>
+                    <p id="lemonade-money"></p>
+                    <p id="lemonade-stock"></p>
+                    <div class="sports-controls" aria-label="Buy supplies">
+                        ${Object.entries(lemonadeSupplies).map(([id, item]) =>
+                            `<button type="button" data-supply="${id}">${item.name}: 5 for $${item.cost}</button>`).join('')}
+                    </div>
+                    <p>Choose your price before opening:</p>
+                    <div class="sports-controls" aria-label="Price per cup">
+                        ${[2, 3, 4].map(price =>
+                            `<button type="button" data-price="${price}" aria-pressed="${price === 3}">$${price}</button>`).join('')}
+                    </div>
+                    <div class="sports-controls">
+                        <button type="button" id="lemonade-start">Open stand</button>
+                        <button type="button" id="lemonade-serve" disabled>Make and serve</button>
+                        <button type="button" id="lemonade-replay" hidden>Play again</button>
+                    </div>
+                    <p id="lemonade-customer" role="status"></p>
+                    <p id="lemonade-result" class="game-result" role="status"></p>
+                </div>`;
+            content.querySelectorAll('[data-supply]').forEach(button => button.addEventListener('click', () => {
+                updateLemonadeGame();
+                if (!lemonadeGame || lemonadeGame.done) return;
+                const id = button.dataset.supply;
+                const item = lemonadeSupplies[id];
+                if (lemonadeGame.cash < item.cost) {
+                    document.getElementById('lemonade-result').textContent = `Not enough stand money for ${item.name.toLowerCase()}.`;
+                    return;
+                }
+                lemonadeGame.cash -= item.cost;
+                lemonadeGame.expenses += item.cost;
+                lemonadeGame.stock[id] += 5;
+                document.getElementById('lemonade-result').textContent = `Bought 5 ${item.name.toLowerCase()}.`;
+                updateLemonadeGame();
+            }));
+            content.querySelectorAll('[data-price]').forEach(button => button.addEventListener('click', () => {
+                if (!lemonadeGame || lemonadeGame.started !== null || lemonadeGame.done) return;
+                lemonadeGame.price = Number(button.dataset.price);
+                content.querySelectorAll('[data-price]').forEach(choice =>
+                    choice.setAttribute('aria-pressed', String(Number(choice.dataset.price) === lemonadeGame.price)));
+            }));
+            document.getElementById('lemonade-start').addEventListener('click', () => {
+                if (!lemonadeGame || lemonadeGame.started !== null || lemonadeGame.done) return;
+                lemonadeGame.started = performance.now();
+                lemonadeGame.customer = true;
+                document.getElementById('lemonade-start').disabled = true;
+                content.querySelectorAll('[data-price]').forEach(button => { button.disabled = true; });
+                document.getElementById('lemonade-result').textContent = '';
+                updateLemonadeGame();
+            });
+            document.getElementById('lemonade-serve').addEventListener('click', () => {
+                updateLemonadeGame();
+                if (!lemonadeGame || lemonadeGame.done || !lemonadeGame.customer) return;
+                const missing = Object.keys(lemonadeSupplies).filter(id => lemonadeGame.stock[id] < 1);
+                if (missing.length) {
+                    document.getElementById('lemonade-result').textContent = `Buy more: ${missing.map(id => lemonadeSupplies[id].name.toLowerCase()).join(', ')}.`;
+                    return;
+                }
+                for (const id of Object.keys(lemonadeSupplies)) lemonadeGame.stock[id]--;
+                lemonadeGame.cash += lemonadeGame.price;
+                lemonadeGame.revenue += lemonadeGame.price;
+                lemonadeGame.sold++;
+                lemonadeGame.customer = false;
+                lemonadeGame.nextCustomer = performance.now() + lemonadeArrival[lemonadeGame.price];
+                document.getElementById('lemonade-result').textContent = `Sold a cup for $${lemonadeGame.price}!`;
+                updateLemonadeGame();
+            });
+            document.getElementById('lemonade-replay').addEventListener('click', openLemonadeGame);
+            updateLemonadeGame();
+        }
+
+        function updateLemonadeGame() {
+            const game = lemonadeGame;
+            if (!game || !modalOpen() || game.done) return;
+            const now = performance.now();
+            const remaining = game.started === null ? 60 : Math.max(0, Math.ceil((game.started + 60000 - now) / 1000));
+            if (game.started !== null && remaining === 0) {
+                game.done = true;
+                const profit = game.revenue - game.expenses;
+                const reward = Math.floor(Math.max(0, profit) / 5);
+                progress.stars += reward;
+                updateProgressHud();
+                saveProgress();
+                document.querySelectorAll('#modal-content [data-supply], #modal-content [data-price]').forEach(button => { button.disabled = true; });
+                document.getElementById('lemonade-start').disabled = true;
+                document.getElementById('lemonade-serve').disabled = true;
+                document.getElementById('lemonade-replay').hidden = false;
+                document.getElementById('lemonade-customer').textContent = 'The stand is closed.';
+                document.getElementById('lemonade-result').textContent =
+                    `Time's up! Sold ${game.sold} cups. ${profit < 0 ? 'Loss' : 'Profit'}: $${Math.abs(profit)}. Earned ${reward} ${reward === 1 ? 'star' : 'stars'}.`;
+            } else if (game.started !== null && !game.customer && now >= game.nextCustomer) {
+                game.customer = true;
+            }
+            document.getElementById('lemonade-clock').textContent = `Time: ${remaining}s${game.started === null ? ' (not started)' : ''}`;
+            document.getElementById('lemonade-money').textContent =
+                `Stand cash: $${game.cash} · Sales: $${game.revenue} · Supplies: $${game.expenses} · Profit: $${game.revenue - game.expenses}`;
+            document.getElementById('lemonade-stock').textContent =
+                Object.entries(lemonadeSupplies).map(([id, item]) => `${item.name}: ${game.stock[id]}`).join(' · ');
+            if (!game.done) {
+                document.getElementById('lemonade-customer').textContent = game.started === null ? 'Buy supplies and open when ready.' :
+                    game.customer ? 'A customer is waiting!' : 'Waiting for the next customer...';
+                document.getElementById('lemonade-serve').disabled = !game.customer;
+            }
+        }
+
+        const subIngredients = ['Turkey', 'Steak', 'Cheese', 'Lettuce', 'Tomato', 'Mayo', 'Mambo sauce'];
+        const subOrders = [
+            { name: 'Turkey Club', ingredients: ['Turkey', 'Cheese', 'Lettuce', 'Tomato', 'Mayo'] },
+            { name: 'Steak and Cheese', ingredients: ['Steak', 'Cheese'] },
+            { name: 'Mambo Steak', ingredients: ['Steak', 'Cheese', 'Lettuce', 'Mambo sauce'] },
+            { name: 'Turkey Mambo', ingredients: ['Turkey', 'Lettuce', 'Tomato', 'Mambo sauce'] },
+            { name: 'Classic Turkey', ingredients: ['Turkey', 'Cheese', 'Lettuce', 'Mayo'] }
+        ];
+
+        function openSubGame() {
+            const content = document.getElementById('modal-content');
+            const orders = [...subOrders];
+            for (let i = orders.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [orders[i], orders[j]] = [orders[j], orders[i]];
+            }
+            let orderIndex = 0, correct = 0;
+            const selected = new Set();
+            toast('');
+            modalEl.classList.remove('hidden');
+            for (const k in keys) keys[k] = false;
+            content.innerHTML = `
+                <div class="sports-game">
+                    <h2>🥪 Sub Shop</h2>
+                    <p>Make five orders. Select exactly the requested ingredients, then serve the sub. Earn one star for each correct order.</p>
+                    <p id="sub-score"></p>
+                    <p id="sub-order"></p>
+                    <div class="sports-controls" aria-label="Select ingredients">
+                        ${subIngredients.map(ingredient => `<button type="button" data-ingredient="${ingredient}" aria-pressed="false">${ingredient}</button>`).join('')}
+                    </div>
+                    <div class="sports-controls">
+                        <button type="button" id="sub-serve">Serve sub</button>
+                        <button type="button" id="sub-replay" hidden>Play again</button>
+                    </div>
+                    <p id="sub-result" class="game-result" role="status" aria-live="polite"></p>
+                </div>`;
+            const buttons = content.querySelectorAll('[data-ingredient]');
+            const score = document.getElementById('sub-score');
+            const order = document.getElementById('sub-order');
+            const result = document.getElementById('sub-result');
+            const serve = document.getElementById('sub-serve');
+            const replay = document.getElementById('sub-replay');
+            const showOrder = () => {
+                score.textContent = `Order ${orderIndex + 1}/5 · Correct: ${correct}`;
+                order.textContent = `${orders[orderIndex].name}: ${orders[orderIndex].ingredients.join(', ')}`;
+            };
+            buttons.forEach(button => button.addEventListener('click', () => {
+                const ingredient = button.dataset.ingredient;
+                if (selected.has(ingredient)) selected.delete(ingredient);
+                else selected.add(ingredient);
+                button.setAttribute('aria-pressed', String(selected.has(ingredient)));
+            }));
+            serve.addEventListener('click', () => {
+                const expected = orders[orderIndex].ingredients;
+                const matched = selected.size === expected.length && expected.every(ingredient => selected.has(ingredient));
+                if (matched) {
+                    correct++;
+                    progress.stars++;
+                    updateProgressHud();
+                    saveProgress();
+                }
+                result.textContent = matched ? 'Correct order! You earned 1 star.' : 'Incorrect order. No star this time.';
+                orderIndex++;
+                selected.clear();
+                buttons.forEach(button => button.setAttribute('aria-pressed', 'false'));
+                if (orderIndex === orders.length) {
+                    score.textContent = `Round complete · Correct: ${correct}/5`;
+                    order.textContent = `You earned ${correct} ${correct === 1 ? 'star' : 'stars'}.`;
+                    buttons.forEach(button => { button.disabled = true; });
+                    serve.disabled = true;
+                    replay.hidden = false;
+                } else {
+                    showOrder();
+                }
+            });
+            replay.addEventListener('click', openSubGame);
+            showOrder();
+        }
+
+        function renderShirtShop(shop) {
+            const content = document.getElementById('modal-content');
+            content.innerHTML = `
+                <div class="sports-game">
+                    <h2>${shop ? 'Capital Centre Clothing Shop' : 'Wardrobe Closet'}</h2>
+                    <p>${shop ? 'Buy shirts with stars, then equip them here or in your closet.' : 'Equip a shirt you own. Find more at the NE mall.'} Progress saves in this browser on this device.</p>
+                    <p>Stars: ${progress.stars}</p>
+                    <div class="shop-list">
+                        ${Object.entries(shirts).filter(([id]) => shop || progress.owned.includes(id)).map(([id, item]) => {
+                            const owned = progress.owned.includes(id);
+                            const equipped = progress.shirt === id;
+                            const label = equipped ? 'Equipped' : owned ? 'Equip' : `Buy · ${item.price} stars`;
+                            return `<div class="shop-row"><span>${item.name}</span><button type="button" data-shirt="${id}" ${equipped ? 'disabled' : ''}>${label}</button></div>`;
+                        }).join('')}
+                    </div>
+                    ${shop ? '' : '<button type="button" id="edit-appearance">Customize character</button>'}
+                    <button type="button" id="shop-back">Back</button>
+                </div>`;
+            content.querySelectorAll('[data-shirt]').forEach(button => button.addEventListener('click', () => {
+                const id = button.dataset.shirt;
+                const item = shirts[id];
+                if (!progress.owned.includes(id)) {
+                    if (progress.stars < item.price) {
+                        toast(`You need ${item.price - progress.stars} more stars for ${item.name}.`);
+                        return;
+                    }
+                    progress.stars -= item.price;
+                    progress.owned.push(id);
+                }
+                progress.shirt = id;
+                updateProgressHud();
+                saveProgress();
+                renderShirtShop(shop);
+                toast(`${item.name} equipped.`);
+            }));
+            document.getElementById('shop-back').addEventListener('click', () => openBuildingModal(shop ? 'retail' : 'crib'));
+            const editButton = document.getElementById('edit-appearance');
+            if (editButton) editButton.addEventListener('click', () => openCreator(true));
+        }
+
+        function renderVehicleShop(shop) {
+            const content = document.getElementById('modal-content');
+            content.innerHTML = `
+                <div class="sports-game">
+                    <h2>${shop ? 'Vehicle Shop' : 'Your Garage'}</h2>
+                    <p>${shop ? 'Buy any ride you can afford; there are no tier requirements.' : 'Switch between the rides you own.'} Your selected ride replaces the one at its parked location.</p>
+                    <p>Stars: ${progress.stars}</p>
+                    <div class="shop-list">
+                        ${Object.entries(vehicles).filter(([id]) => shop || progress.ownedVehicles.includes(id)).map(([id, vehicle]) => {
+                            const owned = progress.ownedVehicles.includes(id);
+                            const selected = id === progress.vehicle;
+                            const label = selected ? 'Selected' : owned ? 'Select' : `Buy · ${vehicle.price} stars`;
+                            return `<div class="shop-row"><span>${vehicle.name}</span><button type="button" data-vehicle="${id}" ${selected ? 'disabled' : ''}>${label}</button></div>`;
+                        }).join('')}
+                    </div>
+                    <button type="button" id="vehicle-back">Back</button>
+                </div>`;
+            content.querySelectorAll('[data-vehicle]').forEach(button => button.addEventListener('click', () => {
+                const id = button.dataset.vehicle;
+                const vehicle = vehicles[id];
+                const owned = progress.ownedVehicles.includes(id);
+                if (!owned && progress.stars < vehicle.price) {
+                    toast(`You need ${vehicle.price - progress.stars} more stars for ${vehicle.name}.`);
+                    return;
+                }
+                const x = ownCar.x + ownCar.w / 2, y = ownCar.y + ownCar.d / 2;
+                const heading = ownCar.heading || [1, 0];
+                const playerRect = { x0: player.x - player.r, y0: player.y - player.r, x1: player.x + player.r, y1: player.y + player.r };
+                if (carBlocked(x, y, driving.quadrant, heading, vehicle) ||
+                    (driving.quadrant === currentQuadrant && carIntersectsRect(x, y, playerRect, heading, vehicle))) {
+                    toast('Not enough room for that ride at its parked location. Move your current ride to an open area first.');
+                    return;
+                }
+                if (!owned) {
+                    progress.stars -= vehicle.price;
+                    progress.ownedVehicles.push(id);
+                }
+                progress.vehicle = id;
+                Object.assign(ownCar, vehicle, { x: x - vehicle.w / 2, y: y - vehicle.d / 2 });
+                updateProgressHud();
+                saveProgress();
+                renderVehicleShop(shop);
+                toast(`${vehicle.name} selected at your parked location.`);
+            }));
+            document.getElementById('vehicle-back').addEventListener('click', () => openBuildingModal(shop ? 'retail' : 'crib'));
+        }
+
+        function openBuildingModal(type) {
+            const content = document.getElementById('modal-content');
+            toast('');
+            modalEl.classList.remove('hidden');
+            for (const k in keys) keys[k] = false;
+
+            if (type === 'gogo' || type === 'venue') {
+                const c = 'bg-blue-950/80 hover:bg-blue-900 border border-blue-500';
+                content.innerHTML = `
+                    <h2 class="text-2xl font-black text-blue-400 mb-2">${type === 'venue' ? '✨ The 202 Venue' : '🏀 Wizards Fan Lounge'}</h2>
+                    <p class="text-gray-300 text-sm mb-4">Experience authentic DC Go-Go rhythms, play lounge games, and test your DMV trivia knowledge!</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button onclick="playGoGoBeat()" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🎵 Go-Go Jukebox Synthesizer</button>
+                        ${btn('🧠 DMV Culture Trivia', 'Starting DMV Culture & History Trivia!', c)}
+                        ${btn('🎱 Lounge Pool Table', 'Launching Lounge Pool & Billiards!', c)}
+                        ${btn('🏒 Lounge Air Hockey', 'Launching Air Hockey Arcade!', c)}
+                    </div>`;
+            } else if (type === 'retail') {
+                const c = 'bg-amber-950/80 hover:bg-amber-900 border border-amber-500';
+                content.innerHTML = `
+                    <h2 class="text-2xl font-black text-amber-400 mb-2">🛍️ Capital Centre Mall & Commanders District</h2>
+                    <p class="text-gray-300 text-sm mb-4">Shop exclusive mall drops and test resale streetwear authenticity.</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button type="button" id="open-shirt-shop" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">👕 Clothing Shop</button>
+                        <button type="button" id="open-vehicle-shop" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🚲 Vehicle Shop</button>
+                        ${btn('👟 Resell Hub (Spot the Fake)', 'Starting Resell Hub Authentication!', c)}
+                        ${btn('🛵 Courier Lane Sprint', 'Starting Courier Lane Sprint!', c)}
+                    </div>`;
+            } else if (type === 'carryout') {
+                content.innerHTML = `
+                    <div class="sports-game">
+                        <h2>🍗 Carryout Craze</h2>
+                        <p>Mambo Sauce Rush is coming soon.</p>
+                    </div>`;
+            } else if (type === 'subshop') {
+                openSubGame();
+            } else if (type === 'lemonade') {
+                openLemonadeGame();
+            } else if (type === 'crib') {
+                const c = 'bg-blue-950/80 hover:bg-blue-900 border border-blue-400';
+                content.innerHTML = `
+                    <h2 class="text-2xl font-black text-blue-300 mb-2">🏠 The Crib & Garage (Mystics/Capitals)</h2>
+                    <p class="text-gray-300 text-sm mb-4">Manage your apartment closet, choose a ride from your garage, and check on companion pets.</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button type="button" id="open-wardrobe" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">👕 Wardrobe Closet</button>
+                        <button type="button" id="open-vehicle-garage" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🚲 Vehicle Garage</button>
+                        ${btn('🐕 Pet Companion', 'Pet Companion interaction!', c)}
+                        ${btn('🏢 Upgrade Property Tier', 'Property upgraded to Tier 2 Navy Yard Loft!', c, 'upgrade')}
+                    </div>`;
+            } else if (type === 'sports') {
+                const c = 'bg-red-950/80 hover:bg-red-900 border border-red-500';
+                const sports = [['⚾ Baseball', 'Baseball'], ['🏒 Hockey', 'Hockey']];
+                content.innerHTML = `
+                    <h2 class="text-2xl font-black text-red-400 mb-2">🏟️ Waterfront Sports Park (Nationals)</h2>
+                    <p class="text-gray-300 text-sm mb-4">Baseball and hockey are coming soon. Find outdoor football and basketball in NE, boxing and golf in SE, and soccer and tennis in NW.</p>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        ${sports.map(([l, n]) => btn(l, `${n} is not available yet.`, c)).join('')}
+                    </div>`;
+            }
+            const shopButton = document.getElementById('open-shirt-shop');
+            if (shopButton) shopButton.addEventListener('click', () => { toast(''); renderShirtShop(true); });
+            const wardrobeButton = document.getElementById('open-wardrobe');
+            if (wardrobeButton) wardrobeButton.addEventListener('click', () => { toast(''); renderShirtShop(false); });
+            const vehicleShopButton = document.getElementById('open-vehicle-shop');
+            if (vehicleShopButton) vehicleShopButton.addEventListener('click', () => { toast(''); renderVehicleShop(true); });
+            const vehicleGarageButton = document.getElementById('open-vehicle-garage');
+            if (vehicleGarageButton) vehicleGarageButton.addEventListener('click', () => { toast(''); renderVehicleShop(false); });
+        }
+
+        // Delegated handler for placeholder game buttons
+        document.getElementById('modal-content').addEventListener('click', e => {
+            const b = e.target.closest('.game-action');
+            if (!b) return;
+            toast(b.dataset.msg);
+            if (b.classList.contains('upgrade')) {
+                progress.property = 2;
+                updateProgressHud();
+                saveProgress();
+            }
+        });
+
+        function closeModal() {
+            sportsGame = null;
+            lemonadeGame = null;
+            for (const k in keys) keys[k] = false;
+            modalEl.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
