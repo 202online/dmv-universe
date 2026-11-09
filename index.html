@@ -224,8 +224,20 @@
         // ---------- World data ----------
         const rng = n => { const s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s); };
 
-        const commonTrees = [[60,60],[380,80],[560,90],[900,70],[80,650],[300,720],[700,680],[900,760],[150,880],[600,900],[850,900],[380,850]];
-        const commonLamps = [[395,395],[605,395],[395,605],[605,605],[395,330],[605,330]];
+        // Compass coordinates: east = x - y, south = x + y. Main roads run along east = 0 and south = 1000.
+        const fromCompass = (east, south) => [(south + east) / 2, (south - east) / 2];
+        const ROAD_CLEAR_E = 130, ROAD_CLEAR_S = [830, 1170];
+        const commonTrees = [];
+        for (let east = -900; east <= 900; east += 150) {
+            for (let south = 120; south <= 1900; south += 150) {
+                if (rng(east * 0.37 + south * 0.11) > 0.6) commonTrees.push(fromCompass(east, south));
+            }
+        }
+        const commonLamps = [];
+        for (const side of [-1, 1]) {
+            for (const south of [200, 450, 700, 1300, 1550, 1800]) commonLamps.push(fromCompass(side * 112, south));
+            for (const east of [250, 500, 750]) commonLamps.push(fromCompass(side * east, side > 0 ? 840 : 1160));
+        }
 
         const quadrants = {
             NW: {
@@ -329,56 +341,57 @@
                 streets: [{ x: 130, y: 0, w: 320, d: 50, junction: 'right' }, { x: 550, y: 0, w: 320, d: 50, junction: 'left' }]
             }
         };
+        // Object centres in compass coordinates [east, south]. Homes hug the outer borders of the combined map;
+        // destinations sit toward the inner city. All footprints clear the main road and sidewalks.
+        const placeCenter = (o, east, south) => {
+            const [cx, cy] = fromCompass(east, south);
+            o.x = Math.round(cx - o.w / 2); o.y = Math.round(cy - o.d / 2);
+        };
         const centralLayouts = {
-            NW: {
-                buildings: [[700, 125], [825, 625]],
-                activities: [[125, 725], [650, 775]],
-                parkingLot: { x: 910, y: 125, w: 130, d: 195 }
-            },
-            NE: {
-                buildings: [[150, 225], [700, 175], [870, 175], [25, 825]],
-                activities: [[125, 650], [625, 725]],
-                shops: [[-75, 675], [250, 925], [125, 950]]
-            },
-            SE: {
-                activities: [[150, 625], [50, 25]],
-                shops: [[-75, 150]]
-            },
-            SW: {
-                buildings: [[650, 150], [775, 25]],
-                shops: [[950, 200]]
-            }
+            NW: { buildings: [[540, 1450], [560, 640]], activities: [[-560, 1420], [-560, 590]], boutique: [300, 1750] },
+            NE: { buildings: [[-600, 1450], [-300, 1750], [-330, 1320], [-200, 1460]],
+                  activities: [[520, 1420], [-560, 590]], shops: [[520, 640], [260, 560], [820, 1750]] },
+            SE: { buildings: [[600, 1780]], activities: [[-560, 620], [560, 590]], shops: [[-300, 300]] },
+            SW: { buildings: [[560, 560], [300, 300]], shops: [[-800, 1300]] }
         };
         const outerHomes = {
-            NW: [[-75, 100], [150, -125], [300, -275], [-175, 225]],
-            NE: [[-125, 150], [-25, 50], [200, -175]],
-            SE: [[825, 925], [975, 775], [950, 900], [625, 1175], [1175, 625], [650, 1025]],
-            SW: [[1150, 650], [750, 1050], [650, 1175], [950, 850], [825, 925]]
+            NW: [[-840, 100], [-620, 105], [-400, 100], [450, 100]],
+            NE: [[-620, 100], [-400, 100], [450, 75]],
+            SE: [[-850, 1900], [-640, 1895], [-430, 1925], [240, 1895], [-240, 1900], [840, 1730]],
+            SW: [[-850, 1895], [-640, 1895], [-430, 1925], [300, 1895], [520, 1900]]
         };
+        const lotOffset = { x: 210, y: 0 };
         for (const [id, q] of Object.entries(quadrants)) {
             q.activities = q.activities || [];
             q.neighborhood = neighborhoods[id];
             const layout = centralLayouts[id];
-            if (layout.buildings) q.buildings.forEach((b, i) => { [b.x, b.y] = layout.buildings[i]; });
-            if (layout.activities) q.activities.forEach((a, i) => { [a.x, a.y] = layout.activities[i]; });
-            if (layout.parkingLot) q.parkingLot = layout.parkingLot;
+            if (id === 'NW') {
+                const cluster = { w: 340, d: 195 };
+                placeCenter(cluster, ...layout.buildings[0]);
+                q.buildings[0].x = cluster.x; q.buildings[0].y = cluster.y;
+                q.parkingLot = { x: cluster.x + lotOffset.x, y: cluster.y + lotOffset.y, w: 130, d: 195 };
+                placeCenter(q.buildings[1], ...layout.buildings[1]);
+            } else if (id === 'SE') {
+                const cluster = { w: 290, d: 130 };
+                placeCenter(cluster, ...layout.buildings[0]);
+                q.buildings[0].x = cluster.x + 120; q.buildings[0].y = cluster.y;
+                q.buildings[1].x = cluster.x; q.buildings[1].y = cluster.y;
+            } else {
+                q.buildings.forEach((b, i) => placeCenter(b, ...layout.buildings[i]));
+            }
+            if (layout.activities) q.activities.forEach((a, i) => placeCenter(a, ...layout.activities[i]));
             if (layout.shops) {
-                q.neighborhood.buildings.filter(b => b.kind === 'shop').forEach((b, i) => {
-                    [b.x, b.y] = layout.shops[i];
-                });
+                q.neighborhood.buildings.filter(b => b.kind === 'shop').forEach((b, i) => placeCenter(b, ...layout.shops[i]));
             }
             if (id === 'NW') {
-                q.buildings.push({ name: 'Uptown Fashion Boutique', x: 925, y: 775, w: 100, d: 90, h: 105,
+                q.buildings.push({ name: 'Uptown Fashion Boutique', w: 100, d: 90, h: 105,
                     color: '#76536e', trim: '#e5c4a4', neon: '#f5b5d5', style: 'subshop', type: 'fashion' });
+                placeCenter(q.buildings[2], ...layout.boutique);
             }
-            q.neighborhood.buildings.filter(b => b.kind !== 'shop').forEach((b, i) => {
-                [b.x, b.y] = outerHomes[id][i];
+            q.neighborhood.buildings.filter(b => !['shop', 'restaurant'].includes(b.kind)).forEach((b, i) => {
+                placeCenter(b, ...outerHomes[id][i]);
             });
             q.neighborhood.streets = [];
-            if (id === 'SE') {
-                [q.buildings[0].x, q.buildings[0].y] = [995, 625];
-                [q.buildings[1].x, q.buildings[1].y] = [875, 625];
-            }
             if (id === 'SW') {
                 q.neighborhood.buildings.filter(b => b.kind === 'apartment').forEach(b => { b.h += 20; });
                 const restaurant = q.neighborhood.buildings.find(b => b.kind === 'shop');
@@ -386,14 +399,17 @@
             }
             const overlapsObject = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x &&
                 a.y < b.y + b.d && a.y + a.d > b.y;
-            q.cars = q.cars.filter(c => ![...q.buildings, ...q.activities, ...q.neighborhood.buildings].some(b => overlapsObject(c, b)));
+            const lot = q.parkingLot;
+            q.cars = id === 'NW' ? [
+                { x: lot.x + 20, y: lot.y + 12, w: 90, d: 40, color: '#cbd5e1', trim: '#475569' },
+                { x: lot.x + 20, y: lot.y + 142, w: 90, d: 40, color: '#1e3a8a', trim: '#e2e8f0' }
+            ] : [];
+            const near = (list, x, y, m) => list.some(b => x >= b.x - m && x <= b.x + b.w + m && y >= b.y - m && y <= b.y + b.d + m);
             q.trees = commonTrees
-                .filter(([x, y]) => y >= 160 || (id === 'NW' && [60, 560, 900].includes(x)) || (id === 'NE' && x === 560))
-                .filter(([x, y]) => !q.activities.some(a => x >= a.x - 20 && x <= a.x + a.w + 20 && y >= a.y - 20 && y <= a.y + a.d + 20))
-                .filter(([x, y]) => !q.buildings.some(b => x >= b.x - 20 && x <= b.x + b.w + 20 && y >= b.y - 20 && y <= b.y + b.d + 20))
-                .filter(([x, y]) => !q.parkingLot || x < q.parkingLot.x - 10 || x > q.parkingLot.x + q.parkingLot.w + 10 || y < q.parkingLot.y - 10 || y > q.parkingLot.y + q.parkingLot.d + 10)
-                .filter(([x, y]) => !q.neighborhood.buildings.some(b => x >= b.x - 10 && x <= b.x + b.w + 10 && y >= b.y - 10 && y <= b.y + b.d + 10))
-                .filter(([x, y]) => !q.neighborhood.streets.some(s => x >= s.x - 10 && x <= s.x + s.w + 10 && y >= s.y - 10 && y <= s.y + s.d + 10))
+                .filter(([x, y]) => Math.abs(x - y) >= ROAD_CLEAR_E + 30 && (x + y < ROAD_CLEAR_S[0] - 30 || x + y > ROAD_CLEAR_S[1] + 30))
+                .filter(([x, y]) => Math.abs(x - y) <= 940 && x + y > 40 && x + y < 1960)
+                .filter(([x, y]) => !near(q.activities, x, y, 25) && !near(q.buildings, x, y, 25) &&
+                    !near(q.neighborhood.buildings, x, y, 30) && !near(lot ? [lot] : [], x, y, 15))
                 .map(([x, y]) => ({ x, y }));
             q.lamps = commonLamps.map(([x, y]) => ({ x, y }));
             q.neighborhoodSolids = q.neighborhood.buildings.map(b => ({ x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.d }));
@@ -408,7 +424,7 @@
 
         // ---------- State & input ----------
         let currentQuadrant = 'NW';
-        const player = { x: 500, y: 480, speed: (3.6 / 5) * 1.2 * 1.2, r: 9, fx: 0, fy: 1, moving: false, appearance: null };
+        const player = { x: 500, y: 500, speed: (3.6 / 5) * 1.2 * 1.2, r: 9, fx: 0, fy: 1, moving: false, appearance: null };
         const keys = { up: false, down: false, left: false, right: false };
         const vehicles = {
             bike: { name: 'Bicycle', price: 0, speed: 1.2, w: 52, d: 16, color: '#38bdf8', trim: '#f8fafc', kind: 'bike' },
@@ -488,13 +504,7 @@
                     const vehicle = vehicles[ride.id];
                     let cx = ride.x + vehicle.w / 2, cy = ride.y + vehicle.d / 2;
                     if (carBlocked(cx, cy, ride.quadrant, ride.heading, vehicle)) {
-                        const q = quadrants[ride.quadrant];
-                        const relocatedBuildingSolids = q.solids.slice(0, q.buildings.length + q.activities.filter(a => a.type === 'boxing').length)
-                            .concat(q.neighborhoodSolids);
-                        const displacedByBuilding =
-                            relocatedBuildingSolids.some(s => carIntersectsRect(cx, cy, s, ride.heading, vehicle)) &&
-                            !q.solids.some(s => !relocatedBuildingSolids.includes(s) && carIntersectsRect(cx, cy, s, ride.heading, vehicle));
-                        if (!displacedByBuilding) throw new Error('Invalid save data');
+                        // The map layout changed, so any saved position that is now blocked is moved to open ground.
                         const candidates = [];
                         for (let dx = -300; dx <= 300; dx += 20) {
                             for (let dy = -300; dy <= 300; dy += 20) candidates.push([dx, dy]);
@@ -649,14 +659,14 @@
         function switchQuadrant(quad) {
             if (!player.appearance || !avatarSelection.classList.contains('hidden')) return;
             if (driving.active) {
-                if (carBlocked(500, 480, quad)) {
+                if (carBlocked(500, 500, quad)) {
                     showDrivingMessage('Metro destination is blocked. Exit your ride to travel on foot.');
                     return;
                 }
                 moveCarToQuadrant(quad);
             }
             enterQuadrant(quad);
-            player.x = 500; player.y = 480;
+            player.x = 500; player.y = 500;
             if (driving.active) syncCarPosition();
             snapCamera();
             closeModal();
@@ -901,50 +911,47 @@
         function drawGround(q) {
             for (let ty = -WORLD / (2 * TILE); ty < 3 * WORLD / (2 * TILE); ty++) {
                 for (let tx = -WORLD / (2 * TILE); tx < 3 * WORLD / (2 * TILE); tx++) {
-                    const x = tx * TILE, y = ty * TILE, cx = x + TILE / 2, cy = y + TILE / 2;
-                    const [screenX, screenY] = P(cx, cy);
+                    const x = tx * TILE, y = ty * TILE;
+                    const [screenX, screenY] = P(x + TILE / 2, y + TILE / 2);
                     if (screenX < -TILE || screenX > W + TILE || screenY < -TILE || screenY > H + TILE) continue;
-                    const alt = (tx + ty) & 1;
-                    const nearX = Math.abs(cx - 500), nearY = Math.abs(cy - 500);
-                    let col;
-                    if (nearX < 50 || nearY < 50) col = alt ? '#2b303b' : '#2e3340';
-                    else if (nearX < 100 || nearY < 100) col = alt ? '#918b89' : '#a09a97';
-                    else col = q.lot[alt];
+                    const col = q.lot[(tx + ty) & 1];
                     poly([P(x, y), P(x + TILE, y), P(x + TILE, y + TILE), P(x, y + TILE)], col, col, 0.6);
                 }
             }
-            const pointOnAxes = (east, sum) => [(sum + east) / 2, (sum - east) / 2];
-            const borderRoad = currentQuadrant === 'NW' || currentQuadrant === 'NE' ? [250, 320] : [1400, 1470];
-            const roadCorners = [[-WORLD, borderRoad[0]], [WORLD, borderRoad[0]],
-                [WORLD, borderRoad[1]], [-WORLD, borderRoad[1]]].map(([e, s]) => P(...pointOnAxes(e, s)));
-            poly(roadCorners, '#3c3e43');
-            for (let east = -900; east < 900; east += 160) {
-                const center = (borderRoad[0] + borderRoad[1]) / 2;
-                poly([[east, center - 2], [east + 75, center - 2], [east + 75, center + 2], [east, center + 2]]
-                    .map(([e, s]) => P(...pointOnAxes(e, s))), '#c9bd9e');
+            // Compass-aligned rectangles appear as straight horizontal and vertical bands on screen.
+            const compassRect = (e0, e1, s0, s1, fill, stroke) => poly(
+                [[e0, s0], [e1, s0], [e1, s1], [e0, s1]].map(([e, s]) => P(...fromCompass(e, s))), fill, stroke);
+            compassRect(-120, 120, 0, 2 * WORLD, '#948f8c', '#aaa5a1');
+            compassRect(-WORLD, WORLD, 835, 1165, '#948f8c', '#aaa5a1');
+            compassRect(-70, 70, 0, 2 * WORLD, '#2e3340');
+            compassRect(-WORLD, WORLD, 900, 1100, '#2e3340');
+            // Lane dashes
+            for (let s = 30; s < 2 * WORLD; s += 100) {
+                if (s + 40 > 890 && s < 1110) continue;
+                compassRect(-3, 3, s, s + 40, '#fbbf24');
+            }
+            for (let e = -WORLD + 30; e < WORLD; e += 100) {
+                if (e + 40 > -80 && e < 80) continue;
+                compassRect(e, e + 40, 997, 1003, '#fbbf24');
+            }
+            // Crosswalks at the four sides of the intersection
+            for (let i = 0; i < 6; i++) {
+                const o = -60 + i * 22;
+                compassRect(o, o + 10, 1105, 1160, 'rgba(255,255,255,.65)');
+                compassRect(o, o + 10, 840, 895, 'rgba(255,255,255,.65)');
+            }
+            for (let i = 0; i < 4; i++) {
+                const o = 906 + i * 24;
+                compassRect(75, 118, o, o + 12, 'rgba(255,255,255,.65)');
+                compassRect(-118, -75, o, o + 12, 'rgba(255,255,255,.65)');
             }
             if (currentQuadrant === 'SW') {
-                poly([[-1200, 250], [-1000, 250], [-1000, 1750], [-1200, 1750]]
-                    .map(([e, s]) => P(...pointOnAxes(e, s))), '#386c79');
-                poly([[-1000, 250], [-970, 250], [-970, 1750], [-1000, 1750]]
-                    .map(([e, s]) => P(...pointOnAxes(e, s))), '#a89a80');
-            }
-            // Lane dashes
-            for (let t = -WORLD / 2; t < 1.5 * WORLD; t += 100) {
-                if (t > 400 && t < 600) continue;
-                poly([P(498, t + 30), P(502, t + 30), P(502, t + 70), P(498, t + 70)], '#fbbf24');
-                poly([P(t + 30, 498), P(t + 70, 498), P(t + 70, 502), P(t + 30, 502)], '#fbbf24');
-            }
-            // Crosswalks
-            for (let i = 0; i < 6; i++) {
-                const o = 455 + i * 16;
-                poly([P(o, 408), P(o + 8, 408), P(o + 8, 436), P(o, 436)], 'rgba(255,255,255,.65)');
-                poly([P(o, 564), P(o + 8, 564), P(o + 8, 592), P(o, 592)], 'rgba(255,255,255,.65)');
-                poly([P(408, o), P(436, o), P(436, o + 8), P(408, o + 8)], 'rgba(255,255,255,.65)');
-                poly([P(564, o), P(592, o), P(592, o + 8), P(564, o + 8)], 'rgba(255,255,255,.65)');
+                compassRect(-1200, -1000, 250, 1750, '#386c79');
+                compassRect(-1000, -970, 250, 1750, '#a89a80');
             }
             // Small cocoa-toned utility covers along the sidewalks.
-            [[420, 290], [580, 710], [290, 580], [710, 420]].forEach(([x, y]) => {
+            [[95, 500], [-95, 1500], [-95, 400], [95, 1650], [400, 1135], [-400, 865]].forEach(([e, s]) => {
+                const [x, y] = fromCompass(e, s);
                 groundRect(x - 9, y - 9, 18, 18, '#59443e', '#79615a');
                 groundRect(x - 6, y - 1, 12, 2, '#8a6c5e');
                 groundRect(x - 1, y - 6, 2, 12, '#8a6c5e');
@@ -1488,7 +1495,7 @@
             q.trees.forEach(tr => objs.push({ x0: tr.x - 6, y0: tr.y - 6, x1: tr.x + 6, y1: tr.y + 6, draw: () => drawTree(tr) }));
             const sg = NEIGHBORS[currentQuadrant];
             Object.keys(sg).forEach(e => {
-                const [x, y] = { E: [WORLD - 40, 40], W: [40, WORLD - 40], S: [WORLD - 40, WORLD - 40], N: [40, 40] }[e];
+                const [x, y] = fromCompass(...{ E: [930, 1135], W: [-930, 1135], S: [95, 1940], N: [95, 60] }[e]);
                 objs.push({ x0: x - 2, y0: y - 2, x1: x + 2, y1: y + 2, draw: () => drawEdgeSign(e, x, y) });
             });
             q.lamps.forEach(l => objs.push({ x0: l.x - 2, y0: l.y - 2, x1: l.x + 2, y1: l.y + 2, draw: () => drawLamp(l) }));
@@ -1577,7 +1584,7 @@
             mapCtx.fillText('E', 350, 184);
             mapCtx.strokeStyle = '#829188';
             mapCtx.lineWidth = 2;
-            for (const [a, b] of [[[500, -500], [500, 1500]], [[-500, 500], [1500, 500]]]) {
+            for (const [a, b] of [[[0, 0], [WORLD, WORLD]], [[0, WORLD], [WORLD, 0]]]) {
                 const start = project(...a), end = project(...b);
                 mapCtx.beginPath(); mapCtx.moveTo(...start); mapCtx.lineTo(...end); mapCtx.stroke();
             }
