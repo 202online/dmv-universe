@@ -34,6 +34,7 @@
         .sports-game button:disabled { opacity: .5; cursor: default; }
         .sports-game button[aria-pressed="true"] { background: #047857; border-color: #6ee7b7; }
         .sports-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .game-canvas { position: static; display: block; width: 100%; max-width: 480px; height: auto; margin: 10px 0; background: #17202b; border: 2px solid #64748b; border-radius: 8px; touch-action: none; }
         .shot-meter { position: relative; height: 30px; margin: 16px 0; background: #7f1d1d; border: 2px solid #e5e7eb; border-radius: 5px; }
         .shot-target { position: absolute; left: 40%; width: 20%; height: 100%; background: #16a34a; }
         .shot-marker { position: absolute; top: -4px; width: 4px; height: 38px; background: white; }
@@ -709,6 +710,10 @@
                     e.preventDefault();
                     selectLane(Math.max(0, Math.min(2, sportsGame.lane + (k === 'arrowleft' ? -1 : 1))));
                 }
+                else if (sportsGame && sportsGame.type === 'tennis' && (k === 'arrowleft' || k === 'arrowright')) {
+                    e.preventDefault();
+                    sportsGame.paddle.dir = k === 'arrowleft' ? -1 : 1;
+                }
                 return;
             }
             if (keyMap[k]) { keys[keyMap[k]] = true; e.preventDefault(); }
@@ -717,6 +722,7 @@
         });
         window.addEventListener('keyup', e => {
             const k = e.key.toLowerCase();
+            if (sportsGame && sportsGame.type === 'tennis' && (k === 'arrowleft' || k === 'arrowright')) sportsGame.paddle.dir = 0;
             if (keyMap[k]) keys[keyMap[k]] = false;
         });
 
@@ -1650,17 +1656,24 @@
         const btn = (label, msg, cls, extra = '') =>
             `<button data-msg="${msg.replace(/"/g, '&quot;')}" class="game-action p-3 ${cls} rounded-xl text-left font-bold text-sm text-white ${extra}">${label}</button>`;
 
-        const timingGames = {
-            basketball: { title: 'Basketball Shootout', instruction: 'Stop the moving marker in the green zone to make a basket.', action: 'Shoot', hit: 'Basket!', miss: 'Missed shot.', unit: 'baskets' },
-            boxing: { title: 'SE Boxing Gym', instruction: 'Step into the ring and time your counter in the green zone to land a punch.', action: 'Counter', hit: 'Counter landed!', miss: 'Counter missed.', unit: 'counters' },
-            golf: { title: 'Golf Putting Green', instruction: 'Stop the marker in the green zone to sink a putt.', action: 'Putt', hit: 'Putt sunk!', miss: 'Putt missed.', unit: 'putts' },
-            soccer: { title: 'Soccer Corner Sniper', instruction: 'Stop the marker in the green zone to score a goal.', action: 'Kick', hit: 'Goal!', miss: 'Shot missed.', unit: 'goals' },
-            tennis: { title: 'Tennis Baseline Rally', instruction: 'Time your swing in the green zone to return the ball.', action: 'Swing', hit: 'Return made!', miss: 'Return missed.', unit: 'returns' }
+        const sportTotals = { basketball: 10, soccer: 5, golf: 5, tennis: 5, boxing: 5, football: 5 };
+        const sportInfo = {
+            basketball: { title: '🏀 Basketball Shootout', action: 'Shoot', unit: 'baskets',
+                instruction: 'The hoop starts still, then slides side to side faster after every shot. Time your release so the ball drops through the rim. 10 shots; earn 1 star for playing plus 1 per 2 baskets.' },
+            soccer: { title: '⚽ Soccer Penalty Kicks', action: 'Kick', unit: 'goals',
+                instruction: 'The aim marker sweeps across the goal. Kick to pick your spot and beat the diving keeper. Score 3 of 5 to win.' },
+            golf: { title: '⛳ Golf Putting Green', action: 'Putt', unit: 'putts',
+                instruction: 'Judge the distance to the hole and stop the power meter at the matching strength. Sink 3 of 5 to win.' },
+            tennis: { title: '🎾 Tennis Baseline Rally', action: 'Serve', unit: 'returns',
+                instruction: 'Move with the arrow keys or hold the side buttons. Get your racket under the ball to return it — the ball speeds up every rally. Win 3 of 5 rallies.' },
+            boxing: { title: '🥊 SE Boxing Gym', action: 'Counter', unit: 'counters',
+                instruction: 'Watch the glove. When the punch comes in, counter inside the flashing window — too early or too late and you take the hit. Land 3 of 5 to win.' }
         };
 
         function openSportsGame(type) {
-            const config = timingGames[type];
-            sportsGame = { type, attempts: 0, score: 0, lane: 1, started: performance.now(), done: false };
+            sportsGame = { type, attempts: 0, score: 0, total: sportTotals[type], done: false,
+                started: performance.now(), lastT: 0, lane: 1 };
+            const config = sportInfo[type];
             const content = document.getElementById('modal-content');
             toast('');
             modalEl.classList.remove('hidden');
@@ -1686,19 +1699,32 @@
                 content.querySelectorAll('[data-lane]').forEach(button => button.addEventListener('click', () => selectLane(Number(button.dataset.lane))));
                 selectLane(1);
             } else {
+                if (type === 'basketball') { sportsGame.hoop = { x: 240, dir: 1 }; sportsGame.shot = null; }
+                if (type === 'soccer') { sportsGame.keeper = { x: 240 }; sportsGame.kick = null; }
+                if (type === 'golf') { sportsGame.roll = null; newGolfHole(); }
+                if (type === 'tennis') { sportsGame.paddle = { x: 240, dir: 0 }; sportsGame.ball = null; sportsGame.nextServeAt = 0; }
+                if (type === 'boxing') { sportsGame.exchange = { stage: 'wait', t0: performance.now() + 700 }; }
                 content.innerHTML = `
                     <div class="sports-game">
                         <h2>${config.title}</h2>
-                        ${type === 'boxing' ? '<div class="boxing-gym" role="img" aria-label="Boxing ring inside the SE gym"><div class="boxing-ring"></div><div class="boxing-opponent" aria-hidden="true">🥊</div></div>' : ''}
-                        <p>${config.instruction} ${type === 'basketball' ? 'Take 10 shots; the meter gets faster each time. Earn 1 star for finishing plus 1 per 2 baskets.' : 'Get at least 3 out of 5 to win.'}</p>
-                        <p>Tap ${config.action} or press Space.</p>
+                        <p>${config.instruction}</p>
+                        <p>${type === 'tennis' ? 'Arrow keys or the side buttons move your racket.' : `Tap ${config.action} or press Space.`}</p>
                         <p id="sports-score"></p>
-                        <div class="shot-meter" aria-label="Timing meter">
-                            <div class="shot-target"></div><div id="shot-marker" class="shot-marker"></div>
-                        </div>
+                        <canvas id="sport-canvas" class="game-canvas" width="480" height="300" aria-label="${config.title} play area"></canvas>
+                        ${type === 'tennis' ? '<div class="sports-controls" aria-label="Move racket"><button type="button" id="tennis-left">◀ Hold</button><button type="button" id="tennis-right">Hold ▶</button></div>' : ''}
                         <div class="sports-controls"><button type="button" id="sports-action">${config.action}</button><button type="button" id="sports-replay" hidden>Play again</button></div>
                         <p id="sports-result" class="game-result" role="status"></p>
                     </div>`;
+                if (type === 'tennis') {
+                    const hold = (id, dir) => {
+                        const el = document.getElementById(id);
+                        el.addEventListener('pointerdown', e => { e.preventDefault(); if (sportsGame) sportsGame.paddle.dir = dir; });
+                        ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev =>
+                            el.addEventListener(ev, () => { if (sportsGame && sportsGame.paddle.dir === dir) sportsGame.paddle.dir = 0; }));
+                    };
+                    hold('tennis-left', -1);
+                    hold('tennis-right', 1);
+                }
             }
             document.getElementById('sports-action').addEventListener('click', sportsAction);
             document.getElementById('sports-replay').addEventListener('click', () => openSportsGame(type));
@@ -1713,63 +1739,287 @@
             });
         }
 
-        function timingPosition(now) {
-            const period = sportsGame.type === 'basketball' ? 1800 - sportsGame.attempts * 90 : 1800;
-            const phase = ((now - sportsGame.started) % period) / (period / 2);
-            return phase <= 1 ? phase : 2 - phase;
-        }
-
         function defenderLane(now) {
             return Math.floor((now - sportsGame.started) / 700) % 3;
         }
 
+        function newGolfHole() {
+            sportsGame.hole = { x: 130 + Math.random() * 220, y: 55 + Math.random() * 95 };
+        }
+
+        function finishAttempt(hit, message) {
+            const g = sportsGame;
+            if (!g || g.done) return;
+            g.attempts++;
+            if (hit) g.score++;
+            if (g.attempts >= g.total) {
+                if (g.type === 'basketball') {
+                    const reward = 1 + Math.floor(g.score / 2);
+                    progress.stars += reward;
+                    updateProgressHud();
+                    saveProgress();
+                    message += ` Round complete: ${g.score}/10 baskets. You earned ${reward} ${reward === 1 ? 'star' : 'stars'}!`;
+                } else {
+                    message += g.score >= 3 ? ' You win!' : ' Try again!';
+                }
+                g.done = true;
+                document.getElementById('sports-action').disabled = true;
+                document.getElementById('sports-replay').hidden = false;
+            }
+            document.getElementById('sports-result').textContent = message;
+        }
+
         function updateSportsGame() {
-            if (!sportsGame || sportsGame.done || !modalOpen()) return;
+            if (!sportsGame || !modalOpen()) return;
             const now = performance.now();
+            const g = sportsGame;
+            const dt = Math.min(0.05, g.lastT ? (now - g.lastT) / 1000 : 0);
+            g.lastT = now;
             const score = document.getElementById('sports-score');
-            if (sportsGame.type === 'football') {
-                score.textContent = `Runs: ${sportsGame.attempts}/5 · Safe: ${sportsGame.score}`;
+            if (g.type === 'football') {
+                score.textContent = `Runs: ${g.attempts}/5 · Safe: ${g.score}`;
+                if (g.done) return;
                 const defender = defenderLane(now);
                 document.querySelectorAll('.football-lane').forEach((lane, i) => {
                     lane.classList.toggle('blocked', i === defender);
                     lane.textContent = i === defender ? 'Defender' : 'Clear';
                 });
-            } else {
-                const total = sportsGame.type === 'basketball' ? 10 : 5;
-                score.textContent = `Attempts: ${sportsGame.attempts}/${total} · ${timingGames[sportsGame.type].unit}: ${sportsGame.score}`;
-                document.getElementById('shot-marker').style.left = `calc(${timingPosition(now) * 100}% - 2px)`;
+                return;
+            }
+            score.textContent = `${g.type === 'tennis' ? 'Rallies' : 'Attempts'}: ${g.attempts}/${g.total} · ${sportInfo[g.type].unit}: ${g.score}`;
+            const cv = document.getElementById('sport-canvas');
+            if (!cv) return;
+            const c = cv.getContext('2d');
+            c.clearRect(0, 0, 480, 300);
+            c.textAlign = 'center';
+
+            if (g.type === 'basketball') {
+                // Court and hoop
+                c.fillStyle = '#8a5a34'; c.fillRect(0, 190, 480, 110);
+                c.fillStyle = '#d8c7a8'; c.fillRect(0, 186, 480, 5);
+                if (!g.done && !g.shot) {
+                    const speed = g.attempts === 0 ? 0 : 70 + g.attempts * 22;
+                    g.hoop.x += g.hoop.dir * speed * dt;
+                    if (g.hoop.x > 390) { g.hoop.x = 390; g.hoop.dir = -1; }
+                    if (g.hoop.x < 90) { g.hoop.x = 90; g.hoop.dir = 1; }
+                }
+                const hx = g.hoop.x;
+                c.fillStyle = '#e5e7eb'; c.fillRect(hx + 20, 35, 8, 55); // backboard
+                c.fillStyle = '#475569'; c.fillRect(hx + 26, 60, 4, 130); // pole
+                c.strokeStyle = '#f97316'; c.lineWidth = 4; // rim
+                c.beginPath(); c.ellipse(hx, 70, 24, 7, 0, 0, Math.PI * 2); c.stroke();
+                c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 1; // net
+                for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(hx + i * 9, 74); c.lineTo(hx + i * 5, 100); c.stroke(); }
+                // Ball: resting or in flight
+                let bx = 240, by = 268;
+                if (g.shot) {
+                    const p = Math.min(1, (now - g.shot.t0) / 700);
+                    by = 268 - p * 198 - Math.sin(p * Math.PI) * 55;
+                    if (p >= 1) {
+                        const rimHalf = Math.max(16, 26 - g.attempts);
+                        const hit = Math.abs(hx - 240) <= rimHalf;
+                        g.shot = null;
+                        g.started = now;
+                        finishAttempt(hit, hit ? 'Swish! Basket!' : 'Off the rim — missed.');
+                    }
+                }
+                c.fillStyle = '#ea7b2d';
+                c.beginPath(); c.arc(bx, by, 13, 0, Math.PI * 2); c.fill();
+                c.strokeStyle = '#7c2d12'; c.lineWidth = 1.5;
+                c.beginPath(); c.arc(bx, by, 13, 0, Math.PI * 2); c.stroke();
+                c.beginPath(); c.moveTo(bx - 13, by); c.lineTo(bx + 13, by); c.moveTo(bx, by - 13); c.lineTo(bx, by + 13); c.stroke();
+            } else if (g.type === 'soccer') {
+                // Goal and pitch
+                c.fillStyle = '#1d6b35'; c.fillRect(0, 0, 480, 300);
+                c.strokeStyle = '#e5e7eb'; c.lineWidth = 5;
+                c.strokeRect(130, 20, 220, 70); // goal
+                c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 1;
+                for (let i = 1; i < 8; i++) { c.beginPath(); c.moveTo(130 + i * 27.5, 20); c.lineTo(130 + i * 27.5, 90); c.stroke(); }
+                // Keeper
+                if (g.kick) {
+                    const kSpeed = 260 + g.attempts * 40;
+                    g.keeper.x += Math.sign(g.kick.diveTo - g.keeper.x) * Math.min(Math.abs(g.kick.diveTo - g.keeper.x), kSpeed * dt);
+                } else if (!g.done) {
+                    g.keeper.x = 240 + Math.sin((now - g.started) / 700) * 30;
+                }
+                c.font = '34px sans-serif'; c.fillText('🧤', g.keeper.x, 78);
+                // Aim marker
+                const aim = 240 + 95 * Math.sin((now - g.started) / 1000 * (1.4 + g.attempts * 0.25));
+                if (!g.kick && !g.done) {
+                    c.strokeStyle = '#fbbf24'; c.lineWidth = 3;
+                    c.beginPath(); c.moveTo(aim, 96); c.lineTo(aim, 116); c.stroke();
+                }
+                // Ball
+                let bx = 240, by = 272, br = 10;
+                if (g.kick) {
+                    const p = Math.min(1, (now - g.kick.t0) / 500);
+                    bx = 240 + (g.kick.aim - 240) * p;
+                    by = 272 - p * 217;
+                    br = 10 - p * 5;
+                    if (p >= 1) {
+                        const hit = Math.abs(g.keeper.x - g.kick.aim) > 42;
+                        const scored = hit;
+                        g.kick = null;
+                        g.started = now;
+                        finishAttempt(scored, scored ? 'Goal! Keeper went the wrong way!' : 'Saved by the keeper!');
+                    }
+                }
+                c.fillStyle = '#f8fafc';
+                c.beginPath(); c.arc(bx, by, br, 0, Math.PI * 2); c.fill();
+                c.fillStyle = '#111827';
+                c.beginPath(); c.arc(bx, by, br * 0.35, 0, Math.PI * 2); c.fill();
+            } else if (g.type === 'golf') {
+                c.fillStyle = '#2f7a3d'; c.fillRect(0, 0, 480, 300);
+                c.fillStyle = '#3c9150'; c.fillRect(0, 30, 480, 40);
+                const hole = g.hole;
+                c.fillStyle = '#111827';
+                c.beginPath(); c.ellipse(hole.x, hole.y, 11, 6, 0, 0, Math.PI * 2); c.fill();
+                c.strokeStyle = '#e5e7eb'; c.lineWidth = 2;
+                c.beginPath(); c.moveTo(hole.x + 11, hole.y); c.lineTo(hole.x + 11, hole.y - 26); c.stroke();
+                c.fillStyle = '#ef4444';
+                c.beginPath(); c.moveTo(hole.x + 11, hole.y - 26); c.lineTo(hole.x + 27, hole.y - 20); c.lineTo(hole.x + 11, hole.y - 14); c.fill();
+                // Power meter
+                const pv = 50 + 50 * Math.sin((now - g.started) * (0.004 + g.attempts * 0.0006));
+                c.fillStyle = '#1f2937'; c.fillRect(140, 284, 200, 12);
+                c.fillStyle = '#22c55e'; c.fillRect(140, 284, (g.roll ? g.roll.power : pv) * 2, 12);
+                c.strokeStyle = '#e5e7eb'; c.lineWidth = 1; c.strokeRect(140, 284, 200, 12);
+                // Ball
+                let bx = hole.x, by = 270;
+                if (g.roll) {
+                    const p = Math.min(1, (now - g.roll.t0) / 700);
+                    by = 270 - (g.roll.power / 100 * 230) * p;
+                    if (p >= 1) {
+                        const required = (270 - hole.y) / 230 * 100;
+                        const tol = Math.max(6, 13 - g.attempts * 1.5);
+                        const hit = Math.abs(g.roll.power - required) <= tol;
+                        const short = g.roll.power < required;
+                        g.roll = null;
+                        g.started = now;
+                        finishAttempt(hit, hit ? 'Putt sunk!' : short ? 'Left it short.' : 'Ran it past the hole.');
+                        if (!g.done) newGolfHole();
+                    }
+                }
+                c.fillStyle = '#f8fafc';
+                c.beginPath(); c.arc(bx, by, 7, 0, Math.PI * 2); c.fill();
+            } else if (g.type === 'tennis') {
+                c.fillStyle = '#28567a'; c.fillRect(0, 0, 480, 300);
+                c.fillStyle = '#3a76a3'; c.fillRect(150, 0, 180, 300);
+                c.strokeStyle = '#e5e7eb'; c.lineWidth = 2;
+                c.beginPath(); c.moveTo(0, 150); c.lineTo(480, 150); c.stroke(); // net line
+                c.strokeStyle = 'rgba(255,255,255,.5)';
+                for (let x = 0; x < 480; x += 16) { c.beginPath(); c.moveTo(x, 142); c.lineTo(x, 158); c.stroke(); }
+                if (!g.done) {
+                    g.paddle.x = Math.max(60, Math.min(420, g.paddle.x + g.paddle.dir * 260 * dt));
+                    if (!g.ball && now >= g.nextServeAt && g.attempts < g.total) {
+                        g.ball = { x: 100 + Math.random() * 280, y: 30,
+                            vx: (Math.random() < 0.5 ? -1 : 1) * (40 + Math.random() * 50),
+                            vy: 150 + g.attempts * 20 + g.score * 10 };
+                    }
+                    if (g.ball) {
+                        const b = g.ball;
+                        b.x += b.vx * dt; b.y += b.vy * dt;
+                        if (b.x < 25 || b.x > 455) { b.vx *= -1; b.x = Math.max(25, Math.min(455, b.x)); }
+                        if (b.y >= 268) {
+                            const returned = Math.abs(b.x - g.paddle.x) <= 44;
+                            g.ball = null;
+                            g.nextServeAt = now + 600;
+                            finishAttempt(returned, returned ? 'Return made! Rally won.' : 'Ball past you — rally lost.');
+                        }
+                    }
+                }
+                if (g.ball) {
+                    c.fillStyle = '#d9f249';
+                    c.beginPath(); c.arc(g.ball.x, g.ball.y, 8, 0, Math.PI * 2); c.fill();
+                }
+                // Player racket
+                c.fillStyle = '#a855f7';
+                c.beginPath(); c.ellipse(g.paddle.x, 280, 46, 9, 0, 0, Math.PI * 2); c.fill();
+                c.strokeStyle = '#e9d5ff'; c.lineWidth = 2;
+                c.beginPath(); c.ellipse(g.paddle.x, 280, 46, 9, 0, 0, Math.PI * 2); c.stroke();
+            } else if (g.type === 'boxing') {
+                // Ring
+                c.fillStyle = '#1e293b'; c.fillRect(0, 0, 480, 300);
+                c.fillStyle = '#1d4e89'; c.fillRect(60, 90, 360, 180);
+                c.strokeStyle = '#e2e8f0'; c.lineWidth = 4; c.strokeRect(60, 90, 360, 180);
+                c.strokeStyle = '#b91c1c';
+                c.beginPath(); c.moveTo(60, 112); c.lineTo(420, 112); c.moveTo(60, 130); c.lineTo(420, 130); c.stroke();
+                const ex = g.exchange;
+                if (!g.done) {
+                    if (ex.stage === 'wait' && now >= ex.t0) {
+                        ex.stage = 'telegraph'; ex.t0 = now;
+                        ex.tele = Math.max(400, 900 - g.attempts * 90);
+                        ex.win = Math.max(180, 350 - g.attempts * 30);
+                    } else if (ex.stage === 'telegraph' && now - ex.t0 >= ex.tele) {
+                        ex.stage = 'punch'; ex.t0 = now;
+                    } else if (ex.stage === 'punch' && now - ex.t0 >= ex.win) {
+                        ex.stage = 'wait'; ex.t0 = now + 600;
+                        finishAttempt(false, 'Too slow — you took the punch!');
+                    }
+                }
+                // Opponent
+                c.font = '46px sans-serif'; c.fillText('🥊', 240, 180);
+                // Glove animation
+                let gx = 240, gy = 210, scale = 1;
+                if (ex.stage === 'telegraph') { const p = (now - ex.t0) / ex.tele; gx = 240 + p * 30; gy = 210 + p * 8; }
+                if (ex.stage === 'punch') { const p = (now - ex.t0) / ex.win; gy = 218 + p * 60; scale = 1 + p * 0.8; }
+                c.font = `${Math.round(30 * scale)}px sans-serif`;
+                c.fillText('🥊', gx, gy);
+                // Window indicator
+                if (ex.stage === 'punch') {
+                    c.fillStyle = 'rgba(34,197,94,.85)';
+                    c.fillRect(170, 252, 140, 18);
+                    c.fillStyle = '#052e16'; c.font = 'bold 13px sans-serif';
+                    c.fillText('COUNTER NOW!', 240, 265);
+                } else if (ex.stage === 'telegraph') {
+                    c.fillStyle = '#fbbf24'; c.font = 'bold 13px sans-serif';
+                    c.fillText('He’s winding up…', 240, 265);
+                }
             }
         }
 
         function sportsAction() {
             if (!sportsGame || sportsGame.done || !modalOpen()) return;
             const now = performance.now();
-            const football = sportsGame.type === 'football';
-            const hit = football ? sportsGame.lane !== defenderLane(now) : Math.abs(timingPosition(now) - 0.5) <= 0.1;
-            sportsGame.attempts++;
-            if (hit) sportsGame.score++;
-            let message = football ? (hit ? 'Safe run!' : 'Tackled!') : (hit ? timingGames[sportsGame.type].hit : timingGames[sportsGame.type].miss);
-            const total = sportsGame.type === 'basketball' ? 10 : 5;
-            if (sportsGame.attempts === total) {
-                if (sportsGame.type === 'basketball') {
-                    const reward = 1 + Math.floor(sportsGame.score / 2);
-                    progress.stars += reward;
-                    updateProgressHud();
-                    saveProgress();
-                    message += ` Round complete: ${sportsGame.score}/10 baskets. You earned ${reward} ${reward === 1 ? 'star' : 'stars'}!`;
-                } else {
-                    const won = sportsGame.score >= (football ? 4 : 3);
-                    message += football ? (won ? ' Touchdown!' : ' Drive stopped.') : (won ? ' You win!' : ' Try again!');
+            const g = sportsGame;
+            if (g.type === 'football') {
+                const hit = g.lane !== defenderLane(now);
+                g.attempts++;
+                if (hit) g.score++;
+                let message = hit ? 'Safe run!' : 'Tackled!';
+                if (g.attempts === 5) {
+                    message += g.score >= 4 ? ' Touchdown!' : ' Drive stopped.';
+                    g.done = true;
+                    document.getElementById('sports-action').disabled = true;
+                    document.getElementById('sports-replay').hidden = false;
                 }
-                updateSportsGame();
-                sportsGame.done = true;
-                document.getElementById('sports-action').disabled = true;
-                document.getElementById('sports-replay').hidden = false;
-            } else if (sportsGame.type === 'basketball') {
-                sportsGame.started = now;
+                document.getElementById('sports-result').textContent = message;
+                return;
             }
-            document.getElementById('sports-result').textContent = message;
-            updateSportsGame();
+            if (g.type === 'basketball') {
+                if (!g.shot) g.shot = { t0: now };
+            } else if (g.type === 'soccer') {
+                if (g.kick) return;
+                const aim = 240 + 95 * Math.sin((now - g.started) / 1000 * (1.4 + g.attempts * 0.25));
+                const reads = Math.random() < 0.25 + g.attempts * 0.08;
+                const diveTo = reads ? Math.max(150, Math.min(330, aim)) : [170, 240, 310][Math.floor(Math.random() * 3)];
+                g.kick = { t0: now, aim, diveTo };
+            } else if (g.type === 'golf') {
+                if (!g.roll) {
+                    const pv = 50 + 50 * Math.sin((now - g.started) * (0.004 + g.attempts * 0.0006));
+                    g.roll = { t0: now, power: pv };
+                }
+            } else if (g.type === 'tennis') {
+                if (!g.ball && g.attempts < g.total) g.nextServeAt = now;
+            } else if (g.type === 'boxing') {
+                const ex = g.exchange;
+                if (ex.stage === 'punch') {
+                    ex.stage = 'wait'; ex.t0 = now + 600;
+                    finishAttempt(true, 'Counter landed! Clean hit.');
+                } else if (ex.stage === 'telegraph') {
+                    ex.stage = 'wait'; ex.t0 = now + 600;
+                    finishAttempt(false, 'Too early — he saw it coming!');
+                }
+            }
         }
 
         const lemonadeSupplies = {
