@@ -24,14 +24,14 @@ test('first clears pay exactly once, increase rewards and unlock only the next l
         assert.equal(clear.stars, Campaign.rewards[level - 1]);
         assert.equal(clear.unlocked, level < 5);
         assert.equal(Campaign.info(state, 'soccer', TODAY).unlocked, Math.min(5, level + 1));
-        assert.ok(Campaign.settle(state, 'soccer', level, true, TODAY).stars <= 1);
+        assert.equal(Campaign.settle(state, 'soccer', level, true, TODAY).stars, 0);
         assert.equal(state.cleared.soccer, level);
     }
     assert.equal(state.cleared.tennis, 0);
     assert.ok(Campaign.valid(state));
 });
 
-test('losses and draws never earn currency, unlock levels or use replay allowance', () => {
+test('losses and draws never earn currency or unlock levels', () => {
     const state = Campaign.initial();
     for (const name of Campaign.games) {
         assert.equal(Campaign.settle(state, name, 1, false, TODAY).stars, 0);
@@ -39,25 +39,35 @@ test('losses and draws never earn currency, unlock levels or use replay allowanc
     assert.deepEqual(state, Campaign.initial());
     Campaign.settle(state, 'tennis', 1, true, TODAY);
     assert.equal(Campaign.settle(state, 'tennis', 1, false, TODAY).stars, 0);
-    assert.equal(state.replay.paid, 0);
+    assert.equal(state.cleared.tennis, 1);
 });
 
-test('replays share one daily cap across all games, survive reload and reset on a later UTC day', () => {
+test('cleared levels never pay again, including after reloads or on later days', () => {
     let state = Campaign.initial();
     for (const name of Campaign.games) Campaign.settle(state, name, 1, true, TODAY);
-    assert.equal(Campaign.settle(state, 'tennis', 1, true, TODAY).stars, 1);
-    assert.equal(Campaign.settle(state, 'soccer', 1, true, TODAY).stars, 1);
+    const original = JSON.stringify(state);
     state = JSON.parse(JSON.stringify(state));
     assert.ok(Campaign.valid(state));
-    assert.equal(Campaign.settle(state, 'chess', 1, true, TODAY).stars, 1);
     for (const name of Campaign.games) {
-        assert.equal(Campaign.settle(state, name, 1, true, TODAY).stars, 0);
+        for (const day of [TODAY, TODAY + 86400000, TODAY + 30 * 86400000]) {
+            assert.equal(Campaign.settle(state, name, 1, true, day).stars, 0);
+        }
     }
-    assert.equal(Campaign.info(state, 'tennis', TODAY).remaining, 0);
-    assert.equal(Campaign.settle(state, 'tennis', 1, true, TODAY - 86400000).stars, 0);
-    assert.equal(Campaign.settle(state, 'tennis', 2, true, TODAY).stars, 5, 'first clears are not capped');
-    assert.equal(Campaign.settle(state, 'tennis', 1, true, TODAY + 86400000).stars, 1);
-    assert.equal(Campaign.info(state, 'tennis', TODAY + 86400000).remaining, 2);
+    assert.equal(JSON.stringify(state), original);
+    assert.equal(Campaign.settle(state, 'tennis', 2, true, TODAY).stars, 5);
+});
+
+test('legacy saves keep unlocks without requiring or using old replay counters', () => {
+    const state = Campaign.initial();
+    state.cleared.tennis = 3;
+    state.replay = { day: '2026-11-09', paid: 0 };
+    assert.ok(Campaign.valid(state));
+    const loaded = JSON.parse(JSON.stringify(state));
+    for (let level = 1; level <= 3; level++) {
+        assert.equal(Campaign.settle(loaded, 'tennis', level, true).stars, 0);
+    }
+    assert.equal(Campaign.settle(loaded, 'tennis', 4, true).stars, 9);
+    assert.deepEqual(loaded.replay, state.replay);
 });
 
 test('finite campaign payouts total 36 per game and 360 across all games', () => {
@@ -77,12 +87,6 @@ test('invalid saved progression is rejected', () => {
     for (const n of [-1, 6, 1.5, '2', null]) {
         const state = Campaign.initial();
         state.cleared.tennis = n;
-        assert.equal(Campaign.valid(state), false);
-    }
-    for (const replay of [{ day: '', paid: 1 }, { day: '2026-02-31', paid: 0 },
-        { day: 'bad-date', paid: 0 }, { day: '2026-11-09', paid: 4 }]) {
-        const state = Campaign.initial();
-        state.replay = replay;
         assert.equal(Campaign.valid(state), false);
     }
 });

@@ -11,15 +11,15 @@ level to practice. The panel above each game shows its clear goal and reward.
 Tennis retains automatic movement, serving and hitting, with optional swipe aiming.
 
 - First clears pay **3, 5, 7, 9 and 12 stars**, once per level per game.
-- Replay wins pay **1 star**, capped at **3 replay stars per UTC day across all
-  ten games**, not per game. First-clear rewards do not use that allowance.
+- Cleared levels are **practice only**: replay wins pay **0 stars**.
+  There is no daily reward cap or reset to track.
 - Losses and chess draws pay **0 stars**. Retrying is free.
-- Levels, first clears and replay allowance save alongside existing purchases.
+- Levels and first clears save alongside existing purchases.
   Older saves keep their balance and purchases and start each campaign at level 1.
 
 Each campaign has 36 first-clear stars (360 across all ten games). Existing
 shirts cost 6–8 stars, scooters/e-bikes 15–30, and cars 60–90. Replaying easy
-levels therefore cannot quickly fund a car. Other city activities are unchanged.
+levels therefore cannot fund purchases. Other city activities are unchanged.
 
 Higher levels increase basketball targets and hoop movement; football defenders;
 soccer goals, wall size and keeper reactions; tennis and air hockey opponent

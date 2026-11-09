@@ -76,11 +76,13 @@ test('engine settles each round once, saves unlocks and balance together, and pr
         host.querySelector('#mg-again').click();
         assert.equal(seenLevel, 1, 'replay does not silently advance');
         finish({ win: true, head: 'Replay', lines: [], stars: 9999 });
-        assert.equal(balance, 16);
+        assert.equal(balance, 15);
+        assert.equal(Minigames._session().result.stars, 0);
+        assert.match(Minigames._session().result.rewardMessage, /Practice only/);
         host.querySelector('#mg-next').click();
         assert.equal(seenLevel, 2);
         finish({ win: true, head: 'Win', lines: [], stars: 9999 });
-        assert.equal(balance, 21);
+        assert.equal(balance, 20);
         Minigames.open('soccer', host, api);
         assert.equal(seenLevel, 3, 'returning opens the latest unlocked level');
     } finally {

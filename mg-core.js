@@ -250,9 +250,9 @@ const Minigames = (() => {
 
     function updateCampaign() {
         const status = S.api.campaign.info(), level = S.level;
-        const reward = level > status.cleared ? `First win: ${status.rewards[level - 1]} stars` : 'Replay win: 1 star';
+        const reward = level > status.cleared ? `First win: ${status.rewards[level - 1]} stars` : 'Cleared level: practice only (0 stars)';
         S.host.querySelector('#mg-campaign-info').textContent =
-            `${S.game.goal} · ${reward}. Replays: ${status.remaining}/3 stars left today (shared). Losses: 0.`;
+            `${S.game.goal} · ${reward}. Stars are earned once per level. Losses: 0.`;
         S.host.querySelectorAll('[data-level]').forEach(button => {
             const n = Number(button.dataset.level);
             button.disabled = n > status.unlocked;
