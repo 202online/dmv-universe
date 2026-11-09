@@ -3,7 +3,8 @@
 // Rack 'Em DMV: pull back from the cue ball and release to shoot. Pot all 9 balls before your shots run out.
 Minigames.register('pool', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
-    const L = 52, R = 308, T = 104, B = 466, BR = 9, SHOTS = 14;
+    const rank = (env.level || 1) - 1;
+    const L = 52, R = 308, T = 104, B = 466, BR = 9, SHOTS = 14 - rank;
     const POCKETS = [[L, T], [R, T], [L, (T + B) / 2], [R, (T + B) / 2], [L, B], [R, B]];
     const COLORS = ['#fbbf24', '#3b82f6', '#ef4444', '#8b5cf6', '#f97316', '#10b981', '#991b1b', '#111827', '#e879f9'];
 
@@ -185,6 +186,7 @@ Minigames.register('pool', env => {
 
     return {
         title: '🎱 Rack \u2019Em DMV',
+        goal: `Pot all 9 balls with ${SHOTS} starting shots`,
         intro: { head: 'RACK \u2019EM DMV', lines: ['Pull back from the cue ball, release to shoot', 'Pot all 9 balls before shots run out', 'Back-to-back pots earn bonus shots'] },
         init: start, start, update, draw, down, move, up, idle() { },
         _state: () => ({ shots, potted, balls, cue }),

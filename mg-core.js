@@ -177,9 +177,12 @@ const Minigames = (() => {
     function fit() {
         if (!S) return;
         const overlay = S.api.overlay;
-        const availW = Math.max(240, (overlay ? overlay.clientWidth : W + 40) - 38);
-        const availH = Math.max(300, (overlay ? overlay.clientHeight : H + 140) - 150);
-        const scale = clamp(Math.min(availW / W, availH / H), .5, 1.45);
+        const wrap = S.host.querySelector('.mg-wrap');
+        const chrome = wrap ? Array.from(wrap.children).reduce((sum, child) =>
+            sum + (child === S.canvas ? 0 : child.offsetHeight), 0) + (wrap.children.length - 1) * 6 + 34 : 240;
+        const availW = Math.max(180, (overlay ? overlay.clientWidth : W + 40) - 38);
+        const availH = Math.max(180, (overlay ? overlay.clientHeight : H + chrome) - chrome);
+        const scale = clamp(Math.min(availW / W, availH / H), .3, 1.45);
         const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
         S.canvas.style.width = Math.round(W * scale) + 'px';
         S.canvas.style.height = Math.round(H * scale) + 'px';
@@ -188,15 +191,26 @@ const Minigames = (() => {
         S.k = S.canvas.width / W;
     }
 
-    function open(name, host, api) {
+    function open(name, host, api, selectedLevel) {
         stop();
         const factory = games[name];
         if (!factory) return false;
+        const campaign = api.campaign ? api.campaign.info() : null;
+        const level = campaign ? selectedLevel === undefined ? campaign.unlocked : selectedLevel : 1;
+        if (!Number.isInteger(level) || level < 1 || (campaign && level > campaign.unlocked)) {
+            throw new Error('Level is locked');
+        }
         host.innerHTML = `
             <div class="mg-wrap">
                 <div class="mg-title" id="mg-title"></div>
+                ${campaign ? `<div class="mg-levels" role="group" aria-label="Choose level">
+                    ${campaign.rewards.map((reward, i) => `<button type="button" data-level="${i + 1}"
+                        aria-pressed="${level === i + 1}" ${i + 1 > campaign.unlocked ? 'disabled' : ''}>
+                        ${i + 1}${i < campaign.cleared ? ' ✓' : i + 1 > campaign.unlocked ? ' 🔒' : ''}</button>`).join('')}
+                </div><div class="mg-campaign-info" id="mg-campaign-info"></div>` : ''}
                 <canvas class="mg-canvas" id="mg-canvas" role="img"></canvas>
                 <div class="mg-bar">
+                    <button type="button" id="mg-next" hidden>Next level</button>
                     <button type="button" id="mg-again" hidden>↻ Play again</button>
                     <button type="button" id="mg-quit">Leave</button>
                 </div>
@@ -205,12 +219,18 @@ const Minigames = (() => {
         S = {
             name, host, api, canvas, ctx: canvas.getContext('2d'), k: 1, phase: 'intro', t: 0, last: 0,
             parts: [], texts: [], banners: [], shakeM: 0, shakeT: 0, flashC: null, flashT: 0,
-            pointers: new Map(), result: null, raf: 0, game: null
+            pointers: new Map(), result: null, raf: 0, game: null, level
         };
-        const env = { W, H, U, sfx, buzz, time: () => S.t, fx, banner, end, phase: () => S.phase, running: () => S.phase === 'play' };
+        const env = { W, H, U, sfx, buzz, level, difficulty: (level - 1) / 4,
+            time: () => S.t, fx, banner, end, phase: () => S.phase, running: () => S.phase === 'play' };
         S.game = factory(env);
         if (S.game.init) S.game.init();
-        host.querySelector('#mg-title').textContent = S.game.title;
+        host.querySelector('#mg-title').textContent = S.game.title + (campaign ? ` · Level ${level}/5` : '');
+        if (campaign) {
+            updateCampaign();
+            host.querySelectorAll('[data-level]').forEach(button => button.addEventListener('click', () =>
+                open(name, host, api, Number(button.dataset.level))));
+        }
         canvas.setAttribute('aria-label', S.game.title + ' play area. Touch gestures control the game.');
         if (api.overlay) api.overlay.classList.add('mg-mode');
         fit();
@@ -220,11 +240,24 @@ const Minigames = (() => {
         canvas.addEventListener('pointercancel', e => handle(e, 'cancel'));
         canvas.addEventListener('contextmenu', e => e.preventDefault());
         host.querySelector('#mg-quit').addEventListener('click', () => api.close());
-        host.querySelector('#mg-again').addEventListener('click', () => open(name, host, api));
+        host.querySelector('#mg-again').addEventListener('click', () => open(name, host, api, level));
+        host.querySelector('#mg-next').addEventListener('click', () => open(name, host, api, level + 1));
         if (typeof window !== 'undefined') window.addEventListener('resize', fit);
         step(0);
         if (typeof requestAnimationFrame === 'function') S.raf = requestAnimationFrame(frame);
         return true;
+    }
+
+    function updateCampaign() {
+        const status = S.api.campaign.info(), level = S.level;
+        const reward = level > status.cleared ? `First win: ${status.rewards[level - 1]} stars` : 'Replay win: 1 star';
+        S.host.querySelector('#mg-campaign-info').textContent =
+            `${S.game.goal} · ${reward}. Replays: ${status.remaining}/3 stars left today (shared). Losses: 0.`;
+        S.host.querySelectorAll('[data-level]').forEach(button => {
+            const n = Number(button.dataset.level);
+            button.disabled = n > status.unlocked;
+            button.textContent = `${n}${n <= status.cleared ? ' ✓' : n > status.unlocked ? ' 🔒' : ''}`;
+        });
     }
 
     function stop() {
@@ -285,9 +318,17 @@ const Minigames = (() => {
     function end(result) {
         if (!S || S.phase === 'over') return;
         S.phase = 'over';
+        if (S.api.campaign) {
+            const payout = S.api.campaign.settle(S.level, result.win === true);
+            result = { ...result, stars: payout.stars, rewardMessage: payout.message };
+            updateCampaign();
+            const next = S.host.querySelector('#mg-next');
+            next.hidden = !(result.win && S.level < 5);
+            S.host.querySelector('#mg-again').textContent = result.win ? 'Replay' : 'Retry level';
+        }
         S.result = result;
         S.pointers.clear();
-        if (result.stars > 0) S.api.award(result.stars);
+        if (result.stars > 0 && !S.api.campaign) S.api.award(result.stars);
         sfx(result.win ? 'cheer' : 'sad');
         const again = S.host.querySelector('#mg-again');
         if (again) again.hidden = false;
@@ -388,7 +429,7 @@ const Minigames = (() => {
         c.save(); c.translate(W / 2, sy); c.scale(pop, pop);
         U.text(c, `+${r.stars} ⭐`, 0, 0, { size: 36, color: '#fde047', stroke: 'rgba(0,0,0,.7)', lw: 6 });
         c.restore();
-        U.text(c, 'Stars added to your total', W / 2, sy + 34, { size: 12, weight: 600, color: '#94a3b8' });
+        U.text(c, r.rewardMessage || 'Stars added to your total', W / 2, sy + 34, { size: 11, weight: 600, color: '#94a3b8' });
     }
 
     function draw() {

@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const test = require('node:test');
 const { U } = require('./mg-core.js');
 
-function harness(name, seed = 1) {
+function harness(name, seed = 1, level = 1) {
     const random = () => {
         seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
         return seed / 4294967296;
@@ -26,7 +26,7 @@ function harness(name, seed = 1) {
     };
     const noop = () => {};
     const game = factory({
-        W: 360, H: 560, U: utils, sfx: noop, buzz: noop, banner: noop,
+        W: 360, H: 560, U: utils, level, difficulty: (level - 1) / 4, sfx: noop, buzz: noop, banner: noop,
         fx: { burst: noop, text: noop, flash: noop, shake: noop },
         end(value) { result = value; awards++; },
         time: () => time, running: () => !result
@@ -44,7 +44,7 @@ function harness(name, seed = 1) {
             };
         }
     });
-    game.init();
+    if (game.init) game.init();
     game.draw(context);
     game.start();
     return {
@@ -88,6 +88,71 @@ for (const outcome of ['goal', 'save', 'wall', 'post', 'bar', 'over', 'wide']) {
         assert.equal(h.game._state().goals, outcome === 'goal' ? 6 : 0);
     });
 }
+
+test('all ten games initialize and render every campaign level', () => {
+    const Progression = require('./mg-progression.js');
+    for (const name of Progression.games) {
+        for (let level = 1; level <= 5; level++) {
+            const h = harness(name, 1, level);
+            assert.equal(typeof h.game.goal, 'string', `${name} clear goal`);
+            for (let frame = 0; frame < 60; frame++) h.step();
+        }
+    }
+});
+
+test('level targets and opponent pressure increase rather than only the label', () => {
+    const easyPool = harness('pool', 1, 1), hardPool = harness('pool', 1, 5);
+    assert.ok(easyPool.game._state().shots > hardPool.game._state().shots);
+    const easySoccer = harness('soccer', 1, 1), hardSoccer = harness('soccer', 1, 5);
+    assert.ok(easySoccer.game._state().wall.n < hardSoccer.game._state().wall.n);
+    assert.ok(easySoccer.game._state().keeper.read < hardSoccer.game._state().keeper.read);
+    assert.notEqual(easySoccer.game.goal, hardSoccer.game.goal);
+    const easyBasket = harness('basketball', 1, 1), hardBasket = harness('basketball', 1, 5);
+    assert.ok(easyBasket.game._state().time > hardBasket.game._state().time);
+    assert.ok(easyBasket.game._state().level < hardBasket.game._state().level);
+    assert.notEqual(easyBasket.game.goal, hardBasket.game.goal);
+    assert.notEqual(harness('golf', 1, 1).game.goal, harness('golf', 1, 5).game.goal);
+    assert.notEqual(harness('football', 1, 1).game.goal, harness('football', 1, 5).game.goal);
+    const easyDrive = harness('drive', 1, 1), hardDrive = harness('drive', 1, 5);
+    for (let frame = 0; frame < 60; frame++) { easyDrive.step(); hardDrive.step(); }
+    assert.ok(easyDrive.game._state().dist < hardDrive.game._state().dist);
+    assert.ok(harness('boxing', 1, 1).game._state().fhp < harness('boxing', 1, 5).game._state().fhp);
+    assert.ok(harness('football', 1, 1).game._state().defs.length < harness('football', 1, 5).game._state().defs.length);
+    const easyHockey = harness('airhockey', 1, 1), hardHockey = harness('airhockey', 1, 5);
+    for (const h of [easyHockey, hardHockey]) {
+        h.game._set({ puck: { x: 290, y: 180, vx: 0, vy: -100 } });
+        h.step(.033);
+    }
+    assert.ok(easyHockey.game._state().om.x < hardHockey.game._state().om.x);
+});
+
+test('soccer level five requires five goals, not the beginner three', () => {
+    for (const goals of [4, 5]) {
+        const h = harness('soccer', 1, 5);
+        for (let kick = 0; kick < 6; kick++) {
+            const s = h.game._state();
+            h.game._shoot({ tgt: kick < goals ? .8 : 1.4, height: .8, T: .7, curl: 0 });
+            s.wall.x = 4;
+            s.keeper.state = 'fixed'; s.keeper.x = -2;
+            for (let frame = 0; frame < 160; frame++) h.step();
+        }
+        assert.ok(h.result);
+        assert.equal(h.result.win, goals === 5);
+    }
+});
+
+test('tennis level five still moves and returns automatically through a full match', () => {
+    const h = harness('tennis', 23, 5);
+    let returned = false, previousLast = null;
+    for (let frame = 0; frame < 60 * 600 && !h.result; frame++) {
+        h.step();
+        const s = h.game._state();
+        if (previousLast === 'o' && s.ball && s.ball.last === 'p' && s.rally > 0) returned = true;
+        previousLast = s.ball && s.ball.last;
+    }
+    assert.ok(h.result);
+    assert.ok(returned);
+});
 
 for (const dt of [1 / 60, .033]) {
     test(`tennis moves, serves, returns and completes without input at dt=${dt}`, () => {

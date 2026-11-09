@@ -6,6 +6,7 @@ Minigames.register('chess', env => {
     const SQ = 42, BX = (360 - SQ * 8) / 2, BY = 92;
     const GLYPH = { wK: '♔', wQ: '♕', wR: '♖', wB: '♗', wN: '♘', wP: '♙', bK: '♚', bQ: '♛', bR: '♜', bB: '♝', bN: '♞', bP: '♟' };
     const VAL = { P: 100, N: 310, B: 330, R: 500, Q: 900, K: 0 };
+    const rank = (env.level || 1) - 1, noise = [180, 100, 50, 20, 0][rank];
 
     let bd, turn, sel, legal, castle, ep, thinking, thinkT, lastMove, over, moveN, capsW, capsB, checkFlash, msg, msgT;
 
@@ -125,15 +126,15 @@ Minigames.register('chess', env => {
         let best = null, bestS = -1e9;
         for (const m of ms) {
             const r1 = apply(bd, m, castle, ep);
-            // white's best reply (greedy material)
+            // Later levels anticipate replies and make progressively fewer evaluation errors.
             const replies = legalMoves(r1.b, 'w', r1.cas, r1.ep);
-            let worst = 1e9;
+            let worst = rank === 0 ? evalB(r1.b) : 1e9;
             if (!replies.length) worst = inCheck(r1.b, 'w') ? 1e8 : 0;
-            for (const w of replies) {
+            for (const w of rank === 0 ? [] : replies) {
                 const r2 = apply(r1.b, w, r1.cas, r1.ep);
                 worst = Math.min(worst, evalB(r2.b));
             }
-            const s = worst + Math.random() * 12;
+            const s = worst + Math.random() * noise;
             if (s > bestS) { bestS = s; best = m; }
         }
         return best;
@@ -263,6 +264,7 @@ Minigames.register('chess', env => {
 
     return {
         title: '♟️ Checkmate Lounge',
+        goal: 'Checkmate the house AI (draws do not clear)',
         intro: { head: 'CHECKMATE LOUNGE', lines: ['Full chess vs the house AI', 'Tap a piece, then a highlighted square', 'Castling, en passant & auto-queen included'] },
         init: start, start, update, draw, down, move() { }, up() { }, idle() { },
         _state: () => ({ bd, turn, over, moveN, capsW, capsB }),

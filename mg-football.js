@@ -4,6 +4,7 @@
 Minigames.register('football', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const PXY = 24, PY = 420, L = 24, R = 336;
+    const rank = (env.level || 1) - 1, target = rank === 4 ? 2 : 1;
     const DEF = {
         line: { w: 38, lat: 50, vy: 1.2, color: '#1e40af', name: 'LINEMAN' },
         lb: { w: 30, lat: 92, vy: 2.0, color: '#0f766e', name: 'LB' },
@@ -27,7 +28,7 @@ Minigames.register('football', env => {
         py = spot; px = 180; tx = 180; steer = null; phase = 'pre'; phaseT = 1.1; spinT = 0; spinCd = 0; boostT = 0;
         gainThisPlay = 0; tackler = null; speedNow = 6;
         defs = []; pads = [];
-        const n = Math.min(9, 4 + Math.floor(spot / 20) + (drive - 1));
+        const n = Math.min(9 + rank, 4 + rank + Math.floor(spot / 20) + (drive - 1));
         let y = spot + 6;
         for (let i = 0; i < n && y < 99; i++) {
             const r = Math.random();
@@ -50,7 +51,7 @@ Minigames.register('football', env => {
     }
     function spin() {
         if (spinCd > 0 || phase !== 'run') return;
-        spinT = .42; spinCd = 1.5; sfx('whoosh'); buzz(12);
+        spinT = .42; spinCd = 1.5 + rank * .15; sfx('whoosh'); buzz(12);
         fx.burst(px, PY, { n: 10, colors: ['#fde047', '#fff'], speed: 120, life: .4 });
     }
 
@@ -73,7 +74,7 @@ Minigames.register('football', env => {
                 if (d.y > py - 2) {
                     d.y -= spec.vy * dt * (d.y - py > 14 ? 1.6 : 1);
                     const lead = px + (tx - px) * .25;
-                    d.x += U.clamp(lead - d.x, -spec.lat * dt, spec.lat * dt) * (1 + drive * .06);
+                    d.x += U.clamp(lead - d.x, -spec.lat * dt, spec.lat * dt) * (1 + drive * .06 + rank * .1);
                     d.face = Math.atan2(lead - d.x, 1);
                 }
                 const dy = (d.y - py) * PXY;
@@ -135,7 +136,7 @@ Minigames.register('football', env => {
     function finish() {
         const stars = Math.min(10, 1 + Math.floor(total / 40) + 3 * tds);
         end({
-            win: tds > 0, head: tds >= 2 ? 'PERFECT GAME!' : tds ? 'WINNING DRIVE!' : 'FINAL WHISTLE',
+            win: tds >= target, head: tds >= target ? 'WINNING DRIVE!' : 'FINAL WHISTLE',
             lines: [`${tds} touchdown${tds === 1 ? '' : 's'} in 2 drives`, `${total} total rushing yards`, tds ? 'Great vision and cuts' : 'Spin through the defenders to break free']
         , stars });
     }
@@ -257,6 +258,7 @@ Minigames.register('football', env => {
 
     return {
         title: '🏈 Gridiron Rush',
+        goal: `Score ${target} touchdown${target === 1 ? '' : 's'} in 2 drives`,
         intro: { head: 'GRIDIRON RUSH', lines: ['Drag to steer · tap to SPIN', 'Weave through the defense', 'Move the chains · score TDs'] },
         init: start, start, update, draw, down, move, up, idle() { },
         _state: () => ({ drive, downN, spot, py, px, phase, tds, total, defs, firstLine }),

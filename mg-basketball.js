@@ -3,9 +3,10 @@
 Minigames.register('basketball', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const START = { x: 180, y: 478 }, HOOP_Y = 196, IDEAL = 150;
+    const rank = (env.level || 1) - 1, target = 6 + rank * 2;
     let time, points, baskets, streak, best, shots, ball, aim, hoopT, readyIn, lastLevel, swishes, fire;
 
-    const level = () => 1 + Math.floor(points / 8);
+    const level = () => 1 + rank + Math.floor(points / 8);
     const rimR = () => Math.max(20, 31 - (level() >= 3 ? 4 : 0) - Math.max(0, level() - 4) * 2);
     const hoopAt = t => {
         const lv = level();
@@ -15,8 +16,8 @@ Minigames.register('basketball', env => {
     };
 
     function start() {
-        time = 45; points = 0; baskets = 0; streak = 0; best = 0; shots = 0; ball = null; aim = null;
-        hoopT = 0; readyIn = 0; lastLevel = 1; swishes = 0; fire = 0;
+        time = 45 - rank * 2; points = 0; baskets = 0; streak = 0; best = 0; shots = 0; ball = null; aim = null;
+        hoopT = 0; readyIn = 0; lastLevel = level(); swishes = 0; fire = 0;
     }
     start();
 
@@ -47,7 +48,7 @@ Minigames.register('basketball', env => {
         else kind = Math.abs(ex) > R * 2.8 ? 'air' : 'rim';
         if (kind === 'long' && Math.abs(ex) < R * 1.2 && Math.random() < .55) kind = 'bank';
         shots++;
-        ball = { t: 0, T, x0: START.x, tx: arrive.x + (kind === 'short' || kind === 'air' ? ex : ex * .3), ty: arrive.y, kind, peak: 120 + power * .45, rot: 0, ex, done: false, resolved: false, bx: 0, by: 0, bvx: 0, bvy: 0 };
+        ball = { t: 0, T, x0: START.x, tx: arrive.x + (kind === 'short' || kind === 'air' ? ex : ex * .3), ty: arrive.y, kind, peak: 120 + power * .45, rot: 0, ex, done: false, resolved: false, fall: 0, bx: 0, by: 0, bvx: 0, bvy: 0 };
         sfx('whoosh'); buzz(10);
     }
 
@@ -64,7 +65,7 @@ Minigames.register('basketball', env => {
         else { sfx('rim'); fx.text(h.x, h.y - 30, `+${gain}`, { color: '#86efac', size: 26 }); }
         fx.burst(h.x, h.y + 10, { n: 24, colors: ['#fde047', '#f97316', '#fff'], speed: 220, g: 260, shape: 'rect' });
         buzz(kind === 'swish' ? [20, 30, 20] : 20);
-        if (level() > lastLevel) { lastLevel = level(); fx.text(W / 2, 300, `LEVEL ${lastLevel}`, { color: '#38bdf8', size: 30, life: 1.4 }); }
+        if (level() > lastLevel) { lastLevel = level(); fx.text(W / 2, 300, `PACE ${lastLevel}`, { color: '#38bdf8', size: 30, life: 1.4 }); }
     }
 
     function miss(label) {
@@ -103,8 +104,8 @@ Minigames.register('basketball', env => {
     function finish() {
         const stars = Math.min(10, 1 + Math.floor(baskets / 2));
         end({
-            win: baskets >= 6, head: baskets >= 6 ? 'BUZZER BEATER!' : 'FINAL BUZZER',
-            lines: [`${points} points · ${baskets}/${shots} made`, `Best streak ${best} · ${swishes} swishes`, `Reached level ${level()}`], stars
+            win: baskets >= target, head: baskets >= target ? 'BUZZER BEATER!' : 'FINAL BUZZER',
+            lines: [`${points} points · ${baskets}/${shots} made`, `Best streak ${best} · ${swishes} swishes`, `Goal: ${target} baskets`], stars
         });
     }
 
@@ -227,7 +228,7 @@ Minigames.register('basketball', env => {
 
     function drawHud(c) {
         U.rr(c, 8, 56, 92, 26, 13); c.fillStyle = 'rgba(0,0,0,.55)'; c.fill();
-        U.text(c, `LEVEL ${level()}`, 54, 69, { size: 12, color: '#38bdf8' });
+        U.text(c, `PACE ${level()}`, 54, 69, { size: 12, color: '#38bdf8' });
         if (streak >= 2) {
             U.rr(c, W - 108, 56, 100, 26, 13); c.fillStyle = streak >= 3 ? 'rgba(234,88,12,.85)' : 'rgba(0,0,0,.55)'; c.fill();
             U.text(c, streak >= 3 ? `🔥 ×2 · ${streak}` : `STREAK ${streak}`, W - 58, 69, { size: 12, color: '#fff' });
@@ -252,6 +253,7 @@ Minigames.register('basketball', env => {
 
     return {
         title: '🏀 Hoop Shootout',
+        goal: `Make ${target} baskets before time runs out`,
         intro: { head: 'HOOP SHOOTOUT', lines: ['Drag UP from the ball & release', 'Drag length = power · angle = aim', 'The hoop speeds up as you score'] },
         start, update, draw, down, move, up, idle() { hoopT += .016; },
         _state: () => ({ points, baskets, shots, streak, time, level: level(), ball, hoopT }),

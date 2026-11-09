@@ -9,16 +9,20 @@ Minigames.register('boxing', env => {
         { name: 'KO KING OF SE', hp: 115, tel: .5, rest: .85, dmg: 18, skin: '#c68642', trunks: '#dc2626', combo: 3 }
     ];
     const MAXHP = 100, DAZE = 2.6;
+    const rank = (env.level || 1) - 1;
 
     let fi, foe, hp, fhp, state, stT, side, dodge, dodgeT, punchT, punchSide, daze, round, kos, hits, taken, stun, roundBanner, comboLeft, swayT;
 
     function start() { fi = 0; kos = 0; hits = 0; taken = 0; hp = MAXHP; newFoe(); }
 
     function newFoe() {
-        foe = FOES[fi]; fhp = foe.hp; daze = 0; stun = 0;
+        const base = FOES[fi];
+        foe = { ...base, hp: Math.round(base.hp * (1 + rank * .12)),
+            tel: base.tel * Math.pow(.9, rank), rest: base.rest * Math.pow(.9, rank), dmg: base.dmg + rank * 2 };
+        fhp = foe.hp; daze = 0; stun = 0;
         state = 'idle'; stT = U.rand(.8, 1.4); side = 0; comboLeft = 0;
         dodge = 0; dodgeT = 0; punchT = 0; swayT = 0;
-        hp = Math.min(MAXHP, hp + 35);
+        hp = Math.min(MAXHP, hp + 35 - rank * 4);
         banner(`ROUND ${fi + 1}`, '#fde047', foe.name);
         sfx('whistle');
     }
@@ -26,7 +30,7 @@ Minigames.register('boxing', env => {
     // ---------- input ----------
     function down(p) { p.role = 'box'; }
     function up(p) {
-        if (p.cancelled || stun > 0) return;
+        if (p.cancelled || stun > 0 || state === 'ko') return;
         const len = Math.hypot(p.dx, p.dy);
         if (len < 20 && p.dur < .3) { jab(p.sx < 180 ? -1 : 1); return; }
         if (p.dy < -50 && Math.abs(p.dy) > Math.abs(p.dx)) { uppercut(); return; }
@@ -260,6 +264,7 @@ Minigames.register('boxing', env => {
 
     return {
         title: '🥊 Ring Kings',
+        goal: 'Knock out all 3 opponents',
         intro: { head: 'RING KINGS', lines: ['Watch the glowing glove, swipe AWAY to dodge', 'Dodge = dazed foe · swipe UP to uppercut', 'Tap to jab · beat all 3 champs'] },
         init: start, start, update, draw, down, move() { }, up, idle() { },
         _state: () => ({ fi, hp, fhp, state, daze, stun, kos }),

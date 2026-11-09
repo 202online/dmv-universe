@@ -4,6 +4,7 @@
 Minigames.register('drive', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const RL = 40, RR = 320, CY = 415, STAGES = 3, ROW_GAP = 190;
+    const rank = (env.level || 1) - 1;
     const WEAPONS = ['Exhaust Pops', 'Twin Cannons', 'Rocket Launchers', 'Plasma Lasers'];
     const BOSSES = [
         { name: 'CHIEF CRUISER', hp: 85, color: '#1e293b', kind: 'cop' },
@@ -203,7 +204,7 @@ Minigames.register('drive', env => {
         modeT += dt; hurtT = Math.max(0, hurtT - dt); flameT += dt;
         shown += (count - shown) * Math.min(1, dt * 9);
         nitroOn = !!nitroHeld && meter > 0 && mode === 'run';
-        let v = mode === 'run' ? 135 + stage * 12 : 150;
+        let v = (mode === 'run' ? 135 + stage * 12 : 150) * (1 + rank * .08);
         if (nitroOn) { meter = Math.max(0, meter - .2 * dt); v *= 1.85; } else if (brakeHeld && mode === 'run') v *= .35;
         scroll = (scroll || 0) + v * dt;
         const bw = bodyW();
@@ -271,7 +272,8 @@ Minigames.register('drive', env => {
         mode = 'boss'; modeT = 0;
         const def = BOSSES[stage - 1];
         const big = stage === 3;
-        boss = { def, x: W / 2, y: -140, w: big ? 150 : 120, h: big ? 150 : 140, hp: def.hp, max: def.hp, t: 0, atk: 1.6, flash: 0, charge: 0 };
+        const hp = Math.round(def.hp * (1 + rank * .2));
+        boss = { def, x: W / 2, y: -140, w: big ? 150 : 120, h: big ? 150 : 140, hp, max: hp, t: 0, atk: 1.6, flash: 0, charge: 0 };
         ents.filter(e => e.type !== 'gas' && e.type !== 'nitro').forEach(e => { e.dead = true; });
         banner('BOSS!', '#ef4444', def.name); sfx('bell'); fx.shake(5, .4);
     }
@@ -285,7 +287,7 @@ Minigames.register('drive', env => {
         b.atk -= dt;
         b.charge = b.atk < .45 ? 1 - b.atk / .45 : 0;
         if (b.atk <= 0) {
-            b.atk = Math.max(.75, 1.7 - stage * .28) * U.rand(.8, 1.15);
+            b.atk = Math.max(.75, 1.7 - stage * .28) * U.rand(.8, 1.15) / (1 + rank * .12);
             const r = Math.random();
             if (r < .45) [-34, 0, 34].forEach(o => ents.push(ent('proj', b.x + o, b.y + 70, { w: 22, h: 22, sp: 200, vx: o * 1.1 })));
             else if (r < .75 || stage === 1) [-1, 0, 1].forEach(o => ents.push(ent('proj', b.x + o * 24, b.y + 70, { w: 20, h: 20, sp: 150 + stage * 20, vx: (cx - b.x) * .25 + o * 18 })));
@@ -557,6 +559,7 @@ Minigames.register('drive', env => {
 
     return {
         title: '🚗 Convoy Rush',
+        goal: 'Survive the convoy run and defeat all 3 bosses',
         intro: { head: 'CONVOY RUSH', lines: ['Drag to steer · pick the best gate', 'Shoot cops, dodge potholes & red lights', 'Grab 🔫 crates · defeat 3 bosses'] },
         start() { start(); scroll = 0; }, update, draw, down, move, up,
         _state: () => ({ stage, mode, count, tier, meter, dist, boss, ents, rowIdx, rows, cleared, cx }),

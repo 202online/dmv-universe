@@ -4,6 +4,7 @@
 Minigames.register('soccer', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const KICKS = 6, GOAL_HW = 100, BAR_PX = 62, GY = 222, BY = 478, CX = 180;
+    const rank = (env.level || 1) - 1, target = 3 + Math.floor(rank / 2);
     const persp = t => U.lerp(2.35, 1, t);
     const gy = t => U.lerp(BY, GY, t);
     const sx = (X, t) => CX + X * GOAL_HW * persp(t);
@@ -18,9 +19,9 @@ Minigames.register('soccer', env => {
     function setup() {
         kick++;
         x0 = U.pick([-.45, -.22, 0, .25, .45]) + U.rand(-.05, .05);
-        const n = Math.min(4, 1 + Math.floor((kick - 1) / 2));
+        const n = Math.min(4, 1 + Math.floor((kick - 1) / 2) + Math.floor(rank / 2));
         wall = { n, x: x0 * .6, jump: Math.random() < .35 + kick * .06, jumpAt: U.rand(.22, .36), up: 0 };
-        keeper = { x: 0, target: 0, dive: false, diveAt: 0, state: 'wait', ext: 0, read: Math.min(.8, .3 + kick * .08) };
+        keeper = { x: 0, target: 0, dive: false, diveAt: 0, state: 'wait', ext: 0, read: Math.min(.95, .3 + kick * .08 + rank * .05) };
         ball = null; aim = null; resultT = 0; flavor = null;
     }
 
@@ -78,7 +79,7 @@ Minigames.register('soccer', env => {
         if (wall) wall.up = U.lerp(wall.up, ball && wall.jump && ball.u > wall.jumpAt ? .26 : 0, Math.min(1, dt * 14));
         if (keeper.state === 'wait' && ball && ball.u > keeper.diveAt) keeper.state = 'dive';
         if (keeper.state === 'dive') {
-            keeper.x += (keeper.target - keeper.x) * Math.min(1, dt * (5 + 4 * clamp01(1 - ball.pl.T)));
+            keeper.x += (keeper.target - keeper.x) * Math.min(1, dt * (5 + rank * .5 + 4 * clamp01(1 - ball.pl.T)));
             keeper.ext = U.lerp(keeper.ext, keeper.dive ? 1 : 0, Math.min(1, dt * 8));
         }
         if (ball && !ball.outcome) {
@@ -109,7 +110,7 @@ Minigames.register('soccer', env => {
     function resolve(bx, bh) {
         const pl = ball.pl;
         const absx = Math.abs(bx);
-        const kx = keeper.x, reach = .4 + keeper.ext * .24, kh = .66 + keeper.ext * .22;
+        const kx = keeper.x, reach = .4 + rank * .025 + keeper.ext * .24, kh = .66 + keeper.ext * .22;
         if (bh > 1.1) return finishKick('over');
         if (bh > .96) return finishKick('bar');
         if (absx > 1.09) return finishKick('wide');
@@ -150,7 +151,7 @@ Minigames.register('soccer', env => {
     function finish() {
         const stars = Math.min(9, 1 + points);
         end({
-            win: goals >= 3, head: goals >= 5 ? 'GOLDEN BOOT!' : goals >= 3 ? 'MATCH WINNER!' : 'FULL TIME',
+            win: goals >= target, head: goals >= target ? 'MATCH WINNER!' : 'FULL TIME',
             lines: [`${goals} goals from ${KICKS} free kicks`, `${points} points · best streak ${best}`, goals >= 3 ? 'Clinical finishing!' : 'Lift it over the wall, then bend it']
         , stars });
     }
@@ -303,6 +304,7 @@ Minigames.register('soccer', env => {
 
     return {
         title: '⚽ Free Kick Masters',
+        goal: `Score ${target} goals from 6 free kicks`,
         intro: { head: 'FREE KICK MASTERS', lines: ['Swipe up from the ball to shoot', 'Longer swipe = higher · side = aim', 'Curve your swipe to bend it'] },
         init: start, start, update, draw, down, move, up, idle() { },
         _state: () => ({ kick, goals, points, ball, keeper, wall, x0 }),

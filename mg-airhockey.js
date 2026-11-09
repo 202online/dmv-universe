@@ -4,6 +4,7 @@
 Minigames.register('airhockey', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const L = 36, R = 324, T = 86, B = 514, MID = (T + B) / 2, GW = 110, PR = 13, MR = 26, WIN = 5;
+    const rank = (env.level || 1) - 1;
 
     let me, cpu, puck, pm, om, holdId, serveT, goalT, rallyV, ptX, ptY;
 
@@ -70,12 +71,12 @@ Minigames.register('airhockey', env => {
             pm.x = tx; pm.y = ty;
         } else { pm.vx *= .7; pm.vy *= .7; }
         // CPU mallet
-        const spd = (240 + level() * 260) * dt;
+        const spd = (240 + level() * 260 + rank * 70) * dt;
         let gx = 180, gy = T + 54;
         if (puck.y < MID + 40 && puck.vy < 200) {
             gx = puck.x; gy = Math.min(puck.y - 6, MID - 34);
             if (puck.y < T + 150 && Math.abs(puck.x - om.x) < 50) gy = puck.y + 4; // attack push
-        } else { gx = U.lerp(180, puck.x, .35); }
+        } else { gx = U.lerp(180, puck.x, .35 + rank * .1); }
         const odx = gx - om.x, ody = gy - om.y, od = Math.hypot(odx, ody) || 1;
         const step = Math.min(od, spd);
         om.vx = odx / od * step / Math.max(dt, .001); om.vy = ody / od * step / Math.max(dt, .001);
@@ -172,6 +173,7 @@ Minigames.register('airhockey', env => {
 
     return {
         title: '🏒 Neon Slide',
+        goal: 'Beat the CPU to 5 goals',
         intro: { head: 'NEON SLIDE', lines: ['Drag in your half to move the mallet', 'Flick through the puck for power shots', `First to ${WIN} wins the table`] },
         init: start, start, update, draw, down, move, up, idle() { },
         _state: () => ({ me, cpu, puck, pm, om }),

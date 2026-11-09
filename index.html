@@ -32,8 +32,13 @@
         .mg-title { font-weight: 800; font-size: 14px; color: #fde047; padding-right: 28px; align-self: flex-start; }
         .mg-canvas { position: static; inset: auto; border-radius: 14px; touch-action: none; background: #05070f; box-shadow: 0 0 0 2px rgba(168,85,247,.5); }
         .mg-bar { display: flex; gap: 8px; }
-        .mg-bar button { padding: 8px 16px; border-radius: 10px; font-weight: 800; font-size: 13px; color: #fff; background: #4c1d95; border: 1px solid #a855f7; }
+        .mg-bar button { min-height: 44px; padding: 8px 16px; border-radius: 10px; font-weight: 800; font-size: 13px; color: #fff; background: #4c1d95; border: 1px solid #a855f7; }
         .mg-bar button[hidden] { display: none; }
+        .mg-levels { display: flex; gap: 6px; justify-content: center; }
+        .mg-levels button { min-width: 46px; min-height: 44px; border: 1px solid #a855f7; border-radius: 8px; background: #281340; color: #fff; font-weight: 800; }
+        .mg-levels button[aria-pressed="true"] { background: #6d28d9; border-color: #fde047; }
+        .mg-levels button:disabled { opacity: .4; }
+        .mg-campaign-info { max-width: 360px; font-size: 11px; line-height: 1.4; color: #cbd5e1; text-align: center; }
         #modal-overlay.mg-mode .modal-close { top: 6px; right: 10px; }
         #modal-overlay .modal-close { position: absolute; top: 12px; right: 16px; color: white; background: transparent; border: 0; font-size: 24px; }
         .sports-game { color: #f8fafc; }
@@ -168,6 +173,7 @@
     </footer>
 
     <script src="sportsbook.js"></script>
+    <script src="mg-progression.js"></script>
     <script src="mg-core.js"></script>
     <script src="mg-basketball.js"></script>
     <script src="mg-drive.js"></script>
@@ -473,7 +479,7 @@
             Object.hasOwn(hairColors, features.color) && Object.hasOwn(skinColors, features.skin) &&
             ['none', 'mustache', 'beard'].includes(features.facial);
         player.features = defaultFeatures('boy');
-        const progress = { stars: 12, property: 1, owned: ['basic'], shirt: 'basic', ownedVehicles: ['bike'], vehicle: 'bike' };
+        const progress = { stars: 12, property: 1, owned: ['basic'], shirt: 'basic', ownedVehicles: ['bike'], vehicle: 'bike', minigames: MinigameProgression.initial() };
         let sportsbook = Sportsbook.initial();
         let saveEnabled = true, lastCarSave = 0;
         const saveWarning = document.getElementById('save-warning');
@@ -482,7 +488,7 @@
             if (!saveEnabled || !player.appearance) return;
             const data = {
                 version: 1, appearance: player.appearance, features: player.features, stars: progress.stars,
-                property: progress.property, owned: progress.owned, shirt: progress.shirt, sportsbook,
+                property: progress.property, owned: progress.owned, shirt: progress.shirt, sportsbook, minigames: progress.minigames,
                 vehicle: { id: progress.vehicle, owned: progress.ownedVehicles, quadrant: driving.quadrant, x: ownCar.x, y: ownCar.y, heading: ownCar.heading || [1, 0] }
             };
             try {
@@ -511,6 +517,7 @@
                 if (data.version !== 1 || !['boy', 'girl'].includes(data.appearance) ||
                     (data.features !== undefined && !validFeatures(data.features)) ||
                     (data.sportsbook !== undefined && !Sportsbook.valid(data.sportsbook)) ||
+                    (data.minigames !== undefined && !MinigameProgression.valid(data.minigames)) ||
                     !Number.isSafeInteger(data.stars) || data.stars < 0 ||
                     ![1, 2].includes(data.property) || !Array.isArray(data.owned) ||
                     !data.owned.includes('basic') || data.owned.some(id => !Object.hasOwn(shirts, id)) ||
@@ -547,6 +554,7 @@
                 if (data.sportsbook !== undefined) sportsbook = data.sportsbook;
                 player.features = data.features === undefined ? defaultFeatures(data.appearance) : { ...data.features };
                 progress.stars = data.stars;
+                if (data.minigames !== undefined) progress.minigames = data.minigames;
                 progress.property = data.property;
                 progress.owned = [...new Set(data.owned)];
                 progress.shirt = data.shirt;
@@ -1702,6 +1710,16 @@
             modalEl.classList.remove('hidden');
             if (Minigames.open(type, document.getElementById('modal-content'), {
                 overlay: modalEl, isOpen: () => !modalEl.classList.contains('hidden'), close: closeModal,
+                campaign: {
+                    info: () => MinigameProgression.info(progress.minigames, type),
+                    settle: (level, win) => {
+                        const payout = MinigameProgression.settle(progress.minigames, type, level, win);
+                        progress.stars += payout.stars;
+                        updateProgressHud();
+                        saveProgress();
+                        return payout;
+                    }
+                },
                 award: n => { progress.stars += n; updateProgressHud(); saveProgress(); }
             })) {
                 toast('');

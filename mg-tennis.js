@@ -4,6 +4,7 @@
 Minigames.register('tennis', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const WIN = 5, G = 4.2, NET_H = .12;
+    const rank = (env.level || 1) - 1;
     const ys = v => U.lerp(505, 208, v);
     const hw = v => U.lerp(150, 88, v);
     const sc = v => U.lerp(1, .6, v);
@@ -165,7 +166,7 @@ Minigames.register('tennis', env => {
     function opp(dt) {
         const b = ball;
         if (!b || b.dead) return;
-        const spd = .8 + level() * .75;
+        const spd = .8 + level() * .75 + rank * .15;
         if (reaction > 0) reaction -= dt;
         else if (b.last === 'p') {
             const aim = b.u + b.vu * .15;
@@ -174,10 +175,11 @@ Minigames.register('tennis', env => {
         ou = U.clamp(ou, -1.25, 1.25);
         const reach = .27 + level() * .09;
         if (b.last === 'p' && b.bounces >= 1 && b.vv > 0 && b.v > .8 && b.h < .6 && Math.abs(b.u - ou) < reach) {
-            const sloppy = Math.random() < Math.max(.04, .3 - level() * .28);
+            const sloppy = Math.random() < Math.max(.02, .3 - level() * .28 - rank * .04);
             b.u = ou; b.last = 'o'; b.bounces = 0; oswing = .3;
-            const tu = sloppy ? U.pick([-1, 1]) * U.rand(1.15, 1.4) : U.clamp(-pu * .9 + U.rand(-.45, .45), -.95, .95);
-            launch(b, tu, U.rand(.06, .42), U.lerp(1.3, .85, U.clamp(level() + Math.random() * .3, 0, 1)));
+            const tu = sloppy ? U.pick([-1, 1]) * U.rand(1.15, 1.4) :
+                U.clamp(-pu * (.9 + rank * .15) + U.rand(-.45, .45), -.95, .95);
+            launch(b, tu, U.rand(.06, .42), U.lerp(1.3, .85, U.clamp(level() + Math.random() * .3, 0, 1)) - rank * .035);
             sfx('tap'); fx.burst(X(b.u, b.v), ys(b.v) - 30, { n: 6, colors: ['#fef08a'], speed: 90, life: .25, g: 60 });
             rally++;
             bestRally = Math.max(bestRally, rally);
@@ -302,6 +304,7 @@ Minigames.register('tennis', env => {
 
     return {
         title: '🎾 Baseline Rally',
+        goal: 'Beat the CPU to 5 points (auto movement + hitting)',
         intro: { head: 'BASELINE RALLY', lines: ['Your player moves, serves & hits automatically', 'Optional: swipe UP to aim the next shot', 'Swipe angle aims · length = depth'] },
         init: start, start, update, draw, down, move, up, idle() { },
         _state: () => ({ me, cpu, phase, ball, pu, ou, rally, server }),

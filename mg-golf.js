@@ -5,6 +5,7 @@ Minigames.register('golf', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const BR = 7, FR = 2.2; // ball radius, friction
     const TOP = 70, BOT = 470;
+    const rank = (env.level || 1) - 1, allowance = [4, 2, 0, -1, -2][rank];
 
     // hole: tee, cup, par, walls [x,y,w,h], sand/water [x,y,w,h], windmill {x,y}
     const HOLES = [
@@ -76,7 +77,7 @@ Minigames.register('golf', env => {
     }
 
     function update(dt) {
-        wmA += dt * (1.1 + hi * .15);
+        wmA += dt * (1.1 + hi * .15) * (1 + rank * .15);
         shotT = Math.max(0, shotT - dt); splashT = Math.max(0, splashT - dt); cardT = Math.max(0, cardT - dt);
         if (sunk) {
             sunkT -= dt;
@@ -136,7 +137,7 @@ Minigames.register('golf', env => {
         }
         // cup
         const cd = Math.hypot(ball.x - hole.cup[0], ball.y - hole.cup[1]);
-        if (cd < 11 && sp < 300) {
+        if (cd < 11 - rank * .6 && sp < 300 - rank * 25) {
             sunk = true; sunkT = 1.5; ball.moving = false;
             ball.x = hole.cup[0]; ball.y = hole.cup[1];
             total += strokes; if (strokes <= hole.par) pars++;
@@ -163,7 +164,7 @@ Minigames.register('golf', env => {
     function finish() {
         const parTotal = HOLES.reduce((a, h) => a + h.par, 0);
         const diff = total - parTotal;
-        const win = diff <= 0;
+        const win = diff <= allowance;
         end({
             win, head: win ? 'CLUBHOUSE LEADER!' : 'ROUND COMPLETE',
             lines: [`${total} strokes · ${diff === 0 ? 'EVEN PAR' : diff > 0 ? '+' + diff : diff}`, `${pars}/${HOLES.length} holes at par or better`, win ? 'Smooth stroke!' : 'Shorter pulls = softer putts'],
@@ -279,7 +280,8 @@ Minigames.register('golf', env => {
 
     return {
         title: '⛳ Putt Club DMV',
-        intro: { head: 'PUTT CLUB DMV', lines: ['Pull back from the ball, release to putt', 'Dodge sand, water & the windmill', '6 holes · beat par for stars'] },
+        goal: `Finish 6 holes in ${HOLES.reduce((sum, h) => sum + h.par, 0) + allowance} strokes or fewer`,
+        intro: { head: 'PUTT CLUB DMV', lines: ['Pull back from the ball, release to putt', 'Dodge sand, water & the windmill', '6 holes · stay under the stroke target'] },
         init: start, start, update, draw, down, move, up, idle() { },
         _state: () => ({ hi, strokes, total, ball, sunk }),
         _set: o => { if (o.ball) Object.assign(ball, o.ball); }
