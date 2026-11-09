@@ -26,6 +26,15 @@
         #modal-overlay { position: absolute; inset: 0; z-index: 30; display: flex; justify-content: center; align-items: center; padding: 16px; background: rgba(0,0,0,.85); }
         #modal-overlay > div { position: relative; box-sizing: border-box; width: min(100%, 672px); max-height: 90%; overflow-y: auto; padding: 24px; background: #111827; border: 1px solid #a855f7; border-radius: 16px; }
         #modal-overlay > div { touch-action: pan-y; }
+        #modal-overlay.mg-mode { padding: 6px; }
+        #modal-overlay.mg-mode > div { width: min(100%, 560px); max-height: 100%; padding: 8px 8px 10px; overflow: hidden; touch-action: none; }
+        .mg-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+        .mg-title { font-weight: 800; font-size: 14px; color: #fde047; padding-right: 28px; align-self: flex-start; }
+        .mg-canvas { position: static; inset: auto; border-radius: 14px; touch-action: none; background: #05070f; box-shadow: 0 0 0 2px rgba(168,85,247,.5); }
+        .mg-bar { display: flex; gap: 8px; }
+        .mg-bar button { padding: 8px 16px; border-radius: 10px; font-weight: 800; font-size: 13px; color: #fff; background: #4c1d95; border: 1px solid #a855f7; }
+        .mg-bar button[hidden] { display: none; }
+        #modal-overlay.mg-mode .modal-close { top: 6px; right: 10px; }
         #modal-overlay .modal-close { position: absolute; top: 12px; right: 16px; color: white; background: transparent; border: 0; font-size: 24px; }
         .sports-game { color: #f8fafc; }
         .sports-game h2 { margin: 0 36px 8px 0; font-size: 24px; }
@@ -159,6 +168,9 @@
     </footer>
 
     <script src="sportsbook.js"></script>
+    <script src="mg-core.js"></script>
+    <script src="mg-basketball.js"></script>
+    <script src="mg-drive.js"></script>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -294,7 +306,10 @@
                     { name: "Waterfront Sports Arena", x: 90, y: 170, w: 260, d: 170, h: 110, color: '#566b76', trim: '#d8b8a0', neon: '#ffffff', style: 'arena', type: 'arena' },
                     { name: "Nationals Park Fan Hub", x: 650, y: 240, w: 170, d: 110, h: 120, color: '#803e43', trim: '#e2c8a9', neon: '#bfdbfe', style: 'fanhub', type: 'sports' }
                 ],
-                cars: [{ x: 660, y: 380, w: 90, d: 40, color: '#0C2340', trim: '#AB0003' }]
+                cars: [{ x: 660, y: 380, w: 90, d: 40, color: '#0C2340', trim: '#AB0003' }],
+                activities: [
+                    { name: 'SW Street Racing Strip', type: 'drive', x: 650, y: 650, w: 230, d: 240 }
+                ]
             }
         };
         const neighborhoods = {
@@ -353,7 +368,7 @@
             NE: { buildings: [[-600, 1450], [-300, 1750], [-330, 1320], [-200, 1460]],
                   activities: [[520, 1420], [-560, 590]], shops: [[520, 640], [260, 560], [820, 1750]] },
             SE: { buildings: [[600, 1780]], activities: [[-560, 620], [560, 590]], shops: [[-300, 300]] },
-            SW: { buildings: [[560, 560], [300, 300]], shops: [[-800, 1300]] }
+            SW: { buildings: [[560, 560], [300, 300]], activities: [[-560, 590]], shops: [[-800, 1300]] }
         };
         const outerHomes = {
             NW: [[-840, 100], [-620, 105], [-400, 100], [450, 100]],
@@ -1022,6 +1037,11 @@
                 groundCircle(x + w / 2, y + d / 2, 28, '#e5e7eb');
                 groundRect(x, y + d / 2 - 48, 40, 96, null, '#e5e7eb', 2);
                 groundRect(x + w - 40, y + d / 2 - 48, 40, 96, null, '#e5e7eb', 2);
+            } else if (a.type === 'drive') {
+                groundRect(x, y, w, d, '#2b2f3a', '#fbbf24', 2);
+                for (let i = 1; i < 4; i++) for (let k = 0; k < 6; k++) groundRect(x + i * w / 4 - 1, y + 10 + k * 40, 2, 22, '#e5e7eb');
+                groundRect(x, y + d - 30, w, 6, '#f8fafc');
+                groundRect(x + 20, y + 20, 18, 18, '#dc2626'); groundRect(x + w - 38, y + 20, 18, 18, '#dc2626');
             } else if (a.type === 'tennis') {
                 groundRect(x, y, w, d, '#2563a0', '#e5e7eb', 2);
                 groundRect(x + 12, y + 12, w - 24, d - 24, null, '#e5e7eb', 2);
@@ -1078,7 +1098,7 @@
             const [sx, sy] = P(x + w / 2, y + d, 25);
             ctx.save();
             ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
-            const label = { football: 'FOOTBALL FIELD', basketball: 'BASKETBALL COURT', golf: 'PUTTING GREEN', soccer: 'SOCCER FIELD', tennis: 'TENNIS COURT' }[a.type];
+            const label = { football: 'FOOTBALL FIELD', basketball: 'BASKETBALL COURT', golf: 'PUTTING GREEN', soccer: 'SOCCER FIELD', tennis: 'TENNIS COURT', drive: 'STREET RACING STRIP' }[a.type];
             const width = ctx.measureText(label).width + 16;
             ctx.fillStyle = '#111827'; ctx.fillRect(sx - width / 2, sy - 16, width, 22);
             ctx.strokeStyle = a === activeBuilding ? '#34d399' : '#fbbf24'; ctx.strokeRect(sx - width / 2, sy - 16, width, 22);
@@ -1671,6 +1691,15 @@
         };
 
         function openSportsGame(type) {
+            modalEl.classList.remove('hidden');
+            if (Minigames.open(type, document.getElementById('modal-content'), {
+                overlay: modalEl, isOpen: () => !modalEl.classList.contains('hidden'), close: closeModal,
+                award: n => { progress.stars += n; updateProgressHud(); saveProgress(); }
+            })) {
+                toast('');
+                for (const k in keys) keys[k] = false;
+                return;
+            }
             sportsGame = { type, attempts: 0, score: 0, total: sportTotals[type], done: false,
                 started: performance.now(), lastT: 0, lane: 1 };
             const config = sportInfo[type];
@@ -2409,6 +2438,7 @@
         });
 
         function closeModal() {
+            Minigames.stop();
             sportsGame = null;
             lemonadeGame = null;
             mapQuadrant = null;
