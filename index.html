@@ -174,6 +174,11 @@
     <script src="mg-football.js"></script>
     <script src="mg-soccer.js"></script>
     <script src="mg-tennis.js"></script>
+    <script src="mg-golf.js"></script>
+    <script src="mg-boxing.js"></script>
+    <script src="mg-pool.js"></script>
+    <script src="mg-airhockey.js"></script>
+    <script src="mg-chess.js"></script>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -2365,8 +2370,9 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <button onclick="playGoGoBeat()" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🎵 Go-Go Jukebox Synthesizer</button>
                         ${btn('🧠 DMV Culture Trivia', 'Starting DMV Culture & History Trivia!', c)}
-                        ${btn('🎱 Lounge Pool Table', 'Launching Lounge Pool & Billiards!', c)}
-                        ${btn('🏒 Lounge Air Hockey', 'Launching Air Hockey Arcade!', c)}
+                        <button onclick="openSportsGame('pool')" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🎱 Lounge Pool Table</button>
+                        <button onclick="openSportsGame('airhockey')" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🏒 Lounge Air Hockey</button>
+                        <button onclick="openSportsGame('chess')" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">♟️ Lounge Chess Masters</button>
                     </div>`;
             } else if (type === 'retail') {
                 const c = 'bg-amber-950/80 hover:bg-amber-900 border border-amber-500';
