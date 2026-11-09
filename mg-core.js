@@ -209,6 +209,7 @@ const Minigames = (() => {
         };
         const env = { W, H, U, sfx, buzz, time: () => S.t, fx, banner, end, phase: () => S.phase, running: () => S.phase === 'play' };
         S.game = factory(env);
+        if (S.game.init) S.game.init();
         host.querySelector('#mg-title').textContent = S.game.title;
         canvas.setAttribute('aria-label', S.game.title + ' play area. Touch gestures control the game.');
         if (api.overlay) api.overlay.classList.add('mg-mode');
