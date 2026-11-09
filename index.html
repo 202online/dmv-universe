@@ -71,7 +71,7 @@
         .shop-row button:disabled { opacity: .65; }
         .book-card { padding: 12px; margin: 14px 0; background: #1f2937; border: 1px solid #475569; border-radius: 8px; }
         .book-card h3 { margin: 0 0 8px; }
-        body:has(#modal-overlay:not(.hidden) .sportsbook) { touch-action: pan-y; }
+        body:has(#modal-overlay:not(.hidden):not(.mg-mode)) { touch-action: pan-y; }
         .sportsbook { font-size: 14px; line-height: 1.55; }
         .sportsbook h3 { font-size: 17px; font-weight: 800; }
         .sportsbook button, .sportsbook summary { min-height: 44px; box-sizing: border-box; }
@@ -101,6 +101,11 @@
         .book-quiz { display: grid; gap: 8px; }
         #book-stake { box-sizing: border-box; width: 100%; min-height: 48px; margin-top: 6px; padding: 10px; font-size: 16px; color: white; background: #111827; border: 1px solid #94a3b8; border-radius: 6px; }
         #book-stake[aria-invalid="true"] { border-color: #fbbf24; }
+        .invest-input { box-sizing: border-box; width: 100%; min-height: 48px; margin-top: 6px; padding: 10px; font-size: 16px; color: white; background: #111827; border: 1px solid #94a3b8; border-radius: 6px; }
+        .invest-input[aria-invalid="true"] { border-color: #fbbf24; }
+        .invest-chart { display: block; width: 100%; height: auto; max-height: 180px; background: #0f172a; border-radius: 8px; }
+        .library-reader { user-select: text; -webkit-user-select: text; }
+        .library-reader .library-paragraph { max-width: 65ch; margin: 18px auto; font-size: 17px; line-height: 1.85; color: #e2e8f0; }
         @media (max-width: 380px) {
             #modal-overlay:has(.sportsbook) { padding: 8px; }
             #modal-overlay:has(.sportsbook) > div { padding: 16px 12px; }
@@ -210,6 +215,8 @@
     </footer>
 
     <script src="sportsbook.js"></script>
+    <script src="investing.js"></script>
+    <script src="library.js"></script>
     <script src="mg-progression.js"></script>
     <script src="mg-core.js"></script>
     <script src="mg-basketball.js"></script>
@@ -418,7 +425,7 @@
             NW: { buildings: [[540, 1450], [560, 640]], activities: [[-560, 1420], [-560, 590]], boutique: [300, 1750] },
             NE: { buildings: [[-600, 1450], [-300, 1750], [-330, 1320], [-200, 1460]],
                   activities: [[520, 1420], [-560, 590]], shops: [[520, 640], [260, 560], [820, 1750]] },
-            SE: { buildings: [[600, 1780]], activities: [[-560, 620], [560, 590]], shops: [[-300, 300]] },
+            SE: { buildings: [[600, 1780]], library: [-560, 1450], activities: [[-560, 620], [560, 590]], shops: [[-300, 300]] },
             SW: { buildings: [[560, 560], [300, 300]], activities: [[-560, 590]], shops: [[-800, 1300]] }
         };
         const outerHomes = {
@@ -443,6 +450,10 @@
                 placeCenter(cluster, ...layout.buildings[0]);
                 q.buildings[0].x = cluster.x + 120; q.buildings[0].y = cluster.y;
                 q.buildings[1].x = cluster.x; q.buildings[1].y = cluster.y;
+                const library = { name: 'SE Public Library', w: 190, d: 130, h: 125,
+                    color: '#879c9c', trim: '#d8e6d4', neon: '#7dd3fc', style: 'library', type: 'library' };
+                placeCenter(library, ...layout.library);
+                q.buildings.push(library);
             } else {
                 q.buildings.forEach((b, i) => placeCenter(b, ...layout.buildings[i]));
             }
@@ -518,6 +529,7 @@
         player.features = defaultFeatures('boy');
         const progress = { stars: 12, property: 1, owned: ['basic'], shirt: 'basic', ownedVehicles: ['bike'], vehicle: 'bike', minigames: MinigameProgression.initial() };
         let sportsbook = Sportsbook.initial();
+        let investing = Investing.initial();
         let saveEnabled = true, lastCarSave = 0;
         const saveWarning = document.getElementById('save-warning');
 
@@ -525,7 +537,7 @@
             if (!saveEnabled || !player.appearance) return;
             const data = {
                 version: 1, appearance: player.appearance, features: player.features, stars: progress.stars,
-                property: progress.property, owned: progress.owned, shirt: progress.shirt, sportsbook, minigames: progress.minigames,
+                property: progress.property, owned: progress.owned, shirt: progress.shirt, sportsbook, investing, minigames: progress.minigames,
                 vehicle: { id: progress.vehicle, owned: progress.ownedVehicles, quadrant: driving.quadrant, x: ownCar.x, y: ownCar.y, heading: ownCar.heading || [1, 0] }
             };
             try {
@@ -554,6 +566,7 @@
                 if (data.version !== 1 || !['boy', 'girl'].includes(data.appearance) ||
                     (data.features !== undefined && !validFeatures(data.features)) ||
                     (data.sportsbook !== undefined && !Sportsbook.valid(data.sportsbook)) ||
+                    (data.investing !== undefined && !Investing.valid(data.investing)) ||
                     (data.minigames !== undefined && !MinigameProgression.valid(data.minigames)) ||
                     !Number.isSafeInteger(data.stars) || data.stars < 0 ||
                     ![1, 2].includes(data.property) || !Array.isArray(data.owned) ||
@@ -589,6 +602,7 @@
                 }
                 player.appearance = data.appearance;
                 if (data.sportsbook !== undefined) sportsbook = data.sportsbook;
+                if (data.investing !== undefined) investing = data.investing;
                 player.features = data.features === undefined ? defaultFeatures(data.appearance) : { ...data.features };
                 progress.stars = data.stars;
                 if (data.minigames !== undefined) progress.minigames = data.minigames;
@@ -1241,6 +1255,15 @@
                         const u = 0.12 + i * 0.18;
                         poly(faceR(x, y, w, d, u, u + 0.08, 48, 66), i % 2 ? '#f0b879' : '#d87a59');
                     }
+                }
+            } else if (b.style === 'library') {
+                poly(faceR(x, y, w, d, .08, .92, 45, 99), '#263c4b', b.trim);
+                for (let row = 0; row < 2; row++) {
+                    for (let i = 0; i < 10; i++) {
+                        const u = .12 + i * .075, z = 49 + row * 25;
+                        poly(faceR(x, y, w, d, u, u + .045, z, z + 15 + i % 3 * 2), ['#fbbf24', '#93c5fd', '#fca5a5', '#86efac'][i % 4]);
+                    }
+                    poly(faceR(x, y, w, d, .1, .9, 47 + row * 25, 50 + row * 25), b.trim);
                 }
             } else if (['lounge', 'gym', 'garage'].includes(b.style)) {
                 for (let z = 48; z < h - 12; z += b.style === 'gym' ? 16 : 22) {
@@ -2452,6 +2475,11 @@
                 renderShirtShop(true, true);
             } else if (type === 'lemonade') {
                 openLemonadeGame();
+            } else if (type === 'library') {
+                content.innerHTML = `<div class="sports-game"><h2>SE Public Library</h2>
+                    <p>Free public computers, original 2–4 minute stories, and a weekly rotating reading shelf. Your investing portfolio is shared with your computer at home.</p>
+                    <div class="sports-controls"><button type="button" id="open-library-reads">Browse this week’s short reads</button>
+                    <button type="button" id="open-personal-computer">Use a public computer</button></div></div>`;
             } else if (type === 'crib') {
                 const c = 'bg-blue-950/80 hover:bg-blue-900 border border-blue-400';
                 content.innerHTML = `
@@ -2460,6 +2488,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <button type="button" id="open-wardrobe" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">👕 Wardrobe Closet</button>
                         <button type="button" id="open-vehicle-garage" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🚲 Vehicle Garage</button>
+                        <button type="button" id="open-personal-computer" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">💻 Personal Computer</button>
                         ${btn('🐕 Pet Companion', 'Pet Companion interaction!', c)}
                         ${btn('🏢 Upgrade Property Tier', 'Property upgraded to Tier 2 Navy Yard Loft!', c, 'upgrade')}
                     </div>`;
@@ -2479,6 +2508,11 @@
                 toast('');
                 Sportsbook.render(content, sportsbook, saveProgress, () => openBuildingModal('arena'));
             });
+            const computerButton = document.getElementById('open-personal-computer');
+            if (computerButton) computerButton.addEventListener('click', () => openComputer(type));
+            const readingButton = document.getElementById('open-library-reads');
+            if (readingButton) readingButton.addEventListener('click', () =>
+                CommunityLibrary.render(content, () => openBuildingModal('library')));
             const shopButton = document.getElementById('open-shirt-shop');
             if (shopButton) shopButton.addEventListener('click', () => { toast(''); renderShirtShop(true); });
             const wardrobeButton = document.getElementById('open-wardrobe');
@@ -2487,6 +2521,17 @@
             if (vehicleShopButton) vehicleShopButton.addEventListener('click', () => { toast(''); renderVehicleShop(true); });
             const vehicleGarageButton = document.getElementById('open-vehicle-garage');
             if (vehicleGarageButton) vehicleGarageButton.addEventListener('click', () => { toast(''); renderVehicleShop(false); });
+        }
+
+        function openComputer(location) {
+            const content = document.getElementById('modal-content');
+            content.innerHTML = `<div class="sports-game"><h2>${location === 'library' ? 'Library Public Computer' : 'Your Personal Computer'}</h2>
+                <p>Choose an app. Learning labs use separate practice balances, never your city stars.</p>
+                <div class="sports-controls"><button type="button" id="open-investing-lab">Investing Practice Lab — stocks, funds, bonds & options</button>
+                <button type="button" id="computer-back">Back to ${location === 'library' ? 'library' : 'home'}</button></div></div>`;
+            document.getElementById('open-investing-lab').addEventListener('click', () =>
+                Investing.render(content, investing, saveProgress, () => openComputer(location)));
+            document.getElementById('computer-back').addEventListener('click', () => openBuildingModal(location));
         }
 
         // Delegated handler for placeholder game buttons

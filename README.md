@@ -65,6 +65,42 @@ wins, losses and pushes. Existing simulator balances and tickets are retained.
 Resetting practice data does not affect city progress. Practice results are not
 betting advice or evidence of real-money profitability.
 
+## Home computer, investing and the SE library
+
+The **Personal Computer** in The Crib / apartment menu opens an **Investing
+Practice Lab**, separate from city stars and betting credits. The new **SE Public
+Library** also has public computers accessing that same saved portfolio. Both
+locations include a Back to computer route; neither requires a purchase.
+
+Start with 10,000 practice dollars. Explore two fictional stocks, a broad-market
+ETF, a balanced mutual fund, a fixed-coupon bond and fully paid calls/puts.
+Review each order's cost, quantity and risks before placing it. Stocks, ETFs,
+bonds and options fill at displayed synthetic quotes. Mutual fund orders wait for
+the next closing NAV and explicitly reject buys if cash is then insufficient;
+they reserve no cash and can be canceled before filling. Units are whole numbers.
+No short selling, margin or uncovered options are available.
+
+Advance one simulated day manually to move prices and process orders. The model
+includes fund expenses accrued inside NAV, quarterly cash distributions with
+matching price reductions, a 360-day bond with semiannual coupons and principal
+repayment, and 30-day options with a 100-share contract multiplier. Options
+cash-settle intrinsic value at expiry; fresh contracts then become available.
+This intentionally differs from physical exercise in many real equity options.
+The portfolio shows cash, marked holdings, cost basis, realized/unrealized results,
+income, weights and the latest 60 daily closing snapshots. Lessons and quizzes
+explain diversification, compounding, expenses, rates, option risk and real-app
+differences. Synthetic prices, option time value and market news are teaching
+examples, not live data or valuation advice. Taxes, inflation, trading spreads,
+liquidity and issuer default are not modeled.
+
+The library's **Short Reads** offers six original standalone fiction stories,
+each 400–800 words (roughly 2–4 minutes at 200 words/minute). Three are featured
+each week; the shelf moves forward every Monday at 00:00 UTC and repeats after
+six weeks. All six remain browsable. This rotates a bundled catalog rather than
+claiming to generate new writing automatically. Reading and practice trading
+never award stars. Old saves initialize the investing lab without altering
+existing balances, purchases or minigame clears.
+
 ## Local development
 
 Serve this directory with `python3 -m http.server 8766 --bind 127.0.0.1`.
