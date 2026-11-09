@@ -48,6 +48,10 @@
         .shop-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; background: #1f2937; border-radius: 8px; }
         .shop-row button { padding: 8px 12px; color: white; background: #5b21b6; border: 1px solid #c084fc; border-radius: 6px; }
         .shop-row button:disabled { opacity: .65; }
+        #world-map { position: static; display: block; width: min(100%, 360px); height: auto; margin: 12px auto; background: #17241f; border: 1px solid #718a7a; border-radius: 8px; }
+        .map-legend { columns: 2; column-gap: 20px; padding-left: 0; list-style: none; font-size: 13px; }
+        .map-legend li { break-inside: avoid; margin: 4px 0; }
+        #map-open { color: #fff; background: #374151; border: 1px solid #a78bfa; border-radius: 6px; padding: 5px 9px; font-weight: bold; }
         #save-warning { color: #fca5a5; }
         #avatar-selection { position: absolute; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.88); }
         #avatar-selection > div { box-sizing: border-box; width: min(100%, 480px); max-height: 100%; overflow-y: auto; padding: 20px; color: #f8fafc; background: #111827; border: 1px solid #a855f7; border-radius: 16px; text-align: center; }
@@ -74,6 +78,7 @@
             <button onclick="switchQuadrant('NE')" class="px-2.5 py-1 text-xs font-extrabold rounded bg-[#5A1414] hover:bg-[#7a1c1c] text-[#FFB612] border border-amber-400 shadow">NE</button>
             <button onclick="switchQuadrant('SE')" class="px-2.5 py-1 text-xs font-extrabold rounded bg-blue-700 hover:bg-blue-600 text-white border border-red-400 shadow">SE</button>
             <button onclick="switchQuadrant('SW')" class="px-2.5 py-1 text-xs font-extrabold rounded bg-[#AB0003] hover:bg-[#cb0004] text-white border border-blue-900 shadow">SW</button>
+            <button type="button" id="map-open">Map</button>
         </div>
     </header>
 
@@ -142,7 +147,7 @@
             <span id="save-warning" role="status"></span>
         </div>
         <div>
-            <span class="text-purple-400 font-bold hidden sm:inline">Controls: WASD / Arrow Keys / D-Pad | [E] Interact / Exit ride | [Esc] Close</span>
+            <span class="text-purple-400 font-bold hidden sm:inline">Controls: WASD / Arrow Keys / D-Pad | [E] Interact / Exit ride | [M] Map | [Esc] Close</span>
         </div>
     </footer>
 
@@ -218,7 +223,8 @@
         const quadrants = {
             NW: {
                 name: "NW: Uptown",
-                lot: ['#1d3a2b', '#21412f'], hoodie: '#002B49', accent: '#E31837',
+                lot: ['#234633', '#294e38'], hoodie: '#002B49', accent: '#E31837',
+                identity: 'Fashion, leafy neighborhoods, parks, recreation and nightlife',
                 parkingLot: { x: 320, y: 145, w: 130, d: 195 },
                 buildings: [
                     { name: "The 202 Venue", x: 110, y: 215, w: 200, d: 130, h: 150, color: '#292332', trim: '#c63838', neon: '#ff7070', style: 'club', type: 'venue' },
@@ -232,7 +238,8 @@
             },
             NE: {
                 name: "NE: Norf Eatz",
-                lot: ['#26351f', '#2b3b23'], hoodie: '#5A1414', accent: '#FFB612',
+                lot: ['#343b32', '#3a4034'], hoodie: '#5A1414', accent: '#FFB612',
+                identity: 'Food, culture and recreation with an artistic street vibe',
                 buildings: [
                     { name: "Capital Centre Mall", x: 100, y: 190, w: 240, d: 150, h: 120, color: '#b59a7d', trim: '#71483e', neon: '#fcd34d', style: 'mall', type: 'retail' },
                     { name: "Carryout Craze", x: 640, y: 220, w: 170, d: 120, h: 95, color: '#a34d36', trim: '#f1bf74', neon: '#fcd34d', style: 'carryout', type: 'carryout' },
@@ -247,7 +254,8 @@
             },
             SE: {
                 name: "SE: Souf East",
-                lot: ['#1d3a2b', '#21412f'], hoodie: '#1d4ed8', accent: '#ef4444',
+                lot: ['#344435', '#3a4938'], hoodie: '#1d4ed8', accent: '#ef4444',
+                identity: 'Neighborhood life, community and recreation with an urban street vibe',
                 buildings: [
                     { name: "The Crib (Apartment)", x: 120, y: 210, w: 170, d: 130, h: 175, color: '#9b6653', trim: '#e3b997', neon: '#fca5a5', style: 'apartment', type: 'crib' },
                     { name: "Apartment Garage", x: 290, y: 210, w: 120, d: 130, h: 95, color: '#746c65', trim: '#bb9c84', neon: '#ead1b3', style: 'garage', type: 'crib', garage: true }
@@ -260,7 +268,8 @@
             },
             SW: {
                 name: "SW: Souf West",
-                lot: ['#2a4a2a', '#2f522f'], hoodie: '#AB0003', accent: '#ffffff',
+                lot: ['#29423c', '#304b42'], hoodie: '#AB0003', accent: '#ffffff',
+                identity: 'Waterfront, apartment neighborhoods and restaurants',
                 buildings: [
                     { name: "Waterfront Sports Arena", x: 90, y: 170, w: 260, d: 170, h: 110, color: '#566b76', trim: '#d8b8a0', neon: '#ffffff', style: 'arena', type: 'sports' },
                     { name: "Nationals Park Fan Hub", x: 650, y: 240, w: 170, d: 110, h: 120, color: '#803e43', trim: '#e2c8a9', neon: '#bfdbfe', style: 'fanhub', type: 'sports' }
@@ -315,27 +324,29 @@
         };
         const centralLayouts = {
             NW: {
-                buildings: [[650, 675], [700, 900]],
-                activities: [[175, 825], [725, 200]],
-                parkingLot: { x: 860, y: 675, w: 130, d: 195 }
+                buildings: [[700, 125], [825, 625]],
+                activities: [[125, 725], [650, 775]],
+                parkingLot: { x: 910, y: 125, w: 130, d: 195 }
             },
             NE: {
-                buildings: [[-100, 250], [125, 575], [295, 575], [250, 1050]],
-                activities: [[100, 725], [575, 725]],
-                shops: [[-150, 700], [-25, 800], [-25, 675]]
+                buildings: [[150, 225], [700, 175], [870, 175], [25, 825]],
+                activities: [[125, 650], [625, 725]],
+                shops: [[-75, 675], [250, 925], [125, 950]]
             },
             SE: {
-                activities: [[175, 225], [100, -50]],
-                shops: [[-25, 100]]
+                activities: [[150, 625], [50, 25]],
+                shops: [[-75, 150]]
             },
             SW: {
-                buildings: [[725, 175], [675, 25]],
-                shops: [[575, 225]]
+                buildings: [[650, 150], [775, 25]],
+                shops: [[950, 200]]
             }
         };
-        const reflectSouth = rect => {
-            rect.x = WORLD - rect.x - rect.w;
-            rect.y = WORLD - rect.y - rect.d;
+        const outerHomes = {
+            NW: [[-75, 100], [150, -125], [300, -275], [-175, 225]],
+            NE: [[-125, 150], [-25, 50], [200, -175]],
+            SE: [[825, 925], [975, 775], [950, 900], [625, 1175], [1175, 625], [650, 1025]],
+            SW: [[1150, 650], [750, 1050], [650, 1175], [950, 850], [825, 925]]
         };
         for (const [id, q] of Object.entries(quadrants)) {
             q.activities = q.activities || [];
@@ -350,22 +361,21 @@
                 });
             }
             if (id === 'NW') {
-                const residences = q.neighborhood.buildings.filter(b => b.kind === 'condo' || b.kind === 'apartment');
-                [residences[0].x, residences[0].y] = [350, 80];
-                [residences[1].x, residences[1].y] = [220, 100];
+                q.buildings.push({ name: 'Uptown Fashion Boutique', x: 925, y: 775, w: 100, d: 90, h: 105,
+                    color: '#76536e', trim: '#e5c4a4', neon: '#f5b5d5', style: 'subshop', type: 'fashion' });
             }
-            if (id === 'SE' || id === 'SW') {
-                q.neighborhood.buildings.filter(b => b.kind !== 'shop').forEach(reflectSouth);
-                q.neighborhood.streets.forEach(street => {
-                    reflectSouth(street);
-                    street.junction = street.junction === 'left' ? 'right' : 'left';
-                    street.south = true;
-                });
-                if (id === 'SE') {
-                    q.buildings.forEach(reflectSouth);
-                    const apartment = q.neighborhood.buildings.find(b => b.kind === 'apartment' && b.h === 135);
-                    [apartment.x, apartment.y] = [830, 810];
-                }
+            q.neighborhood.buildings.filter(b => b.kind !== 'shop').forEach((b, i) => {
+                [b.x, b.y] = outerHomes[id][i];
+            });
+            q.neighborhood.streets = [];
+            if (id === 'SE') {
+                [q.buildings[0].x, q.buildings[0].y] = [995, 625];
+                [q.buildings[1].x, q.buildings[1].y] = [875, 625];
+            }
+            if (id === 'SW') {
+                q.neighborhood.buildings.filter(b => b.kind === 'apartment').forEach(b => { b.h += 20; });
+                const restaurant = q.neighborhood.buildings.find(b => b.kind === 'shop');
+                restaurant.kind = 'restaurant';
             }
             const overlapsObject = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x &&
                 a.y < b.y + b.d && a.y + a.d > b.y;
@@ -683,6 +693,7 @@
             }
             if (keyMap[k]) { keys[keyMap[k]] = true; e.preventDefault(); }
             if (k === 'e' && !e.repeat) checkInteraction();
+            if (k === 'm' && !e.repeat) openWorldMap();
         });
         window.addEventListener('keyup', e => {
             const k = e.key.toLowerCase();
@@ -692,6 +703,7 @@
         let activeBuilding = null;
         let sportsGame = null;
         let lemonadeGame = null;
+        let mapQuadrant = null;
         const modalEl = document.getElementById('modal-overlay');
         const bannerEl = document.getElementById('interaction-banner');
         function modalOpen() { return !modalEl.classList.contains('hidden'); }
@@ -891,6 +903,22 @@
                     poly([P(x, y), P(x + TILE, y), P(x + TILE, y + TILE), P(x, y + TILE)], col, col, 0.6);
                 }
             }
+            const pointOnAxes = (east, sum) => [(sum + east) / 2, (sum - east) / 2];
+            const borderRoad = currentQuadrant === 'NW' || currentQuadrant === 'NE' ? [250, 320] : [1400, 1470];
+            const roadCorners = [[-WORLD, borderRoad[0]], [WORLD, borderRoad[0]],
+                [WORLD, borderRoad[1]], [-WORLD, borderRoad[1]]].map(([e, s]) => P(...pointOnAxes(e, s)));
+            poly(roadCorners, '#3c3e43');
+            for (let east = -900; east < 900; east += 160) {
+                const center = (borderRoad[0] + borderRoad[1]) / 2;
+                poly([[east, center - 2], [east + 75, center - 2], [east + 75, center + 2], [east, center + 2]]
+                    .map(([e, s]) => P(...pointOnAxes(e, s))), '#c9bd9e');
+            }
+            if (currentQuadrant === 'SW') {
+                poly([[-1200, 250], [-1000, 250], [-1000, 1750], [-1200, 1750]]
+                    .map(([e, s]) => P(...pointOnAxes(e, s))), '#386c79');
+                poly([[-1000, 250], [-970, 250], [-970, 1750], [-1000, 1750]]
+                    .map(([e, s]) => P(...pointOnAxes(e, s))), '#a89a80');
+            }
             // Lane dashes
             for (let t = -WORLD / 2; t < 1.5 * WORLD; t += 100) {
                 if (t > 400 && t < 600) continue;
@@ -905,26 +933,6 @@
                 poly([P(408, o), P(436, o), P(436, o + 8), P(408, o + 8)], 'rgba(255,255,255,.65)');
                 poly([P(564, o), P(592, o), P(592, o + 8), P(564, o + 8)], 'rgba(255,255,255,.65)');
             }
-            q.neighborhood.streets.forEach(street => {
-                q.neighborhood.buildings.filter(b =>
-                    b.kind !== 'shop' && b.x + b.w / 2 >= street.x && b.x + b.w / 2 <= street.x + street.w &&
-                    (street.south ? b.y >= street.y + street.d && b.y - (street.y + street.d) <= 50 :
-                        b.y + b.d < street.y && street.y - (b.y + b.d) <= 50)
-                ).forEach(b => {
-                    const yardStart = street.south ? street.y + street.d : b.y + b.d;
-                    const yardDepth = street.south ? b.y - yardStart : street.y - yardStart;
-                    groundRect(b.x, yardStart, b.w, yardDepth, '#466c45');
-                    groundRect(b.x + b.w / 2 - 4, yardStart, 8, yardDepth, '#b7aa97');
-                });
-                const curbStart = street.x + (street.junction === 'left' ? 25 : 0);
-                groundRect(curbStart, street.y - 5, street.w - 25, street.d + 10, '#9a9691');
-                groundRect(street.x, street.y, street.w, street.d, '#3c3e43');
-                for (let x = street.x + 15; x + 24 < street.x + street.w; x += 50) {
-                    if ((street.junction === 'right' && x + 24 > street.x + street.w - 35) ||
-                        (street.junction === 'left' && x < street.x + 35)) continue;
-                    groundRect(x, street.y + street.d / 2 - 1, 24, 2, '#c9bd9e');
-                }
-            });
             // Small cocoa-toned utility covers along the sidewalks.
             [[420, 290], [580, 710], [290, 580], [710, 420]].forEach(([x, y]) => {
                 groundRect(x - 9, y - 9, 18, 18, '#59443e', '#79615a');
@@ -1061,7 +1069,7 @@
             poly([P(x + 6, y + 6), P(x + w + 10, y + 6), P(x + w + 10, y + d + 10), P(x + 6, y + d + 10)], 'rgba(0,0,0,.25)');
             box(x, y, 0, w, d, h, b.color, 'rgba(0,0,0,.4)');
             poly(faceL(x, y, w, d, 0, 1, 0, 4), shade(b.color, 0.65));
-            const floors = b.kind === 'house' ? 2 : b.kind === 'shop' ? 1 : 3;
+            const floors = b.kind === 'house' ? 2 : ['shop', 'restaurant'].includes(b.kind) ? 1 : 3;
             for (let floor = 0; floor < floors; floor++) {
                 const z = 12 + floor * (h - 28) / floors;
                 const height = Math.min(20, (h - 28) / floors - 4);
@@ -1081,9 +1089,13 @@
             } else {
                 poly(faceL(x, y, w, d, 0, 1, h - 6, h), b.trim);
                 poly(faceR(x, y, w, d, 0, 1, h - 6, h), shade(b.trim, 0.8));
-                if (b.kind === 'shop') {
+                if (b.kind === 'shop' || b.kind === 'restaurant') {
                     poly([P(x + w * 0.12, y + d, 38), P(x + w * 0.88, y + d, 38),
                         P(x + w * 0.9, y + d + 12, 30), P(x + w * 0.1, y + d + 12, 30)], b.trim, 'rgba(0,0,0,.4)');
+                    if (b.kind === 'restaurant') {
+                        poly(faceL(x, y, w, d, 0.08, 0.92, 45, 59), '#344a46', b.trim);
+                        faceText(b, 'WATERFRONT EATS', 0.5, 52, 9, '#f5e4c4');
+                    }
                 } else {
                     for (let floor = 1; floor < floors; floor++) {
                         const z = 9 + floor * (h - 28) / floors;
@@ -1126,6 +1138,13 @@
                 for (let i = 0; i < 5; i++) {
                     const u = 0.08 + i * 0.19;
                     poly(faceR(x, y, w, d, u, u + 0.035, 42, h - 12), b.trim);
+                }
+                if (b.type === 'carryout' || b.type === 'boxing') {
+                    poly(faceR(x, y, w, d, 0.1, 0.9, 44, 70), b.type === 'boxing' ? '#893f38' : '#345c62', b.trim);
+                    for (let i = 0; i < 4; i++) {
+                        const u = 0.12 + i * 0.18;
+                        poly(faceR(x, y, w, d, u, u + 0.08, 48, 66), i % 2 ? '#f0b879' : '#d87a59');
+                    }
                 }
             } else if (['lounge', 'gym', 'garage'].includes(b.style)) {
                 for (let z = 48; z < h - 12; z += b.style === 'gym' ? 16 : 22) {
@@ -1489,6 +1508,7 @@
             drawScene();
             updateSportsGame();
             updateLemonadeGame();
+            if (mapQuadrant && modalOpen()) drawWorldMap();
             requestAnimationFrame(loop);
         }
         loop();
@@ -1522,6 +1542,93 @@
         function toast(msg) {
             document.getElementById('modal-toast').innerText = msg;
         }
+
+        function mapDestinations(quad) {
+            return [...quadrants[quad].buildings, ...quadrants[quad].activities];
+        }
+
+        function drawWorldMap() {
+            const map = document.getElementById('world-map');
+            if (!map || !mapQuadrant) return;
+            const mapCtx = map.getContext('2d');
+            const project = (x, y) => [20 + (x - y + WORLD) / (2 * WORLD) * 320,
+                20 + (x + y) / (2 * WORLD) * 320];
+            mapCtx.clearRect(0, 0, map.width, map.height);
+            mapCtx.fillStyle = '#294538';
+            mapCtx.fillRect(20, 20, 320, 320);
+            mapCtx.strokeStyle = '#73907b';
+            mapCtx.strokeRect(20, 20, 320, 320);
+            mapCtx.fillStyle = '#bac8bb';
+            mapCtx.font = 'bold 12px sans-serif';
+            mapCtx.textAlign = 'center';
+            mapCtx.fillText('N', 180, 15);
+            mapCtx.fillText('S', 180, 355);
+            mapCtx.fillText('W', 10, 184);
+            mapCtx.fillText('E', 350, 184);
+            mapCtx.strokeStyle = '#829188';
+            mapCtx.lineWidth = 2;
+            for (const [a, b] of [[[500, -500], [500, 1500]], [[-500, 500], [1500, 500]]]) {
+                const start = project(...a), end = project(...b);
+                mapCtx.beginPath(); mapCtx.moveTo(...start); mapCtx.lineTo(...end); mapCtx.stroke();
+            }
+            mapDestinations(mapQuadrant).forEach((destination, i) => {
+                const [x, y] = project(destination.x + destination.w / 2, destination.y + destination.d / 2);
+                mapCtx.fillStyle = '#e6b959';
+                mapCtx.beginPath(); mapCtx.arc(x, y, 10, 0, Math.PI * 2); mapCtx.fill();
+                mapCtx.fillStyle = '#171a19'; mapCtx.font = 'bold 11px sans-serif';
+                mapCtx.textBaseline = 'middle'; mapCtx.fillText(String(i + 1), x, y);
+            });
+            if (driving.quadrant === mapQuadrant && !driving.active) {
+                const [x, y] = project(ownCar.x + ownCar.w / 2, ownCar.y + ownCar.d / 2);
+                mapCtx.fillStyle = '#60a5fa'; mapCtx.fillRect(x - 5, y - 5, 10, 10);
+            }
+            if (currentQuadrant === mapQuadrant) {
+                const [x, y] = project(player.x, player.y);
+                mapCtx.fillStyle = '#fff'; mapCtx.strokeStyle = '#047857'; mapCtx.lineWidth = 3;
+                mapCtx.beginPath(); mapCtx.arc(x, y, 6, 0, Math.PI * 2); mapCtx.fill(); mapCtx.stroke();
+            }
+            mapCtx.textBaseline = 'alphabetic';
+        }
+
+        function showMapQuadrant(quad) {
+            mapQuadrant = quad;
+            const q = quadrants[quad];
+            document.getElementById('map-title').textContent = q.name;
+            document.getElementById('map-identity').textContent = q.identity;
+            document.getElementById('map-position').textContent = currentQuadrant === quad ?
+                'White dot: you. Blue square: your parked ride.' : 'You are currently in ' + quadrants[currentQuadrant].name + '. Blue square: your parked ride, if here.';
+            document.getElementById('map-legend').innerHTML = mapDestinations(quad).map((b, i) =>
+                `<li>${i + 1}. ${b.name}${b.type === 'carryout' ? ' (coming soon)' : ''}</li>`).join('');
+            document.querySelectorAll('#modal-content [data-map-quad]').forEach(button =>
+                button.setAttribute('aria-pressed', String(button.dataset.mapQuad === quad)));
+            drawWorldMap();
+        }
+
+        function openWorldMap() {
+            if (!player.appearance || !avatarSelection.classList.contains('hidden') || modalOpen()) return;
+            for (const k in keys) keys[k] = false;
+            modalEl.classList.remove('hidden');
+            toast('');
+            const content = document.getElementById('modal-content');
+            content.innerHTML = `
+                <div class="sports-game">
+                    <h2 id="map-title">City map</h2>
+                    <p id="map-identity"></p>
+                    <p>Select a quadrant to explore its map. Use the Metro buttons outside this map to fast-travel.</p>
+                    <div class="sports-controls" aria-label="View a quadrant">
+                        ${['NW', 'NE', 'SW', 'SE'].map(quad => `<button type="button" data-map-quad="${quad}" aria-pressed="false">${quad}</button>`).join('')}
+                    </div>
+                    <canvas id="world-map" width="360" height="360" role="img" aria-label="Quadrant map with numbered destinations. North is up; the destination list follows."></canvas>
+                    <p id="map-position"></p>
+                    <ol id="map-legend" class="map-legend"></ol>
+                </div>`;
+            content.querySelectorAll('[data-map-quad]').forEach(button =>
+                button.addEventListener('click', () => showMapQuadrant(button.dataset.mapQuad)));
+            showMapQuadrant(currentQuadrant);
+            content.querySelector('[data-map-quad]').focus();
+        }
+
+        document.getElementById('map-open').addEventListener('click', openWorldMap);
 
         const btn = (label, msg, cls, extra = '') =>
             `<button data-msg="${msg.replace(/"/g, '&quot;')}" class="game-action p-3 ${cls} rounded-xl text-left font-bold text-sm text-white ${extra}">${label}</button>`;
@@ -1855,12 +1962,12 @@
             showOrder();
         }
 
-        function renderShirtShop(shop) {
+        function renderShirtShop(shop, boutique = false) {
             const content = document.getElementById('modal-content');
             content.innerHTML = `
                 <div class="sports-game">
-                    <h2>${shop ? 'Capital Centre Clothing Shop' : 'Wardrobe Closet'}</h2>
-                    <p>${shop ? 'Buy shirts with stars, then equip them here or in your closet.' : 'Equip a shirt you own. Find more at the NE mall.'} Progress saves in this browser on this device.</p>
+                    <h2>${boutique ? 'Uptown Fashion Boutique' : shop ? 'Capital Centre Clothing Shop' : 'Wardrobe Closet'}</h2>
+                    <p>${shop ? 'Buy shirts with stars, then equip them here or in your closet.' : 'Equip a shirt you own. Find more at the NW boutique or NE mall.'} Progress saves in this browser on this device.</p>
                     <p>Stars: ${progress.stars}</p>
                     <div class="shop-list">
                         ${Object.entries(shirts).filter(([id]) => shop || progress.owned.includes(id)).map(([id, item]) => {
@@ -1887,10 +1994,13 @@
                 progress.shirt = id;
                 updateProgressHud();
                 saveProgress();
-                renderShirtShop(shop);
+                renderShirtShop(shop, boutique);
                 toast(`${item.name} equipped.`);
             }));
-            document.getElementById('shop-back').addEventListener('click', () => openBuildingModal(shop ? 'retail' : 'crib'));
+            document.getElementById('shop-back').addEventListener('click', () => {
+                if (boutique) closeModal();
+                else openBuildingModal(shop ? 'retail' : 'crib');
+            });
             const editButton = document.getElementById('edit-appearance');
             if (editButton) editButton.addEventListener('click', () => openCreator(true));
         }
@@ -1978,6 +2088,8 @@
                     </div>`;
             } else if (type === 'subshop') {
                 openSubGame();
+            } else if (type === 'fashion') {
+                renderShirtShop(true, true);
             } else if (type === 'lemonade') {
                 openLemonadeGame();
             } else if (type === 'crib') {
@@ -2026,6 +2138,7 @@
         function closeModal() {
             sportsGame = null;
             lemonadeGame = null;
+            mapQuadrant = null;
             for (const k in keys) keys[k] = false;
             modalEl.classList.add('hidden');
         }
