@@ -25,6 +25,7 @@
         #interaction-btn { background: #059669; color: white; border: 0; border-radius: 6px; padding: 7px 14px; }
         #modal-overlay { position: absolute; inset: 0; z-index: 30; display: flex; justify-content: center; align-items: center; padding: 16px; background: rgba(0,0,0,.85); }
         #modal-overlay > div { position: relative; box-sizing: border-box; width: min(100%, 672px); max-height: 90%; overflow-y: auto; padding: 24px; background: #111827; border: 1px solid #a855f7; border-radius: 16px; }
+        #modal-overlay > div { touch-action: pan-y; }
         #modal-overlay .modal-close { position: absolute; top: 12px; right: 16px; color: white; background: transparent; border: 0; font-size: 24px; }
         .sports-game { color: #f8fafc; }
         .sports-game h2 { margin: 0 36px 8px 0; font-size: 24px; }
@@ -48,6 +49,11 @@
         .shop-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; background: #1f2937; border-radius: 8px; }
         .shop-row button { padding: 8px 12px; color: white; background: #5b21b6; border: 1px solid #c084fc; border-radius: 6px; }
         .shop-row button:disabled { opacity: .65; }
+        .book-card { padding: 12px; margin: 14px 0; background: #1f2937; border: 1px solid #475569; border-radius: 8px; }
+        .book-card h3 { margin: 0 0 8px; }
+        .book-lines { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; }
+        .book-lines button { text-align: left; font-size: 13px; }
+        #book-stake { width: 120px; max-width: 100%; padding: 8px; color: white; background: #111827; border: 1px solid #94a3b8; border-radius: 6px; }
         #world-map { position: static; display: block; width: min(100%, 360px); height: auto; margin: 12px auto; background: #17241f; border: 1px solid #718a7a; border-radius: 8px; }
         .map-legend { columns: 2; column-gap: 20px; padding-left: 0; list-style: none; font-size: 13px; }
         .map-legend li { break-inside: avoid; margin: 4px 0; }
@@ -151,6 +157,7 @@
         </div>
     </footer>
 
+    <script src="sportsbook.js"></script>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -271,7 +278,7 @@
                 lot: ['#29423c', '#304b42'], hoodie: '#AB0003', accent: '#ffffff',
                 identity: 'Waterfront, apartment neighborhoods and restaurants',
                 buildings: [
-                    { name: "Waterfront Sports Arena", x: 90, y: 170, w: 260, d: 170, h: 110, color: '#566b76', trim: '#d8b8a0', neon: '#ffffff', style: 'arena', type: 'sports' },
+                    { name: "Waterfront Sports Arena", x: 90, y: 170, w: 260, d: 170, h: 110, color: '#566b76', trim: '#d8b8a0', neon: '#ffffff', style: 'arena', type: 'arena' },
                     { name: "Nationals Park Fan Hub", x: 650, y: 240, w: 170, d: 110, h: 120, color: '#803e43', trim: '#e2c8a9', neon: '#bfdbfe', style: 'fanhub', type: 'sports' }
                 ],
                 cars: [{ x: 660, y: 380, w: 90, d: 40, color: '#0C2340', trim: '#AB0003' }]
@@ -427,6 +434,7 @@
             ['none', 'mustache', 'beard'].includes(features.facial);
         player.features = defaultFeatures('boy');
         const progress = { stars: 12, property: 1, owned: ['basic'], shirt: 'basic', ownedVehicles: ['bike'], vehicle: 'bike' };
+        let sportsbook = Sportsbook.initial();
         let saveEnabled = true, lastCarSave = 0;
         const saveWarning = document.getElementById('save-warning');
 
@@ -434,7 +442,7 @@
             if (!saveEnabled || !player.appearance) return;
             const data = {
                 version: 1, appearance: player.appearance, features: player.features, stars: progress.stars,
-                property: progress.property, owned: progress.owned, shirt: progress.shirt,
+                property: progress.property, owned: progress.owned, shirt: progress.shirt, sportsbook,
                 vehicle: { id: progress.vehicle, owned: progress.ownedVehicles, quadrant: driving.quadrant, x: ownCar.x, y: ownCar.y, heading: ownCar.heading || [1, 0] }
             };
             try {
@@ -462,6 +470,7 @@
                     ride.heading.every(Number.isFinite) ? Math.hypot(...ride.heading) : 0;
                 if (data.version !== 1 || !['boy', 'girl'].includes(data.appearance) ||
                     (data.features !== undefined && !validFeatures(data.features)) ||
+                    (data.sportsbook !== undefined && !Sportsbook.valid(data.sportsbook)) ||
                     !Number.isSafeInteger(data.stars) || data.stars < 0 ||
                     ![1, 2].includes(data.property) || !Array.isArray(data.owned) ||
                     !data.owned.includes('basic') || data.owned.some(id => !Object.hasOwn(shirts, id)) ||
@@ -501,6 +510,7 @@
                     }
                 }
                 player.appearance = data.appearance;
+                if (data.sportsbook !== undefined) sportsbook = data.sportsbook;
                 player.features = data.features === undefined ? defaultFeatures(data.appearance) : { ...data.features };
                 progress.stars = data.stars;
                 progress.property = data.property;
@@ -1241,7 +1251,7 @@
             } else if (b.style === 'fanhub') {
                 box(x + w * 0.42, y + d * 0.25, h, 20, 20, 24, b.trim, 'rgba(0,0,0,.4)');
             }
-            if (b.type === 'sports') {
+            if (b.type === 'sports' || b.type === 'arena') {
                 const base = P(x + w - 20, y + 20, h), top = P(x + w - 20, y + 20, h + 50);
                 ctx.beginPath(); ctx.moveTo(base[0], base[1]); ctx.lineTo(top[0], top[1]);
                 ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 2; ctx.stroke();
@@ -2103,16 +2113,22 @@
                         ${btn('🐕 Pet Companion', 'Pet Companion interaction!', c)}
                         ${btn('🏢 Upgrade Property Tier', 'Property upgraded to Tier 2 Navy Yard Loft!', c, 'upgrade')}
                     </div>`;
-            } else if (type === 'sports') {
+            } else if (type === 'sports' || type === 'arena') {
                 const c = 'bg-red-950/80 hover:bg-red-900 border border-red-500';
                 const sports = [['⚾ Baseball', 'Baseball'], ['🏒 Hockey', 'Hockey']];
                 content.innerHTML = `
-                    <h2 class="text-2xl font-black text-red-400 mb-2">🏟️ Waterfront Sports Park (Nationals)</h2>
+                    <h2 class="text-2xl font-black text-red-400 mb-2">🏟️ ${type === 'arena' ? 'Waterfront Sports Arena' : 'Nationals Park Fan Hub'}</h2>
                     <p class="text-gray-300 text-sm mb-4">Baseball and hockey are coming soon. Find outdoor football and basketball in NE, boxing and golf in SE, and soccer and tennis in NW.</p>
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        ${type === 'arena' ? `<button type="button" id="open-sportsbook" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🏈 Sportsbook Simulator</button>` : ''}
                         ${sports.map(([l, n]) => btn(l, `${n} is not available yet.`, c)).join('')}
                     </div>`;
             }
+            const sportsbookButton = document.getElementById('open-sportsbook');
+            if (sportsbookButton) sportsbookButton.addEventListener('click', () => {
+                toast('');
+                Sportsbook.render(content, sportsbook, saveProgress, () => openBuildingModal('arena'));
+            });
             const shopButton = document.getElementById('open-shirt-shop');
             if (shopButton) shopButton.addEventListener('click', () => { toast(''); renderShirtShop(true); });
             const wardrobeButton = document.getElementById('open-wardrobe');
