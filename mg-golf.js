@@ -5,7 +5,7 @@ Minigames.register('golf', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const BR = 7, FR = 2.2; // ball radius, friction
     const TOP = 70, BOT = 470;
-    const rank = (env.level || 1) - 1, allowance = [4, 2, 0, -1, -2][rank];
+    const rank = U.challenge(env.level), allowance = [4, 2, 0, -1, -2][Math.min(4, Math.floor(rank))];
 
     // hole: tee, cup, par, walls [x,y,w,h], sand/water [x,y,w,h], windmill {x,y}
     const HOLES = [

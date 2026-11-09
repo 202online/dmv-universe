@@ -3,7 +3,7 @@
 Minigames.register('basketball', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const START = { x: 180, y: 478 }, HOOP_Y = 196, IDEAL = 150;
-    const rank = (env.level || 1) - 1, target = 6 + rank * 2;
+    const rank = U.challenge(env.level), target = Math.min(18, 6 + Math.floor(rank) * 2);
     let time, points, baskets, streak, best, shots, ball, aim, hoopT, readyIn, lastLevel, swishes, fire;
 
     const level = () => 1 + rank + Math.floor(points / 8);

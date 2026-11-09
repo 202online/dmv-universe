@@ -4,7 +4,7 @@
 Minigames.register('tennis', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const WIN = 5, G = 4.2, NET_H = .12;
-    const rank = (env.level || 1) - 1;
+    const rank = U.challenge(env.level);
     const ys = v => U.lerp(505, 208, v);
     const hw = v => U.lerp(150, 88, v);
     const sc = v => U.lerp(1, .6, v);

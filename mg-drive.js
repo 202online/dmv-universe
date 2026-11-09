@@ -4,7 +4,7 @@
 Minigames.register('drive', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const RL = 40, RR = 320, CY = 415, STAGES = 3, ROW_GAP = 190;
-    const rank = (env.level || 1) - 1;
+    const rank = U.challenge(env.level);
     const WEAPONS = ['Exhaust Pops', 'Twin Cannons', 'Rocket Launchers', 'Plasma Lasers'];
     const BOSSES = [
         { name: 'CHIEF CRUISER', hp: 85, color: '#1e293b', kind: 'cop' },

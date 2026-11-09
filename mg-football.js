@@ -4,7 +4,7 @@
 Minigames.register('football', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const PXY = 24, PY = 420, L = 24, R = 336;
-    const rank = (env.level || 1) - 1, target = rank === 4 ? 2 : 1;
+    const rank = U.challenge(env.level), target = rank >= 4 ? 2 : 1;
     const DEF = {
         line: { w: 38, lat: 50, vy: 1.2, color: '#1e40af', name: 'LINEMAN' },
         lb: { w: 30, lat: 92, vy: 2.0, color: '#0f766e', name: 'LB' },
@@ -28,7 +28,7 @@ Minigames.register('football', env => {
         py = spot; px = 180; tx = 180; steer = null; phase = 'pre'; phaseT = 1.1; spinT = 0; spinCd = 0; boostT = 0;
         gainThisPlay = 0; tackler = null; speedNow = 6;
         defs = []; pads = [];
-        const n = Math.min(9 + rank, 4 + rank + Math.floor(spot / 20) + (drive - 1));
+        const n = Math.floor(Math.min(9 + rank, 4 + rank + Math.floor(spot / 20) + (drive - 1)));
         let y = spot + 6;
         for (let i = 0; i < n && y < 99; i++) {
             const r = Math.random();

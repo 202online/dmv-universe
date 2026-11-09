@@ -26,7 +26,7 @@ function harness(name, seed = 1, level = 1) {
     };
     const noop = () => {};
     const game = factory({
-        W: 360, H: 560, U: utils, level, difficulty: (level - 1) / 4, sfx: noop, buzz: noop, banner: noop,
+        W: 360, H: 560, U: utils, level, difficulty: U.challenge(level) / 4, sfx: noop, buzz: noop, banner: noop,
         fx: { burst: noop, text: noop, flash: noop, shake: noop },
         end(value) { result = value; awards++; },
         time: () => time, running: () => !result
@@ -89,15 +89,29 @@ for (const outcome of ['goal', 'save', 'wall', 'post', 'bar', 'over', 'wide']) {
     });
 }
 
-test('all ten games initialize and render every campaign level', () => {
+test('all ten games initialize and render early and very high campaign levels', () => {
     const Progression = require('./mg-progression.js');
     for (const name of Progression.games) {
-        for (let level = 1; level <= 5; level++) {
+        for (const level of [1, 2, 3, 4, 5, 6, 25, 100, 1000, 1000000]) {
             const h = harness(name, 1, level);
             assert.equal(typeof h.game.goal, 'string', `${name} clear goal`);
+            assert.doesNotMatch(h.game.goal, /NaN|undefined|Infinity/);
+            if (name === 'basketball') assert.ok(h.game._state().time >= 29);
+            if (name === 'pool') assert.ok(h.game._state().shots >= 8);
             for (let frame = 0; frame < 60; frame++) h.step();
         }
     }
+});
+
+test('difficulty continues after five with diminishing growth and safe limits', () => {
+    assert.equal(U.challenge(1), 0);
+    assert.equal(U.challenge(5), 4);
+    for (const level of [6, 10, 25, 50, 100, 200, 1000, 1000000]) {
+        assert.ok(U.challenge(level) > U.challenge(level - 1));
+        assert.ok(U.challenge(level) < 8);
+    }
+    assert.ok(U.challenge(100) - U.challenge(99) < U.challenge(6) - U.challenge(5));
+    assert.ok(Number.isFinite(U.challenge(1000000)));
 });
 
 test('level targets and opponent pressure increase rather than only the label', () => {

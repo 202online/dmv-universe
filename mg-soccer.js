@@ -4,7 +4,7 @@
 Minigames.register('soccer', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const KICKS = 6, GOAL_HW = 100, BAR_PX = 62, GY = 222, BY = 478, CX = 180;
-    const rank = (env.level || 1) - 1, target = 3 + Math.floor(rank / 2);
+    const rank = U.challenge(env.level), target = Math.min(5, 3 + Math.floor(rank / 2));
     const persp = t => U.lerp(2.35, 1, t);
     const gy = t => U.lerp(BY, GY, t);
     const sx = (X, t) => CX + X * GOAL_HW * persp(t);

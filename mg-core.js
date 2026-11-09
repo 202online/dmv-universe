@@ -58,6 +58,9 @@ const Minigames = (() => {
     // ---------- Drawing helpers shared by every sport ----------
     const U = {
         clamp, lerp, rand, pick, ease, hash,
+        challenge(level = 1) {
+            return level <= 5 ? level - 1 : 4 + 4 * ((level - 5) / (level + 25));
+        },
         rr(c, x, y, w, h, r) { c.beginPath(); c.roundRect(x, y, w, h, r); },
         text(c, str, x, y, o = {}) {
             c.save();
@@ -197,16 +200,21 @@ const Minigames = (() => {
         if (!factory) return false;
         const campaign = api.campaign ? api.campaign.info() : null;
         const level = campaign ? selectedLevel === undefined ? campaign.unlocked : selectedLevel : 1;
-        if (!Number.isInteger(level) || level < 1 || (campaign && level > campaign.unlocked)) {
+        if (!Number.isSafeInteger(level) || level < 1 || (campaign && level > campaign.unlocked)) {
             throw new Error('Level is locked');
         }
+        const first = Math.max(1, Math.min(level - 2, campaign ? campaign.unlocked - 4 : 1));
+        const levels = Array.from({ length: 5 }, (_, i) => first + i);
         host.innerHTML = `
             <div class="mg-wrap">
                 <div class="mg-title" id="mg-title"></div>
                 ${campaign ? `<div class="mg-levels" role="group" aria-label="Choose level">
-                    ${campaign.rewards.map((reward, i) => `<button type="button" data-level="${i + 1}"
-                        aria-pressed="${level === i + 1}" ${i + 1 > campaign.unlocked ? 'disabled' : ''}>
-                        ${i + 1}${i < campaign.cleared ? ' ✓' : i + 1 > campaign.unlocked ? ' 🔒' : ''}</button>`).join('')}
+                    ${levels.map(n => `<button type="button" data-level="${n}"
+                        aria-pressed="${level === n}" ${n > campaign.unlocked ? 'disabled' : ''}>
+                        ${n}${n <= campaign.cleared ? ' ✓' : n > campaign.unlocked ? ' 🔒' : ''}</button>`).join('')}
+                </div><div class="mg-level-nav">
+                    <button type="button" id="mg-prev" ${level <= 1 ? 'disabled' : ''}>Previous</button>
+                    <button type="button" id="mg-current">Latest unlocked: ${campaign.unlocked}</button>
                 </div><div class="mg-campaign-info" id="mg-campaign-info"></div>` : ''}
                 <canvas class="mg-canvas" id="mg-canvas" role="img"></canvas>
                 <div class="mg-bar">
@@ -221,15 +229,17 @@ const Minigames = (() => {
             parts: [], texts: [], banners: [], shakeM: 0, shakeT: 0, flashC: null, flashT: 0,
             pointers: new Map(), result: null, raf: 0, game: null, level
         };
-        const env = { W, H, U, sfx, buzz, level, difficulty: (level - 1) / 4,
+        const env = { W, H, U, sfx, buzz, level, difficulty: U.challenge(level) / 4,
             time: () => S.t, fx, banner, end, phase: () => S.phase, running: () => S.phase === 'play' };
         S.game = factory(env);
         if (S.game.init) S.game.init();
-        host.querySelector('#mg-title').textContent = S.game.title + (campaign ? ` · Level ${level}/5` : '');
+        host.querySelector('#mg-title').textContent = S.game.title + (campaign ? ` · Level ${level}` : '');
         if (campaign) {
             updateCampaign();
             host.querySelectorAll('[data-level]').forEach(button => button.addEventListener('click', () =>
                 open(name, host, api, Number(button.dataset.level))));
+            host.querySelector('#mg-prev').addEventListener('click', () => open(name, host, api, level - 1));
+            host.querySelector('#mg-current').addEventListener('click', () => open(name, host, api));
         }
         canvas.setAttribute('aria-label', S.game.title + ' play area. Touch gestures control the game.');
         if (api.overlay) api.overlay.classList.add('mg-mode');
@@ -250,9 +260,10 @@ const Minigames = (() => {
 
     function updateCampaign() {
         const status = S.api.campaign.info(), level = S.level;
-        const reward = level > status.cleared ? `First win: ${status.rewards[level - 1]} stars` : 'Cleared level: practice only (0 stars)';
+        const reward = level > status.cleared ? `First win: ${status.reward} stars` : 'Cleared level: practice only (0 stars)';
         S.host.querySelector('#mg-campaign-info').textContent =
             `${S.game.goal} · ${reward}. Stars are earned once per level. Losses: 0.`;
+        S.host.querySelector('#mg-current').textContent = `Latest unlocked: ${status.unlocked}`;
         S.host.querySelectorAll('[data-level]').forEach(button => {
             const n = Number(button.dataset.level);
             button.disabled = n > status.unlocked;
@@ -323,7 +334,7 @@ const Minigames = (() => {
             result = { ...result, stars: payout.stars, rewardMessage: payout.message };
             updateCampaign();
             const next = S.host.querySelector('#mg-next');
-            next.hidden = !(result.win && S.level < 5);
+            next.hidden = !result.win;
             S.host.querySelector('#mg-again').textContent = result.win ? 'Replay' : 'Retry level';
         }
         S.result = result;

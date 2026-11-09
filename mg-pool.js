@@ -3,8 +3,8 @@
 // Rack 'Em DMV: pull back from the cue ball and release to shoot. Pot all 9 balls before your shots run out.
 Minigames.register('pool', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
-    const rank = (env.level || 1) - 1;
-    const L = 52, R = 308, T = 104, B = 466, BR = 9, SHOTS = 14 - rank;
+    const rank = U.challenge(env.level);
+    const L = 52, R = 308, T = 104, B = 466, BR = 9, SHOTS = Math.max(8, 14 - Math.floor(rank));
     const POCKETS = [[L, T], [R, T], [L, (T + B) / 2], [R, (T + B) / 2], [L, B], [R, B]];
     const COLORS = ['#fbbf24', '#3b82f6', '#ef4444', '#8b5cf6', '#f97316', '#10b981', '#991b1b', '#111827', '#e879f9'];
 
@@ -71,7 +71,7 @@ Minigames.register('pool', env => {
             if (sp0 > 0) { b.vx *= sp / sp0; b.vy *= sp / sp0; }
             b.x += b.vx * dt; b.y += b.vy * dt;
             for (const [px, py] of POCKETS) {
-                if (Math.hypot(b.x - px, b.y - py) < 15) { pot(b); break; }
+                if (Math.hypot(b.x - px, b.y - py) < 15 - Math.max(0, rank - 4) * .5) { pot(b); break; }
             }
             if (b.dead) continue;
             if (b.x < L + BR) { b.x = L + BR; b.vx = Math.abs(b.vx) * .82; if (sp > 60) sfx('thud'); }

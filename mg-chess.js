@@ -6,7 +6,7 @@ Minigames.register('chess', env => {
     const SQ = 42, BX = (360 - SQ * 8) / 2, BY = 92;
     const GLYPH = { wK: '♔', wQ: '♕', wR: '♖', wB: '♗', wN: '♘', wP: '♙', bK: '♚', bQ: '♛', bR: '♜', bB: '♝', bN: '♞', bP: '♟' };
     const VAL = { P: 100, N: 310, B: 330, R: 500, Q: 900, K: 0 };
-    const rank = (env.level || 1) - 1, noise = [180, 100, 50, 20, 0][rank];
+    const rank = U.challenge(env.level), noise = 180 * Math.exp(-rank * .65);
 
     let bd, turn, sel, legal, castle, ep, thinking, thinkT, lastMove, over, moveN, capsW, capsB, checkFlash, msg, msgT;
 

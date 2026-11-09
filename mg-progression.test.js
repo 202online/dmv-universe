@@ -19,11 +19,11 @@ test('all games begin at level one and locked levels cannot pay or unlock', () =
 
 test('first clears pay exactly once, increase rewards and unlock only the next level', () => {
     const state = Campaign.initial();
-    for (let level = 1; level <= 5; level++) {
+    for (let level = 1; level <= 100; level++) {
         const clear = Campaign.settle(state, 'soccer', level, true, TODAY);
-        assert.equal(clear.stars, Campaign.rewards[level - 1]);
-        assert.equal(clear.unlocked, level < 5);
-        assert.equal(Campaign.info(state, 'soccer', TODAY).unlocked, Math.min(5, level + 1));
+        assert.equal(clear.stars, Campaign.reward(level));
+        assert.equal(clear.unlocked, true);
+        assert.equal(Campaign.info(state, 'soccer', TODAY).unlocked, level + 1);
         assert.equal(Campaign.settle(state, 'soccer', level, true, TODAY).stars, 0);
         assert.equal(state.cleared.soccer, level);
     }
@@ -70,7 +70,7 @@ test('legacy saves keep unlocks without requiring or using old replay counters',
     assert.deepEqual(loaded.replay, state.replay);
 });
 
-test('finite campaign payouts total 36 per game and 360 across all games', () => {
+test('early levels pay 36 per game and later rewards stay capped at 12', () => {
     const state = Campaign.initial();
     let total = 0;
     for (const name of Campaign.games) {
@@ -78,15 +78,32 @@ test('finite campaign payouts total 36 per game and 360 across all games', () =>
         for (let level = 1; level <= 5; level++) earned += Campaign.settle(state, name, level, true, TODAY).stars;
         assert.equal(earned, 36);
         total += earned;
+        for (let level = 6; level <= 100; level++) {
+            assert.equal(Campaign.settle(state, name, level, true).stars, 12);
+            assert.equal(Campaign.settle(state, name, level, true).stars, 0);
+        }
     }
     assert.equal(total, 360);
 });
 
 test('invalid saved progression is rejected', () => {
     for (const value of [null, {}, { cleared: {}, replay: {} }]) assert.equal(Campaign.valid(value), false);
-    for (const n of [-1, 6, 1.5, '2', null]) {
+    for (const n of [-1, Number.MAX_SAFE_INTEGER, Infinity, 1.5, '2', null]) {
         const state = Campaign.initial();
         state.cleared.tennis = n;
         assert.equal(Campaign.valid(state), false);
+    }
+});
+
+test('old level-five campaigns resume at six and high-level saves retain exact unlocks', () => {
+    const state = Campaign.initial();
+    for (const cleared of [5, 1000, 1000000]) {
+        state.cleared.tennis = cleared;
+        const loaded = JSON.parse(JSON.stringify(state));
+        assert.ok(Campaign.valid(loaded));
+        assert.equal(Campaign.info(loaded, 'tennis').unlocked, cleared + 1);
+        assert.equal(Campaign.settle(loaded, 'tennis', cleared, true).stars, 0);
+        assert.equal(Campaign.settle(loaded, 'tennis', cleared + 1, true).stars, 12);
+        assert.throws(() => Campaign.settle(loaded, 'tennis', cleared + 3, true), /locked/);
     }
 });

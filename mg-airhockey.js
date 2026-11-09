@@ -4,7 +4,7 @@
 Minigames.register('airhockey', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const L = 36, R = 324, T = 86, B = 514, MID = (T + B) / 2, GW = 110, PR = 13, MR = 26, WIN = 5;
-    const rank = (env.level || 1) - 1;
+    const rank = U.challenge(env.level);
 
     let me, cpu, puck, pm, om, holdId, serveT, goalT, rallyV, ptX, ptY;
 
@@ -76,7 +76,7 @@ Minigames.register('airhockey', env => {
         if (puck.y < MID + 40 && puck.vy < 200) {
             gx = puck.x; gy = Math.min(puck.y - 6, MID - 34);
             if (puck.y < T + 150 && Math.abs(puck.x - om.x) < 50) gy = puck.y + 4; // attack push
-        } else { gx = U.lerp(180, puck.x, .35 + rank * .1); }
+        } else { gx = U.lerp(180, puck.x, Math.min(.95, .35 + rank * .1)); }
         const odx = gx - om.x, ody = gy - om.y, od = Math.hypot(odx, ody) || 1;
         const step = Math.min(od, spd);
         om.vx = odx / od * step / Math.max(dt, .001); om.vy = ody / od * step / Math.max(dt, .001);

@@ -38,6 +38,11 @@
         .mg-levels button { min-width: 46px; min-height: 44px; border: 1px solid #a855f7; border-radius: 8px; background: #281340; color: #fff; font-weight: 800; }
         .mg-levels button[aria-pressed="true"] { background: #6d28d9; border-color: #fde047; }
         .mg-levels button:disabled { opacity: .4; }
+        .mg-level-nav { display: flex; gap: 8px; }
+        .mg-level-nav button { min-height: 44px; border: 1px solid #7c3aed; border-radius: 6px; background: #281340; color: #fff; padding: 4px 8px; font-size: 11px; }
+        .mg-level-nav button:disabled { opacity: .4; }
+        .mg-levels { max-width: 100%; }
+        .mg-levels button { min-width: 0; width: 48px; padding: 2px; font-size: 12px; overflow-wrap: anywhere; }
         .mg-campaign-info { max-width: 360px; font-size: 11px; line-height: 1.4; color: #cbd5e1; text-align: center; }
         #modal-overlay.mg-mode .modal-close { top: 6px; right: 10px; }
         #modal-overlay .modal-close { position: absolute; top: 12px; right: 16px; color: white; background: transparent; border: 0; font-size: 24px; }
@@ -458,10 +463,10 @@
         const keys = { up: false, down: false, left: false, right: false };
         const vehicles = {
             bike: { name: 'Bicycle', price: 0, speed: 1.2, w: 52, d: 16, color: '#38bdf8', trim: '#f8fafc', kind: 'bike' },
-            scooter: { name: 'Electric scooter', price: 15, speed: 1.4, w: 48, d: 16, color: '#a855f7', trim: '#e5e7eb', kind: 'scooter' },
-            ebike: { name: 'Electric bike', price: 30, speed: 1.6, w: 54, d: 18, color: '#10b981', trim: '#f8fafc', kind: 'ebike' },
-            impala: { name: "'96 Impala SS", price: 60, speed: 1.8, w: 96, d: 42, color: '#5A1414', trim: '#FFB612', kind: 'car' },
-            truck: { name: 'Pickup truck', price: 90, speed: 1.8, w: 108, d: 46, color: '#475569', trim: '#e2e8f0', kind: 'truck' }
+            scooter: { name: 'Electric scooter', price: 60, speed: 1.4, w: 48, d: 16, color: '#a855f7', trim: '#e5e7eb', kind: 'scooter' },
+            ebike: { name: 'Electric bike', price: 180, speed: 1.6, w: 54, d: 18, color: '#10b981', trim: '#f8fafc', kind: 'ebike' },
+            impala: { name: "'96 Impala SS", price: 720, speed: 1.8, w: 96, d: 42, color: '#5A1414', trim: '#FFB612', kind: 'car' },
+            truck: { name: 'Pickup truck', price: 1440, speed: 1.8, w: 108, d: 46, color: '#475569', trim: '#e2e8f0', kind: 'truck' }
         };
         const ownCar = { ...vehicles.bike, x: 535, y: 500, ownRide: true };
         quadrants.NW.cars.push(ownCar);

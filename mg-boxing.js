@@ -9,7 +9,7 @@ Minigames.register('boxing', env => {
         { name: 'KO KING OF SE', hp: 115, tel: .5, rest: .85, dmg: 18, skin: '#c68642', trunks: '#dc2626', combo: 3 }
     ];
     const MAXHP = 100, DAZE = 2.6;
-    const rank = (env.level || 1) - 1;
+    const rank = U.challenge(env.level);
 
     let fi, foe, hp, fhp, state, stT, side, dodge, dodgeT, punchT, punchSide, daze, round, kos, hits, taken, stun, roundBanner, comboLeft, swayT;
 
@@ -18,7 +18,7 @@ Minigames.register('boxing', env => {
     function newFoe() {
         const base = FOES[fi];
         foe = { ...base, hp: Math.round(base.hp * (1 + rank * .12)),
-            tel: base.tel * Math.pow(.9, rank), rest: base.rest * Math.pow(.9, rank), dmg: base.dmg + rank * 2 };
+            tel: Math.max(.3, base.tel * Math.pow(.9, rank)), rest: base.rest * Math.pow(.9, rank), dmg: Math.round(base.dmg + rank * 2) };
         fhp = foe.hp; daze = 0; stun = 0;
         state = 'idle'; stT = U.rand(.8, 1.4); side = 0; comboLeft = 0;
         dodge = 0; dodgeT = 0; punchT = 0; swayT = 0;

@@ -85,6 +85,21 @@ test('engine settles each round once, saves unlocks and balance together, and pr
         assert.equal(balance, 20);
         Minigames.open('soccer', host, api);
         assert.equal(seenLevel, 3, 'returning opens the latest unlocked level');
+        state.cleared.soccer = 1000;
+        Minigames.open('soccer', host, api);
+        assert.equal(seenLevel, 1001);
+        assert.equal(host.querySelectorAll().length, 5, 'level picker remains constant size');
+        assert.equal(host.querySelectorAll()[4].dataset.level, '1001');
+        assert.match(host.querySelector('#mg-campaign-info').textContent, /12 stars/);
+        finish({ win: true, head: 'Win', lines: [], stars: 9999 });
+        assert.equal(balance, 32);
+        assert.equal(host.querySelector('#mg-next').hidden, false);
+        host.querySelector('#mg-next').click();
+        assert.equal(seenLevel, 1002);
+        host.querySelector('#mg-prev').click();
+        assert.equal(seenLevel, 1001);
+        host.querySelector('#mg-current').click();
+        assert.equal(seenLevel, 1002);
     } finally {
         Minigames.stop();
     }
