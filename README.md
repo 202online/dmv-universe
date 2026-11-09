@@ -46,6 +46,25 @@ This is a local, client-side economy, not a tamper-proof online wallet. Clearing
 browser storage resets progress; editing saves or the device clock cannot be
 securely prevented without server-side accounts and reward validation.
 
+## Betting Practice Lab
+
+Open an arena’s **Betting Practice Lab** to learn with a separate 1,000-credit
+practice balance. No real money, deposits, prizes or conversion to city stars.
+Matchups and prices are fixed examples; scores are simulated, not live data.
+
+The mobile-friendly Practice screen walks through matchup, market and bet slip.
+Moneyline, spread, totals and player props explain what needs to happen. The
+slip separates stake, net profit, total return, full loss risk and price-implied
+probability. Select one pick per game; two games make a parlay, while independent
+singles can be placed separately. Stakes remain entered when switching screens.
+
+**Learn basics** includes a guided example (no automatic spending), odds and
+settlement lessons, real-app rule differences and short knowledge checks.
+**Tickets** shows pending stakes, simulated scores and numerical explanations of
+wins, losses and pushes. Existing simulator balances and tickets are retained.
+Resetting practice data does not affect city progress. Practice results are not
+betting advice or evidence of real-money profitability.
+
 ## Local development
 
 Serve this directory with `python3 -m http.server 8766 --bind 127.0.0.1`.

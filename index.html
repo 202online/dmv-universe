@@ -71,9 +71,41 @@
         .shop-row button:disabled { opacity: .65; }
         .book-card { padding: 12px; margin: 14px 0; background: #1f2937; border: 1px solid #475569; border-radius: 8px; }
         .book-card h3 { margin: 0 0 8px; }
-        .book-lines { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; }
-        .book-lines button { text-align: left; font-size: 13px; }
-        #book-stake { width: 120px; max-width: 100%; padding: 8px; color: white; background: #111827; border: 1px solid #94a3b8; border-radius: 6px; }
+        body:has(#modal-overlay:not(.hidden) .sportsbook) { touch-action: pan-y; }
+        .sportsbook { font-size: 14px; line-height: 1.55; }
+        .sportsbook h3 { font-size: 17px; font-weight: 800; }
+        .sportsbook button, .sportsbook summary { min-height: 44px; box-sizing: border-box; }
+        .sportsbook button { background: #17233a; border-color: #64748b; font-size: 13px; }
+        .sportsbook button:focus-visible, .sportsbook input:focus-visible, .sportsbook summary:focus-visible { outline: 3px solid #fcd34d; outline-offset: 3px; }
+        .sportsbook small { display: block; font-size: 12px; font-weight: 500; color: #cbd5e1; }
+        .sportsbook .book-primary { width: 100%; background: #065f46; border-color: #6ee7b7; }
+        .book-bankroll { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px; border-radius: 10px; background: #0f172a; color: #cbd5e1; font-size: 12px; }
+        .book-bankroll strong { display: block; font-size: 20px; color: #a7f3d0; overflow-wrap: anywhere; }
+        .book-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 16px 0 8px; }
+        .book-tabs button { padding: 8px 4px; }
+        .book-switch, .book-markets, .book-lines { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+        .book-switch button, .book-markets button, .book-lines button { min-width: 0; padding: 10px; text-align: left; overflow-wrap: anywhere; }
+        .book-lines button strong { display: block; font-size: 22px; color: #a7f3d0; }
+        .book-step { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; margin-right: 5px; background: #6d28d9; border-radius: 50%; font-size: 13px; }
+        .book-muted { color: #cbd5e1; font-size: 12px; }
+        .book-explainer { padding: 10px; border-left: 3px solid #a78bfa; background: #151d30; }
+        .book-warning { color: #fde68a; }
+        .book-selection { padding: 12px 0; border-top: 1px solid #64748b; overflow-wrap: anywhere; }
+        .book-slip { border-color: #6ee7b7; }
+        .book-slip label { display: block; margin-top: 12px; font-weight: 700; }
+        .book-breakdown dl { margin: 12px 0; }
+        .book-breakdown dl div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid #475569; }
+        .book-breakdown dd { margin: 0; text-align: right; font-weight: 800; overflow-wrap: anywhere; }
+        .sportsbook details { padding: 8px 0; border-top: 1px solid #475569; }
+        .sportsbook summary { padding: 10px 0; cursor: pointer; font-weight: 700; }
+        .book-quiz { display: grid; gap: 8px; }
+        #book-stake { box-sizing: border-box; width: 100%; min-height: 48px; margin-top: 6px; padding: 10px; font-size: 16px; color: white; background: #111827; border: 1px solid #94a3b8; border-radius: 6px; }
+        #book-stake[aria-invalid="true"] { border-color: #fbbf24; }
+        @media (max-width: 380px) {
+            #modal-overlay:has(.sportsbook) { padding: 8px; }
+            #modal-overlay:has(.sportsbook) > div { padding: 16px 12px; }
+            .book-lines, .book-switch { grid-template-columns: minmax(0, 1fr); }
+        }
         #world-map { position: static; display: block; width: min(100%, 360px); height: auto; margin: 12px auto; background: #17241f; border: 1px solid #718a7a; border-radius: 8px; }
         .map-legend { columns: 2; column-gap: 20px; padding-left: 0; list-style: none; font-size: 13px; }
         .map-legend li { break-inside: avoid; margin: 4px 0; }
@@ -2438,7 +2470,7 @@
                     <h2 class="text-2xl font-black text-red-400 mb-2">🏟️ ${type === 'arena' ? 'Waterfront Sports Arena' : 'Nationals Park Fan Hub'}</h2>
                     <p class="text-gray-300 text-sm mb-4">Baseball and hockey are coming soon. Find outdoor football and basketball in NE, boxing and golf in SE, and soccer and tennis in NW.</p>
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        ${type === 'arena' ? `<button type="button" id="open-sportsbook" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🏈 Sportsbook Simulator</button>` : ''}
+                        ${type === 'arena' ? `<button type="button" id="open-sportsbook" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🏈 Betting Practice Lab — learn with play credits</button>` : ''}
                         ${sports.map(([l, n]) => btn(l, `${n} is not available yet.`, c)).join('')}
                     </div>`;
             }
