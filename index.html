@@ -271,56 +271,54 @@
         const neighborhoods = {
             NW: {
                 buildings: [
-                    { x: 80, y: -20, w: 105, d: 80, h: 78, kind: 'house', color: '#b9977d', trim: '#ead9bc' },
-                    { x: 215, y: -20, w: 115, d: 80, h: 90, kind: 'house', color: '#958d83', trim: '#e5d7be' },
+                    { x: 140, y: -120, w: 105, d: 80, h: 78, kind: 'house', color: '#b9977d', trim: '#ead9bc' },
+                    { x: 270, y: -120, w: 115, d: 80, h: 90, kind: 'house', color: '#958d83', trim: '#e5d7be' },
                     { x: 585, y: 40, w: 80, d: 100, h: 155, kind: 'condo', color: '#a99d8d', trim: '#d9c6a9' },
                     { x: 885, y: 225, w: 85, d: 100, h: 125, kind: 'apartment', color: '#8f7264', trim: '#d4baa0' }
                 ],
-                streets: [{ x: 40, y: 90, w: 460, d: 50 }],
-                parks: [{ x: 690, y: 20, w: 280, d: 175, creek: true }, { x: 70, y: 555, w: 250, d: 80 }]
+                streets: [{ x: 130, y: 0, w: 320, d: 50, junction: 'right' }],
+                creek: { x: 690, y: 20, w: 280, d: 175 }
             },
             NE: {
                 buildings: [
-                    { x: 65, y: -20, w: 100, d: 80, h: 78, kind: 'house', color: '#aa8266', trim: '#dec09b' },
-                    { x: 195, y: -20, w: 100, d: 80, h: 80, kind: 'house', color: '#a4917c', trim: '#e5d1b3' },
-                    { x: 320, y: -20, w: 100, d: 80, h: 125, kind: 'condo', color: '#907f75', trim: '#d6baa1' },
+                    { x: 130, y: -120, w: 100, d: 80, h: 78, kind: 'house', color: '#aa8266', trim: '#dec09b' },
+                    { x: 250, y: -120, w: 100, d: 80, h: 80, kind: 'house', color: '#a4917c', trim: '#e5d1b3' },
+                    { x: 370, y: -120, w: 100, d: 80, h: 125, kind: 'condo', color: '#907f75', trim: '#d6baa1' },
                     { x: 635, y: 50, w: 95, d: 100, h: 70, kind: 'shop', color: '#a6664e', trim: '#f0ce99' },
                     { x: 745, y: 50, w: 95, d: 100, h: 70, kind: 'shop', color: '#50777a', trim: '#d9c5a6' },
                     { x: 855, y: 50, w: 100, d: 100, h: 75, kind: 'shop', color: '#967448', trim: '#f0d7a8' }
                 ],
-                streets: [{ x: 40, y: 90, w: 460, d: 50 }],
-                parks: [{ x: 80, y: 555, w: 230, d: 80 }]
+                streets: [{ x: 130, y: 0, w: 320, d: 50, junction: 'right' }]
             },
             SE: {
                 buildings: [
-                    { x: 55, y: -20, w: 100, d: 80, h: 140, kind: 'apartment', color: '#865b4b', trim: '#cba68d' },
-                    { x: 175, y: -20, w: 105, d: 80, h: 130, kind: 'apartment', color: '#9a7160', trim: '#d5b095' },
-                    { x: 305, y: -20, w: 100, d: 80, h: 72, kind: 'house', color: '#9c806c', trim: '#d8bba2' },
-                    { x: 635, y: -20, w: 105, d: 80, h: 70, kind: 'house', color: '#a5846f', trim: '#d8c1a8' },
-                    { x: 755, y: -20, w: 100, d: 80, h: 75, kind: 'house', color: '#87736a', trim: '#d1b8a0' },
+                    { x: 130, y: -120, w: 100, d: 80, h: 140, kind: 'apartment', color: '#865b4b', trim: '#cba68d' },
+                    { x: 250, y: -120, w: 105, d: 80, h: 130, kind: 'apartment', color: '#9a7160', trim: '#d5b095' },
+                    { x: 375, y: -120, w: 100, d: 80, h: 72, kind: 'house', color: '#9c806c', trim: '#d8bba2' },
+                    { x: 635, y: -120, w: 105, d: 80, h: 70, kind: 'house', color: '#a5846f', trim: '#d8c1a8' },
+                    { x: 755, y: -120, w: 100, d: 80, h: 75, kind: 'house', color: '#87736a', trim: '#d1b8a0' },
                     { x: 870, y: 50, w: 100, d: 100, h: 70, kind: 'shop', color: '#805c4b', trim: '#d0aa81' },
                     { x: 655, y: 220, w: 145, d: 120, h: 135, kind: 'apartment', color: '#957060', trim: '#d5b5a0' }
                 ],
-                streets: [{ x: 40, y: 90, w: 460, d: 50 }, { x: 500, y: 90, w: 355, d: 50 }],
-                parks: [{ x: 670, y: 555, w: 200, d: 80 }]
+                streets: [{ x: 130, y: 0, w: 320, d: 50, junction: 'right' }, { x: 550, y: 0, w: 320, d: 50, junction: 'left' }]
             },
             SW: {
                 buildings: [
-                    { x: 60, y: -20, w: 105, d: 80, h: 145, kind: 'apartment', color: '#a4826f', trim: '#dcc3a9' },
-                    { x: 185, y: -20, w: 105, d: 80, h: 135, kind: 'apartment', color: '#9a7f73', trim: '#dcc4ac' },
-                    { x: 310, y: -20, w: 105, d: 80, h: 80, kind: 'house', color: '#b19982', trim: '#e8d6ba' },
-                    { x: 635, y: -20, w: 105, d: 80, h: 80, kind: 'house', color: '#a9927f', trim: '#e2c8a9' },
-                    { x: 755, y: -20, w: 100, d: 80, h: 125, kind: 'condo', color: '#a39082', trim: '#e0cab2' },
+                    { x: 130, y: -120, w: 105, d: 80, h: 145, kind: 'apartment', color: '#a4826f', trim: '#dcc3a9' },
+                    { x: 255, y: -120, w: 105, d: 80, h: 135, kind: 'apartment', color: '#9a7f73', trim: '#dcc4ac' },
+                    { x: 380, y: -120, w: 105, d: 80, h: 80, kind: 'house', color: '#b19982', trim: '#e8d6ba' },
+                    { x: 635, y: -120, w: 105, d: 80, h: 80, kind: 'house', color: '#a9927f', trim: '#e2c8a9' },
+                    { x: 755, y: -120, w: 100, d: 80, h: 125, kind: 'condo', color: '#a39082', trim: '#e0cab2' },
                     { x: 870, y: 45, w: 100, d: 100, h: 75, kind: 'shop', color: '#8b7664', trim: '#ddc29d' }
                 ],
-                streets: [{ x: 40, y: 90, w: 460, d: 50 }, { x: 500, y: 90, w: 355, d: 50 }],
-                parks: [{ x: 80, y: 555, w: 220, d: 80 }, { x: 680, y: 555, w: 200, d: 80 }]
+                streets: [{ x: 130, y: 0, w: 320, d: 50, junction: 'right' }, { x: 550, y: 0, w: 320, d: 50, junction: 'left' }]
             }
         };
         for (const [id, q] of Object.entries(quadrants)) {
             q.activities = q.activities || [];
             q.neighborhood = neighborhoods[id];
             q.trees = commonTrees
+                .filter(([x, y]) => y >= 160 || (id === 'NW' && [60, 560, 900].includes(x)) || (id === 'NE' && x === 560))
                 .filter(([x, y]) => !q.activities.some(a => x >= a.x - 20 && x <= a.x + a.w + 20 && y >= a.y - 20 && y <= a.y + a.d + 20))
                 .filter(([x, y]) => !q.neighborhood.buildings.some(b => x >= b.x - 10 && x <= b.x + b.w + 10 && y >= b.y - 10 && y <= b.y + b.d + 10))
                 .filter(([x, y]) => !q.neighborhood.streets.some(s => x >= s.x - 10 && x <= s.x + s.w + 10 && y >= s.y - 10 && y <= s.y + s.d + 10))
@@ -856,15 +854,18 @@
             q.neighborhood.streets.forEach(street => {
                 q.neighborhood.buildings.filter(b =>
                     b.kind !== 'shop' && b.x + b.w / 2 >= street.x && b.x + b.w / 2 <= street.x + street.w &&
-                    b.y + b.d < street.y && street.y - (b.y + b.d) <= 35
+                    b.y + b.d < street.y && street.y - (b.y + b.d) <= 50
                 ).forEach(b => {
                     const yardDepth = street.y - (b.y + b.d);
                     groundRect(b.x, b.y + b.d, b.w, yardDepth, '#466c45');
                     groundRect(b.x + b.w / 2 - 4, b.y + b.d, 8, yardDepth, '#b7aa97');
                 });
-                groundRect(street.x, street.y - 5, street.w, street.d + 10, '#9a9691');
+                const curbStart = street.x + (street.junction === 'left' ? 25 : 0);
+                groundRect(curbStart, street.y - 5, street.w - 25, street.d + 10, '#9a9691');
                 groundRect(street.x, street.y, street.w, street.d, '#3c3e43');
                 for (let x = street.x + 15; x + 24 < street.x + street.w; x += 50) {
+                    if ((street.junction === 'right' && x + 24 > street.x + street.w - 35) ||
+                        (street.junction === 'left' && x < street.x + 35)) continue;
                     groundRect(x, street.y + street.d / 2 - 1, 24, 2, '#c9bd9e');
                 }
             });
@@ -874,22 +875,13 @@
                 groundRect(x - 6, y - 1, 12, 2, '#8a6c5e');
                 groundRect(x - 1, y - 6, 2, 12, '#8a6c5e');
             });
-            q.neighborhood.parks.forEach(park => {
-                const { x, y, w, d } = park;
-                groundRect(x, y, w, d, '#426b43', '#6c8158', 2);
-                groundRect(x + 8, y + d * 0.46, w - 16, 8, '#b8a78c');
-                if (park.creek) {
-                    poly([P(x + 55, y), P(x + 100, y), P(x + 165, y + d), P(x + 120, y + d)], '#497b80');
-                    poly([P(x + 63, y), P(x + 70, y), P(x + 135, y + d), P(x + 128, y + d)], 'rgba(195,225,209,.35)');
-                    groundRect(x + 93, y + d * 0.43, 74, 20, '#a98b68', '#6d5443');
-                    for (let i = 1; i < 6; i++) groundRect(x + 93 + i * 12, y + d * 0.43, 1, 20, '#765c46');
-                }
-                for (const [bx, by] of [[x + 25, y + 15], [x + w - 34, y + d - 22]]) {
-                    groundRect(bx, by, 18, 5, '#70503d', '#d2ad79');
-                    groundRect(bx + 2, by + 5, 2, 3, '#49352b');
-                    groundRect(bx + 14, by + 5, 2, 3, '#49352b');
-                }
-            });
+            if (q.neighborhood.creek) {
+                const { x, y, d } = q.neighborhood.creek;
+                poly([P(x + 55, y), P(x + 100, y), P(x + 118, y + d * 0.5),
+                    P(x + 165, y + d), P(x + 120, y + d), P(x + 78, y + d * 0.5)], '#497b80');
+                poly([P(x + 63, y), P(x + 70, y), P(x + 90, y + d * 0.5),
+                    P(x + 135, y + d), P(x + 128, y + d), P(x + 83, y + d * 0.5)], 'rgba(195,225,209,.35)');
+            }
             if (q.parkingLot) {
                 const { x, y, w, d } = q.parkingLot;
                 groundRect(x, y, w, d, '#34343a');
