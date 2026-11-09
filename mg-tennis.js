@@ -1,6 +1,6 @@
 'use strict';
 
-// Baseline Rally: drag to run along the baseline, swipe up to hit. Swipe angle aims, length adds depth, speed adds pace.
+// Baseline Rally: automatic movement and hitting, with optional swipes to place the next shot.
 Minigames.register('tennis', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const WIN = 5, G = 4.2, NET_H = .12;
@@ -10,16 +10,16 @@ Minigames.register('tennis', env => {
     const X = (u, v) => 180 + u * hw(v);
     const HPX = 175;
 
-    let me, cpu, pu, ou, ball, phase, phaseT, server, rally, bestRally, swingT, oswing, hitCd, tx, steer, tossT, msgT, reaction, aces;
+    let me, cpu, pu, ou, ball, phase, phaseT, server, rally, bestRally, swingT, oswing, hitCd, tx, tossT, reaction, aces, nextShot;
 
     function start() {
-        me = 0; cpu = 0; server = 'p'; bestRally = 0; aces = 0; steer = null; tx = 0;
+        me = 0; cpu = 0; server = 'p'; bestRally = 0; aces = 0; tx = 0;
         pu = 0; ou = 0; hitCd = 0;
         newPoint();
     }
 
     function newPoint() {
-        rally = 0; ball = null; swingT = 0; oswing = 0;
+        rally = 0; ball = null; swingT = 0; oswing = 0; nextShot = null; hitCd = 0;
         phase = 'serve'; phaseT = 0; tossT = 0; reaction = 0;
         if (server === 'o') { phaseT = 1.1; }
         pu = U.clamp(pu, -.5, .5); ou = 0;
@@ -33,26 +33,37 @@ Minigames.register('tennis', env => {
         b.vu = (tu - b.u) / T; b.vv = (tv - b.v) / T; b.vh = (G / 2 * T * T - b.h) / T;
     }
 
-    function down(p) {
-        if (steer === null) { steer = p.id; p.off = pu - (p.x - 180) / 150; p.role = 'steer'; tx = pu; }
-    }
-    function move(p) {
-        if (p.role !== 'steer') return;
-        if (p.dy > -30) tx = U.clamp((p.x - 180) / 150 + p.off, -1.15, 1.15);
-    }
+    function down() { }
+    function move() { }
     function up(p) {
-        if (p.role === 'steer') steer = null;
         if (p.cancelled) return;
         const speed = Math.hypot(p.vx, p.vy);
-        if (p.dy < -45 && p.vy < -300 && speed > 350) swing(p);
+        if (p.dy < -45 && p.vy < -300 && speed > 350 && phase !== 'point') {
+            const len = Math.hypot(p.dx, p.dy);
+            nextShot = {
+                tu: U.clamp(p.dx / 95, -1.2, 1.2),
+                tv: U.lerp(.56, 1.08, U.clamp((len - 50) / 190, 0, 1)),
+                T: U.lerp(1.25, .62, U.clamp(speed / 2200, 0, 1)),
+                speed
+            };
+        }
     }
 
-    function swing(p) {
+    function canReturn() {
+        return phase === 'rally' && ball && !ball.dead && ball.last === 'o' &&
+            ball.bounces === 1 && ball.vv < 0 && ball.v < .36 &&
+            ball.h < .65 && Math.abs(ball.u - pu) < .32;
+    }
+
+    function swing() {
         if (hitCd > 0) return;
-        const tu = U.clamp(p.dx / 95, -1.2, 1.2);
-        const len = Math.hypot(p.dx, p.dy), speed = Math.hypot(p.vx, p.vy);
-        let tv = U.lerp(.56, 1.08, U.clamp((len - 50) / 190, 0, 1));
-        let T = U.lerp(1.25, .62, U.clamp(speed / 2200, 0, 1));
+        if (!(phase === 'serve' && server === 'p') && !canReturn()) return;
+        const { tu, tv: depth, T, speed } = nextShot || {
+            tu: U.clamp(-ou * .8 + U.rand(-.45, .45), -.85, .85),
+            tv: .9, T: 1.05, speed: 0
+        };
+        let tv = depth;
+        nextShot = null;
         if (phase === 'serve' && server === 'p') {
             const q = 1 - U.clamp(Math.abs(tossH() - .5) / .5, 0, 1);
             const jit = (1 - q) * .55;
@@ -63,14 +74,7 @@ Minigames.register('tennis', env => {
             fx.text(X(pu, .05), 400, q > .8 ? 'PERFECT SERVE' : q > .5 ? 'GOOD' : 'MISTIMED', { color: q > .8 ? '#4ade80' : '#fde047', size: 17 });
             return;
         }
-        if (phase !== 'rally' || !ball || ball.dead) return;
         swingT = .3; hitCd = .35;
-        const inWindow = ball.last === 'o' && ball.bounces === 1 && ball.vv < 0 && ball.v < .36 && ball.h < .65 && Math.abs(ball.u - pu) < .32;
-        if (!inWindow) {
-            sfx('whoosh');
-            fx.text(X(pu, .05), 410, ball.bounces === 0 && ball.last === 'o' ? 'WAIT FOR THE BOUNCE' : 'MISSED', { color: '#fca5a5', size: 14 });
-            return;
-        }
         ball.u = pu; ball.v = Math.max(.05, ball.v); ball.last = 'p'; ball.bounces = 0;
         launch(ball, tu, tv, T);
         rally++; bestRally = Math.max(bestRally, rally);
@@ -113,11 +117,16 @@ Minigames.register('tennis', env => {
 
     function update(dt) {
         hitCd = Math.max(0, hitCd - dt); swingT = Math.max(0, swingT - dt); oswing = Math.max(0, oswing - dt);
+        tx = phase === 'rally' && ball && !ball.dead && ball.last === 'o'
+            ? U.clamp(ball.u + ball.vu * .12, -1.15, 1.15) : 0;
         pu += U.clamp(tx - pu, -2.6 * dt, 2.6 * dt);
         pu = U.clamp(pu, -1.2, 1.2);
         if (phase === 'point') { phaseT -= dt; stepBall(dt); if (phaseT <= 0) { if (me >= WIN || cpu >= WIN) finish(); else newPoint(); } return; }
         if (phase === 'serve') {
-            if (server === 'p') tossT += dt;
+            if (server === 'p') {
+                tossT += dt;
+                if (tossT >= .4) swing();
+            }
             else {
                 phaseT -= dt;
                 if (phaseT <= 0) {
@@ -128,7 +137,12 @@ Minigames.register('tennis', env => {
             }
             return;
         }
-        if (phase === 'rally') { stepBall(dt); opp(dt); }
+        if (phase === 'rally') {
+            stepBall(dt);
+            if (phase !== 'rally') return;
+            if (canReturn()) swing();
+            opp(dt);
+        }
     }
 
     function stepBall(dt) {
@@ -166,6 +180,7 @@ Minigames.register('tennis', env => {
             launch(b, tu, U.rand(.06, .42), U.lerp(1.3, .85, U.clamp(level() + Math.random() * .3, 0, 1)));
             sfx('tap'); fx.burst(X(b.u, b.v), ys(b.v) - 30, { n: 6, colors: ['#fef08a'], speed: 90, life: .25, g: 60 });
             rally++;
+            bestRally = Math.max(bestRally, rally);
         }
     }
 
@@ -173,7 +188,7 @@ Minigames.register('tennis', env => {
         const win = me > cpu;
         end({
             win, head: win ? 'GAME, SET, MATCH!' : 'MATCH LOST',
-            lines: [`Final score ${me} – ${cpu}`, `Longest rally ${bestRally} hits`, win ? 'Great placement!' : 'Swipe harder & aim for the corners']
+            lines: [`Final score ${me} – ${cpu}`, `Longest rally ${bestRally} hits`, win ? 'Great placement!' : 'Try swiping to aim for the corners']
         , stars: Math.max(1, me + (win ? 2 : 0)) });
     }
 
@@ -261,16 +276,15 @@ Minigames.register('tennis', env => {
         c.fillStyle = server === 'p' ? '#fde047' : 'rgba(0,0,0,0)'; c.beginPath(); c.arc(30, 27, 4, 0, 7); c.fill();
         if (server === 'o') { c.fillStyle = '#fde047'; c.beginPath(); c.arc(330, 27, 4, 0, 7); c.fill(); }
         if (rally >= 2 && phase === 'rally') U.text(c, `RALLY ${rally}`, 180, 62, { size: 12, color: '#fde047', stroke: 'rgba(0,0,0,.7)', lw: 3 });
-        if (phase === 'serve' && server === 'p') U.text(c, 'SWIPE UP WHEN THE BALL PEAKS', 180, 540, { size: 12, color: '#fff', alpha: .6 + .4 * Math.sin(env.time() * 4), stroke: 'rgba(0,0,0,.7)', lw: 3 });
-        else if (phase === 'rally' && rally === 0 && ball && ball.last === 'o') U.text(c, 'DRAG TO MOVE · SWIPE UP AFTER THE BOUNCE', 180, 540, { size: 11, color: '#fff', alpha: .8, stroke: 'rgba(0,0,0,.7)', lw: 3 });
+        U.text(c, nextShot ? 'SHOT AIMED · AUTO RETURN READY' : 'AUTO MOVE + HIT · SWIPE TO AIM (OPTIONAL)', 180, 540, { size: 11, color: '#fff', alpha: .8, stroke: 'rgba(0,0,0,.7)', lw: 3 });
     }
 
     function drawReach(c) {
-        const ready = ball && !ball.dead && ball.last === 'o' && ball.bounces === 1 && ball.vv < 0 && ball.v < .36 && ball.h < .65 && Math.abs(ball.u - pu) < .32;
+        const ready = canReturn();
         const x = X(pu, .05), y = ys(.05) + 4, rx = .32 * hw(.05);
         c.strokeStyle = ready ? '#4ade80' : 'rgba(255,255,255,.35)'; c.lineWidth = ready ? 3 : 2;
         c.beginPath(); c.ellipse(x, y, rx, rx * .26, 0, 0, 7); c.stroke();
-        if (ready) { c.fillStyle = 'rgba(74,222,128,.18)'; c.fill(); U.text(c, 'SWIPE!', x, y - 100, { size: 16, color: '#4ade80', stroke: 'rgba(0,0,0,.7)', lw: 4 }); }
+        if (ready) { c.fillStyle = 'rgba(74,222,128,.18)'; c.fill(); }
     }
 
     function draw(c) {
@@ -288,7 +302,7 @@ Minigames.register('tennis', env => {
 
     return {
         title: '🎾 Baseline Rally',
-        intro: { head: 'BASELINE RALLY', lines: ['Drag to run along the baseline', 'Swipe UP after the bounce to hit', 'Swipe angle aims · length = depth'] },
+        intro: { head: 'BASELINE RALLY', lines: ['Your player moves, serves & hits automatically', 'Optional: swipe UP to aim the next shot', 'Swipe angle aims · length = depth'] },
         init: start, start, update, draw, down, move, up, idle() { },
         _state: () => ({ me, cpu, phase, ball, pu, ou, rally, server }),
         _set: o => { if (o.pu !== undefined) { pu = o.pu; tx = o.pu; } }

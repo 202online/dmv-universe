@@ -121,6 +121,7 @@ Minigames.register('soccer', env => {
     function finishKick(kind) {
         const b = ball, pl = b.pl;
         b.outcome = kind;
+        b.t = 0;
         const bx = xAt(pl, b.u), bh = heightAt(pl, b.u);
         b.x = sx(bx, b.u); b.y = gy(b.u) - bh * BAR_PX * persp(b.u);
         b.vx = 0; b.vy = -40;
@@ -239,7 +240,7 @@ Minigames.register('soccer', env => {
         }
         const b = ball;
         if (b.outcome) {
-            if (b.net) { b.y = Math.min(b.y, GY - 6); U.ball(c, b.x, b.y + b.t * 6, 11, b.rot, 'soccer'); return; }
+            if (b.net) { U.ball(c, b.x, Math.min(b.y, GY - 6) + b.t * 6, 11, b.rot, 'soccer'); return; }
             const r = Math.max(7, 11 - b.t * 2);
             U.ball(c, b.x, b.y, r, b.rot + b.t * 6, 'soccer'); return;
         }
