@@ -207,9 +207,17 @@ with concrete-colored space outlines. Parking pavement joins the street through 
 across the sidewalk, rather than leaving a gap or a sidewalk barrier.
 Sidewalks remain along street sides, and pedestrian connector paths to front
 doors are not painted; clear, walkable access is retained. Water gardens have shaded pool depths, ripples, falling-water foam and
-jointed stone coping. The SW waterfront has shallow-water color bands, moving
-wave highlights and a segmented stone edge. Trees use layered shaded crowns,
+jointed stone coping. the SW waterfront has deep channel-green water, layered moving wave highlights
+and a grey stone seawall instead of a sandy shore. Trees use layered shaded crowns,
 leaf clusters, branching trunks and ground shadows that scale with map zoom.
+The SW shoreline is inspired by the Washington Channel waterfront: broad,
+dark blue-green water extends offshore from a jointed concrete promenade,
+stone retaining wall, railings, floating finger piers and moored sailboats.
+Dock pilings, deck planks, mooring lines, boat reflections and gentle bobbing
+add detail without introducing a beach or changing walkable boundaries.
+Trees have varied rounded/taller crowns, finer leaf clusters, highlighted bark,
+root flares, branch forks and subtle canopy sway. Water gardens also show
+expanding ripple rings beneath the falling water.
 Each lot, driveway and garage has a clear asphalt entrance reaching the actual
 street surface, not just its sidewalk. Entrances avoid neighboring properties,
 walls and water gardens, and are drawn over sidewalk bands so concrete never

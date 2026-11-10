@@ -72,9 +72,13 @@ test('detailed parking, waterfront and trees render finite scalable scenery with
     env.ground(context.city.SW);
     assert.ok(polygons.filter(p => p.fill === '#b4e1d04d').length > 100, 'waterfront has layered wave highlights');
     assert.ok(polygons.some(p => p.fill === '#26333b'), 'attached lots include storm drains');
+    assert.ok(polygons.some(p => p.fill === '#a5abaa'), 'waterfront has a paved urban promenade');
+    assert.ok(polygons.some(p => p.fill === '#555a55'), 'piers project out into the channel');
+    assert.ok(polygons.some(p => p.fill === '#d5ddd5'), 'moored boat hulls sit in the water');
+    assert.ok(!polygons.some(p => p.fill === '#a89a80'), 'the SW waterfront has no sandy shoreline');
     assert.equal(JSON.stringify(context.city.SW), before, 'decorative details do not change parking or collisions');
     env.tree({ x: 120, y: 210 });
-    assert.equal(ellipses.length, 23, 'trees have layered crowns and individual leaf clusters');
+    assert.equal(ellipses.length, 52, 'trees have dense shaded crowns and individual leaf clusters');
     const normal = ellipses.map(args => args[2]);
     ellipses.length = 0;
     env.P = (x, y, z = 0) => [(x - y) * 3.2, (x + y) * 1.6 - z * 2];

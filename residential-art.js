@@ -185,6 +185,14 @@ const ResidentialArt = (() => {
                 line([[g.x + 3 + offset, y, 1.2], [g.x + g.w * .55, y + .5, 1.2],
                     [g.x + g.w - 3 + offset, y, 1.2]], i % 2 ? '#a9e3dd88' : '#1f778c99', .6);
             }
+            for (let i = 0; i < 4; i++) {
+                const phase = (time*.45+i*.25)%1, radius = .6+phase*2;
+                const cx = g.x+g.w*(.35+i*.10), cy = g.y+wallDepth+3;
+                poly(Array.from({length:16},(_,k)=>{
+                    const angle=k*Math.PI/8;
+                    return P(cx+Math.cos(angle)*radius,cy+Math.sin(angle)*radius*.55,1.25);
+                }),null,`rgba(216,247,233,${((1-phase)*.55).toFixed(3)})`,.6);
+            }
             front({ x: g.x, y: g.y, w: g.w, d: wallDepth + .1 }, .22, .78, 2, height - 2, '#69c5d6');
             for (let i = 0; i < 4; i++) {
                 const z = 3 + ((time * 9 + i * 4) % 16);

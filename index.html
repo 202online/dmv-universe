@@ -1566,20 +1566,69 @@
                 compassRect(-118, -75, o, o + 12, 'rgba(255,255,255,.65)');
             }
             if (currentQuadrant === 'SW') {
-                compassRect(-WORLD - 200, -WORLD, 250, 2 * WORLD - 250, '#285766');
-                compassRect(-WORLD - 65, -WORLD, 250, 2 * WORLD - 250, '#397b86');
-                compassRect(-WORLD - 18, -WORLD, 250, 2 * WORLD - 250, '#649d9c');
+                compassRect(-WORLD - 1600, -WORLD, 250, 2 * WORLD - 250, '#203e49');
+                compassRect(-WORLD - 130, -WORLD, 250, 2 * WORLD - 250, '#294f55');
+                compassRect(-WORLD - 45, -WORLD, 250, 2 * WORLD - 250, '#365d5d');
                 const waveTime = performance.now() / 1000;
                 for (let s = 272; s < 2 * WORLD - 268; s += 34) {
+                    for (let i=0;i<7;i++) {
+                        const e=-WORLD-1500+i*190,shift=Math.sin(waveTime*.45+s*.02+i)*7;
+                        const [px,py]=P(...fromCompass(e,s));
+                        if(px < -80 || px > W+80 || py < -20 || py > H+20) continue;
+                        compassRect(e+shift,e+shift+32+i*2,s,s+1,'#80a89d33');
+                        compassRect(e+shift+14,e+shift+42,s+8,s+9,'#122f3b55');
+                    }
                     for (let i = 0; i < 3; i++) {
                         const e = -WORLD - 180 + i * 62 + Math.sin(waveTime * .7 + s * .03 + i) * 4;
                         compassRect(e, e + 14 + i * 4, s + i * 8, s + i * 8 + 1.2, '#b4e1d04d');
+                        poly([[e - 3,s + i * 8 + 5],[e + 9,s + i * 8 + 4],
+                            [e + 25,s + i * 8 + 6]].map(p=>P(...fromCompass(...p))), null, '#173d4766', .8);
+                        if ((s + i) % 3 === 0)
+                            compassRect(e + 6,e + 12,s + i * 8 - 3,s + i * 8 - 2.4,'#c5d6cd55');
                     }
                 }
-                compassRect(-WORLD, -WORLD + 30, 250, 2 * WORLD - 250, '#a89a80');
+                compassRect(-WORLD, -WORLD + 30, 250, 2 * WORLD - 250, '#a5abaa');
+                compassRect(-WORLD - 5, -WORLD, 250, 2 * WORLD - 250, '#566564');
+                compassRect(-WORLD - 7, -WORLD - 5, 250, 2 * WORLD - 250, '#1b353b');
+                compassRect(-WORLD, -WORLD + 4, 250, 2 * WORLD - 250, '#d0d4cc');
                 for (let s = 250; s < 2 * WORLD - 250; s += 18) {
-                    compassRect(-WORLD, -WORLD + 5, s, s + 15, '#75847d', '#b8b8a0');
-                    compassRect(-WORLD + 7, -WORLD + 29, s + 3, s + 3.8, '#877e6b');
+                    compassRect(-WORLD - 5, -WORLD, s, s + 16, '#6d7b76', '#a8b2a7');
+                    compassRect(-WORLD + 5, -WORLD + 29, s + 3, s + 3.8, '#858e8b');
+                    compassRect(-WORLD + 16, -WORLD + 16.7, s + 3, s + 18, '#b9bfba');
+                }
+                const waterfrontPoint = (e,s,z=0) => P(...fromCompass(e,s),z);
+                const waterfrontLine = (points,color,width=1) => poly(points.map(p=>waterfrontPoint(...p)),null,color,width);
+                for (let s = 310; s < 2 * WORLD - 300; s += 300) {
+                    // Floating docks and moored boats sit beyond the seawall, not on a beach.
+                    compassRect(-WORLD - 120,-WORLD + 3,s,s + 18,'#555a55','#a4a89a');
+                    for (let e = -WORLD - 116; e < -WORLD; e += 7)
+                        compassRect(e,e + 1,s + 1,s + 17,'#898b7b');
+                    compassRect(-WORLD - 134,-WORLD - 112,s - 32,s + 55,'#5e635c','#a1a99c');
+                    for (const [e,ds] of [[-126,-30],[-126,52],[-9,2]]) {
+                        const x = -WORLD + e, y = s + ds;
+                        waterfrontLine([[x,y,0],[x,y,6]],'#384744',2);
+                        poly(Array.from({length:10},(_,i)=>waterfrontPoint(x+Math.cos(i*Math.PI/5)*2.8,
+                            y+Math.sin(i*Math.PI/5)*2.8,6)),'#c5c6af','#354542',.6);
+                    }
+                    const boatE = -WORLD - 77, boatS = s + 37;
+                    const bob = Math.sin(waveTime*.8+s)*.45;
+                    poly([[boatE-30,boatS],[boatE-20,boatS-9],[boatE+19,boatS-9],[boatE+31,boatS],
+                        [boatE+19,boatS+9],[boatE-20,boatS+9]].map(p=>waterfrontPoint(...p,bob)), s%600===310?'#d5ddd5':'#3c5667','#475b61',1);
+                    poly([[boatE-21,boatS-5],[boatE+14,boatS-5],[boatE+22,boatS],[boatE+14,boatS+5],
+                        [boatE-21,boatS+5]].map(p=>waterfrontPoint(...p,1+bob)), '#576b70');
+                    poly([[boatE-7,boatS-4],[boatE+7,boatS-4],[boatE+7,boatS+4],[boatE-7,boatS+4]]
+                        .map(p=>waterfrontPoint(...p,4+bob)),'#e1e4d7','#9eaead');
+                    waterfrontLine([[boatE,boatS,4+bob],[boatE,boatS,28+bob]],'#c4d2cc',1);
+                    waterfrontLine([[boatE,boatS,27+bob],[boatE+17,boatS,3+bob]],'#b8c5c166',.7);
+                    waterfrontLine([[boatE-20,boatS-8,bob],[-WORLD-22,s+16,0]],'#a8a78d',.7);
+                    for (let i=0;i<5;i++)
+                        compassRect(boatE-18+i*6,boatE-8+i*6,boatS+12+i*2,boatS+13+i*2,'#b4cebf22');
+                    for (const ds of [-55,90]) {
+                        const e=-WORLD+7,y=s+ds;
+                        waterfrontLine([[e,y,0],[e,y,9]],'#354a4c',1.6);
+                        waterfrontLine([[e,y,9],[e,y+20,9]],'#354a4c',1.3);
+                        waterfrontLine([[e,y+20,9],[e,y+20,0]],'#354a4c',1.6);
+                    }
                 }
             }
             // Small cocoa-toned utility covers along the sidewalks.
@@ -2106,27 +2155,41 @@
                 ctx.beginPath(); points.forEach(([x, y], i) => i ? ctx.lineTo(sx + x * unit, sy + y * unit) : ctx.moveTo(sx + x * unit, sy + y * unit));
                 ctx.strokeStyle = color; ctx.lineWidth = width * unit; ctx.stroke();
             };
+            const sway = Math.sin(performance.now()/1900 + seed)*.55, tall = seed % 3 === 1;
             const leaf = (x, y, rx, ry, color) => {
                 ctx.fillStyle = color; ctx.beginPath();
-                ctx.ellipse(sx + x * size * unit, sy + y * size * unit, rx * size * unit, ry * size * unit, 0, 0, Math.PI * 2); ctx.fill();
+                const crown = y < -20;
+                ctx.ellipse(sx + (x + (crown ? sway : 0)) * size * unit, sy + y * size * unit * (crown && tall ? 1.13 : 1),
+                    rx * size * unit * (crown && tall ? .86 : 1), ry * size * unit, 0, 0, Math.PI * 2); ctx.fill();
             };
             leaf(7, 2, 19, 7, '#132b2255');
             leaf(0, 0, 6, 2.5, '#423a2b');
+            for (const [x,y] of [[-6,1],[4,2],[1,-3]])
+                branch([[0,-5],[x*.5,-1],[x,y]],'#65503b',1.6);
             branch([[-5, 0], [0, -7], [1, -30]], '#50392d', 6);
             branch([[0, -4], [-1, -22], [-10, -34]], '#7d5940', 2);
             branch([[1, -15], [10, -27], [13, -35]], '#543b2c', 3);
             branch([[0, -12], [-2, -8], [-1, -3]], '#ac8051', .8);
+            for (let y=-24;y<-4;y+=4) {
+                branch([[-1,y],[1,y-2],[2,y-1]],'#342c25',.6);
+                branch([[-2,y],[-1,y+2]],'#b38c5c',.6);
+            }
+            branch([[-1,-23],[-7,-35],[-13,-43]],'#473b2b',1.8);
+            branch([[2,-25],[9,-39],[14,-46]],'#624c33',1.5);
             leaf(0, -38, 21, 20, '#174f36');
             leaf(-13, -32, 13, 13, '#24633b');
             leaf(13, -35, 13, 14, '#21633c');
             leaf(-5, -49, 16, 13, '#357a43');
             leaf(10, -47, 11, 12, '#42854a');
             leaf(-10, -51, 8, 6, '#659b50');
-            for (let i = 0; i < 15; i++) {
-                const angle = i * 2.4 + seed, radius = 4 + i % 4 * 3.6;
+            for (let i = 0; i < 42; i++) {
+                const angle = i * 2.4 + seed, radius = 4 + i % 5 * 3.3;
                 const x = Math.cos(angle) * radius, y = -42 + Math.sin(angle) * radius;
-                leaf(x, y, 2.8 + i % 3, 1.5 + i % 2, ['#80ad5a99', '#102f2d66', '#a0bd6555'][i % 3]);
+                leaf(x, y, 1.7 + i % 3, 1.1 + i % 2, ['#80ad5a99', '#102f2d88', '#b4ca7655'][i % 3]);
+                if (i%7===0) branch([[x,y],[x+2,y-2]],'#a1b85c66',.55);
             }
+            leaf(-7,-57,3,1.5,'#c7d68c88');
+            leaf(7,-53,2.4,1.3,'#c7d68c88');
         }
 
         function drawLamp(l) {
