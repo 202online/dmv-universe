@@ -54,10 +54,18 @@ parked cars look solid instead of showing their far side through the body.
 Every ride has six colors, including white and black. Bikes and scooters start in a random color from their set. Saves from before
 paint existed get a random two-wheeler color and the default car colors.
 
-`clothing-catalog.js` defines the first wave of clothing: eight generic
-T-shirts, sweatpants and shoes (red, yellow, blue, green, black, pink, purple
-and orange) plus black jeans. These 25 items have no price (`price: null`), are
-not listed (`listed: false`), and are not loaded by the game or sold in any shop yet.
+`clothing-catalog.js` defines the clothing catalog in eight colors (red, yellow,
+blue, green, black, pink, purple and orange): generic T-shirts, sweatpants and
+shoes, plus black jeans, solid zip hoodies and fitted caps. All 41 items have no
+price (`price: null`), are not listed (`listed: false`), and are not loaded by
+the game or sold in any shop yet.
+
+Hoodies have two animated wear states: zipped/unzipped (the zipper slider
+travels and the front opens over the shirt) and hood up/down (the hood lifts
+from the collar and keeps the face open). `wearState`, `toggleWear` and
+`amount` drive the tweens; `drawWorn(ctx, {hoodie, cap, state}, pose)` draws
+them over `drawAvatar` using the same anchor and facing. A fitted cap's brim
+stays visible under a raised hood.
 
 The level picker shows a small moving window rather than an ever-growing list.
 Use Previous to revisit older levels or Latest unlocked to return to progression.

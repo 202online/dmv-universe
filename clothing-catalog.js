@@ -1,6 +1,6 @@
 'use strict';
 
-// First wave of generic wearables. Intentionally unpriced and unlisted:
+// Generic wearables (wave 1 basics, wave 2 hoodies and fitted caps). Intentionally unpriced and unlisted:
 // shops must not sell these until a price and listing are added.
 const ClothingCatalog = (() => {
     const colors = {
@@ -13,15 +13,17 @@ const ClothingCatalog = (() => {
         purple: { name: 'Purple', hex: '#7e3fbf', trim: '#55288a' },
         orange: { name: 'Orange', hex: '#f17a1d', trim: '#ad5210' }
     };
-    const slots = { top: 'Top', bottom: 'Bottom', shoes: 'Shoes' };
+    const slots = { top: 'Top', outerwear: 'Outerwear', bottom: 'Bottom', shoes: 'Shoes', hat: 'Hat' };
     const styles = {
         tshirt: { slot: 'top', label: 'T-shirt' },
         sweatpants: { slot: 'bottom', label: 'Sweatpants' },
         jeans: { slot: 'bottom', label: 'Jeans' },
-        sneakers: { slot: 'shoes', label: 'Shoes' }
+        sneakers: { slot: 'shoes', label: 'Shoes' },
+        hoodie: { slot: 'outerwear', label: 'Zip Hoodie', wearStates: ['zip', 'hood'] },
+        fittedcap: { slot: 'hat', label: 'Fitted Cap' }
     };
     const item = (style, color, extra = {}) => Object.freeze({
-        id: `${color}-${style}`, style, slot: styles[style].slot, color, wave: 1,
+        id: `${color}-${style}`, style, slot: styles[style].slot, color, wave: style === 'hoodie' || style === 'fittedcap' ? 2 : 1,
         name: `Generic ${colors[color].name} ${styles[style].label}`, hex: colors[color].hex, trim: colors[color].trim,
         price: null, listed: false, ...extra
     });
@@ -30,7 +32,9 @@ const ClothingCatalog = (() => {
         ...colorIds.map(c => item('tshirt', c)),
         item('jeans', 'black', { name: 'Generic Black Jeans', hex: '#202024', trim: '#5b5b66' }),
         ...colorIds.map(c => item('sweatpants', c)),
-        ...colorIds.map(c => item('sneakers', c))
+        ...colorIds.map(c => item('sneakers', c)),
+        ...colorIds.map(c => item('hoodie', c)),
+        ...colorIds.map(c => item('fittedcap', c))
     ]);
     const byId = Object.freeze(Object.fromEntries(items.map(i => [i.id, i])));
 
@@ -45,17 +49,134 @@ const ClothingCatalog = (() => {
     // Only priced, listed items may be sold; wave 1 currently has none.
     const forSale = () => items.filter(i => i.listed && Number.isInteger(i.price) && i.price >= 0);
 
-    function preview(id) {
+    function preview(id, wear = {}) {
         const i = get(id), c = i.hex, t = i.trim;
+        const zip = clamp(wear.zip ?? 1), hood = clamp(wear.hood ?? 0), open = (1 - zip) * 9, slider = 84 - zip * 62;
         const art = {
             tshirt: `<path d="M30 14l12-6q8 6 16 0l12 6 14 14-10 10-6-5v45H32V33l-6 5-10-10z" fill="${c}" stroke="${t}" stroke-width="2"/><path d="M42 8q8 8 16 0" fill="none" stroke="${t}" stroke-width="2"/>`,
             sweatpants: `<path d="M30 10h40l4 74H54L50 36l-4 48H26z" fill="${c}" stroke="${t}" stroke-width="2"/><path d="M30 16h40" stroke="${t}" stroke-width="3"/><path d="M48 16v8m4-8v8" stroke="#f3f4f6" stroke-width="1.5"/><path d="M27 76h18m10 0h18" stroke="${t}" stroke-width="5"/>`,
             jeans: `<path d="M30 10h40l4 76H55L50 36l-5 50H26z" fill="${c}" stroke="${t}" stroke-width="2"/><path d="M30 17h40" stroke="${t}" stroke-width="2"/><path d="M36 17q2 9 10 9m18-9q-2 9-10 9" fill="none" stroke="#a88d5a" stroke-width="1.2" stroke-dasharray="2 2"/><path d="M50 17v18" stroke="${t}"/>`,
+            hoodie: `<path d="M50 ${18 - hood * 8}q${-17 - hood * 3} ${-1 - hood * 6} ${-16 - hood * 4} ${12 + hood * 4}q${6 + hood * 2} ${5 + hood * 8} 16 ${4 + hood * 3}q${10 - hood * 2} ${1 + hood * 5} 16 ${-4 - hood * 8}q1 ${-13 - hood * 2} -16 ${-12 - hood * 4}z" fill="${t}" stroke="${t}"/>` +
+                `<path d="M50 ${26 - hood * 6}q-8 ${-4 - hood * 4} -9 ${4 + hood * 2}q4 4 9 3q5 1 9 -3q-1 ${-8 - hood * 2} -9 ${-4 - hood * 4}z" fill="#111827" opacity="${.35 + hood * .45}"/>` +
+                `<path d="M30 22l-14 10-6 46h10l6-36v45h${24 - open}V${slider}L${50 - open} 24z" fill="${c}" stroke="${t}" stroke-width="2"/>` +
+                `<path d="M70 22l14 10 6 46H80l-6-36v45H${50 + open}V${slider}L${50 + open} 24z" fill="${c}" stroke="${t}" stroke-width="2"/>` +
+                `<path d="M26 80h48" stroke="${t}" stroke-width="4"/><path d="M50 87V${slider}" stroke="#d1d5db" stroke-width="1.5"/><rect x="47.5" y="${slider - 3}" width="5" height="6" rx="1" fill="#e5e7eb"/>` +
+                `<path d="M45 28l-1 14m11-14l1 14" stroke="#f3f4f6" stroke-width="1.5"/><path d="M33 62l6 8m28-8l-6 8" stroke="${t}" stroke-width="2"/>`,
+            fittedcap: `<path d="M22 56q0-32 28-34 28 2 28 34z" fill="${c}" stroke="${t}" stroke-width="2"/><path d="M50 22v34M36 26q-4 14-3 30m31-30q4 14 3 30" stroke="${t}" stroke-width="1.5" fill="none"/>` +
+                `<circle cx="50" cy="21" r="3" fill="${c}" stroke="${t}"/><path d="M22 56h56" stroke="${t}" stroke-width="3"/><path d="M30 57q22 22 58 4q-26-9-58-4z" fill="${c}" stroke="${t}" stroke-width="2"/><path d="M40 60q20 9 40 2" stroke="${t}" fill="none"/>`,
             sneakers: `<path d="M14 60q0-16 14-18l16-6 12 12q14 4 26 6 8 2 8 10v6H14z" fill="${c}" stroke="${t}" stroke-width="2"/><path d="M14 66h76v8H14z" fill="#f3f4f6" stroke="${t}" stroke-width="1.5"/><path d="M36 44l6 6m-1-9l6 6m-1-9l6 6" stroke="#f3f4f6" stroke-width="2"/>`
         }[i.style];
         return `<svg viewBox="0 0 100 92" role="img" aria-label="${i.name}">${art}</svg>`;
     }
-    return { colors, slots, styles, items, get, bySlot, forSale, preview };
+    function clamp(v) { return Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0)); }
+    const lerp = (a, b, t) => a + (b - a) * t;
+    function shade(hex, f) {
+        const n = parseInt(hex.slice(1), 16);
+        const ch = s => Math.max(0, Math.min(255, Math.round(((n >> s) & 255) * f)));
+        return `#${[16, 8, 0].map(s => ch(s).toString(16).padStart(2, '0')).join('')}`;
+    }
+
+    // Hoodie zip and hood tween between 0 and 1 (1 = zipped / hood up).
+    const ANIM_MS = { zip: 420, hood: 300 };
+    function wearState({ zipped = true, hoodUp = false } = {}) {
+        const at = v => ({ from: v, to: v, start: 0 });
+        return { zip: at(zipped ? 1 : 0), hood: at(hoodUp ? 1 : 0) };
+    }
+    function amount(state, part, now) {
+        const a = state[part];
+        if (!a || !Object.hasOwn(ANIM_MS, part)) throw new Error(`Unknown wear state: ${part}`);
+        const t = clamp((now - a.start) / ANIM_MS[part]);
+        return lerp(a.from, a.to, t * t * (3 - 2 * t));
+    }
+    function setWear(state, part, on, now) {
+        state[part] = { from: amount(state, part, now), to: on ? 1 : 0, start: now };
+        return state;
+    }
+    const toggleWear = (state, part, now) => setWear(state, part, state[part].to < .5, now);
+    const animating = (state, now) => Object.keys(ANIM_MS).some(p => now - state[p].start < ANIM_MS[p]);
+
+    // Draws a worn hoodie and/or fitted cap over an avatar drawn with the game's drawAvatar,
+    // using the same anchor (sx, sy at the feet) and pose values (bob, sw, fx, fy).
+    function drawWorn(ctx, outfit, pose) {
+        const { sx, sy, bob = 0, sw = 0, fx = 0, fy = 1, skin = '#c68642', now = 0 } = pose;
+        const hoodie = outfit.hoodie && get(outfit.hoodie), cap = outfit.cap && get(outfit.cap);
+        if (hoodie && hoodie.style !== 'hoodie') throw new Error(`${hoodie.id} is not a hoodie`);
+        if (cap && cap.style !== 'fittedcap') throw new Error(`${cap.id} is not a fitted cap`);
+        const state = outfit.state || wearState();
+        const zip = hoodie ? amount(state, 'zip', now) : 1, hood = hoodie ? amount(state, 'hood', now) : 0;
+        const front = fy >= 0, top = sy - 36 - bob, bottom = sy - 14 - bob, hy = sy - 45 - bob;
+        const line = (x1, y1, x2, y2, col, w) => {
+            ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+            ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.stroke();
+        };
+        const shape = (pts, fill, stroke) => {
+            ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath();
+            ctx.fillStyle = fill; ctx.fill(); if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = .8; ctx.stroke(); }
+        };
+        ctx.save();
+        if (hoodie) {
+            const c = hoodie.hex, t = hoodie.trim;
+            for (const side of [-1, 1]) {
+                const hx = sx + side * 11, hyand = sy - 19 - bob - side * sw * .5;
+                line(sx + side * 8.5, top + 3, hx, hyand, t, 5.6);
+                line(sx + side * 8.5, top + 3, hx, hyand, c, 4.4);
+                line(hx - side * .2, hyand - 1.2, hx, hyand + .2, t, 4.6);
+                ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(hx, hyand + 1.6, 1.7, 0, Math.PI * 2); ctx.fill();
+            }
+            const open = front ? (1 - zip) * 4.5 : 0, slider = lerp(bottom, top + 1, zip);
+            for (const side of [-1, 1]) {
+                shape([[sx + side * 3.5, top - 1], [sx + side * 8.5, top], [sx + side * 9.5, top + 6], [sx + side * 9, bottom],
+                    [sx, bottom], [sx, slider], [sx + side * open, top + 1]], c, shade(c, .55));
+                if (front && open > .2) line(sx, slider, sx + side * open, top + 1, shade(c, .6), .7);
+            }
+            line(sx - 9, bottom - 1.2, sx + 9, bottom - 1.2, t, 2);
+            if (front) {
+                line(sx, bottom, sx, slider, '#cbd5e1', .8);
+                ctx.fillStyle = '#e5e7eb'; ctx.fillRect(sx - .9, slider - 1.4, 1.8, 2.8);
+                for (const side of [-1, 1]) line(sx + side * 3.4, bottom - 6, sx + side * 5.6, bottom - 3, shade(c, .6), .7);
+            } else line(sx, top + 2, sx, bottom - 2, shade(c, .8), .6);
+        }
+        if (cap) {
+            const c = cap.hex, t = cap.trim;
+            ctx.fillStyle = c; ctx.strokeStyle = t; ctx.lineWidth = .8;
+            ctx.beginPath(); ctx.ellipse(sx, hy - 2.5, 7.8, 6.4, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+            line(sx - 7.6, hy - 2.6, sx + 7.6, hy - 2.6, t, 1.2);
+            for (const ox of [-3.6, 0, 3.6]) line(sx + fx * 1.5, hy - 8.6, sx + ox * 1.7 + fx, hy - 3, shade(c, .75), .5);
+            ctx.fillStyle = c; ctx.beginPath(); ctx.arc(sx + fx * 1.5, hy - 8.9, 1, 0, Math.PI * 2); ctx.fill();
+        }
+        if (hoodie && (hood > .01 || front)) {
+            const c = hoodie.hex, inner = shade(c, .45);
+            // The face opening reaches the face early so the rising hood never covers it.
+            const face = Math.min(1, hood * 2.6);
+            const cy = lerp(front ? top - .5 : top + 3, hy - 1.5, hood);
+            const ox = sx + fx * 1.4 * face, oy = lerp(front ? top : cy, hy + .2, face), orx = lerp(4.4, 6.4, face), ory = lerp(1.2, 7.4, face);
+            const rx = Math.max(lerp(front ? 6.4 : 7, 9.6, hood), front ? orx + 2 : 0);
+            const ry = Math.max(lerp(front ? 2.4 : 4, 10.2, hood), front ? Math.abs(cy - oy) + ory + 1.2 : 0);
+            ctx.beginPath(); ctx.ellipse(sx, cy, rx, ry, 0, 0, Math.PI * 2);
+            if (front) ctx.ellipse(ox, oy, orx, ory, 0, 0, Math.PI * 2);
+            ctx.fillStyle = c; ctx.fill('evenodd');
+            ctx.strokeStyle = shade(c, .55); ctx.lineWidth = .8; ctx.stroke();
+            if (front) {
+                ctx.beginPath(); ctx.ellipse(ox, oy, orx, ory, 0, 0, Math.PI * 2);
+                ctx.strokeStyle = inner; ctx.lineWidth = 1.1; ctx.stroke();
+                const sy0 = lerp(top + 1, cy + 7, hood);
+                for (const side of [-1, 1]) line(sx + side * 2.2, sy0, sx + side * 2.6, sy0 + 6, '#f3f4f6', .7);
+            } else line(sx, cy - ry * .8, sx, cy + ry * .7, shade(c, .7), .6);
+        }
+        if (cap && front) {
+            const c = cap.hex, t = cap.trim, side = Math.abs(fx) > .5 && Math.abs(fy) < .5;
+            ctx.fillStyle = c; ctx.strokeStyle = t; ctx.lineWidth = .8;
+            ctx.beginPath();
+            if (side) ctx.ellipse(sx + fx * 8, hy - 2.4, 5.6, 1.5, 0, 0, Math.PI * 2);
+            else ctx.ellipse(sx + fx * 2.5, hy - 3.6, 7.6, 1.8, 0, 0, Math.PI * 2);
+            ctx.fill(); ctx.stroke();
+        }
+        ctx.restore();
+        return { zip, hood };
+    }
+
+    return { colors, slots, styles, items, get, bySlot, forSale, preview,
+        ANIM_MS, wearState, amount, setWear, toggleWear, animating, drawWorn };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = ClothingCatalog;
