@@ -103,7 +103,7 @@ existing balances, purchases or minigame clears.
 
 ## Library shelves, documentaries, TV, theater and the DMV
 
-`library-data.js` holds about 100 short, neutral **fact cards**, each with a source
+`library-data.js` holds 111 short, neutral **fact cards**, each with a source
 link. Generated content only selects and orders those cards; it never writes new
 historical claims. To add content, add a cited card and reuse an existing
 category.
