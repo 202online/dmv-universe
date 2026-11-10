@@ -2115,6 +2115,20 @@
             }
             ctx.fillStyle = hair;
             ctx.beginPath(); ctx.arc(sx, hy - 2, 7, Math.PI, 0); ctx.fill();
+            if (fy < 0) {
+                // Seen from behind, hair covers the back of the head instead of bare skin.
+                ctx.beginPath(); ctx.arc(sx, hy, 7.1, 0, Math.PI * 2); ctx.fill();
+                if (features.hair === 'short') {
+                    ctx.fillStyle = shade(skin, .92); ctx.beginPath(); ctx.ellipse(sx, hy + 5.6, 3.4, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+                    for (let i = -4; i <= 4; i += 2) line(sx + i * .9, hy - 5, sx + i * 1.05, hy + 3.4, shade(hair, 1.35), .45);
+                    ctx.fillStyle = hair;
+                }
+                if (features.hair === 'curly')
+                    for (const [ox, oy] of [[-4, -1], [0, 1], [4, -1], [-2, 4], [2.5, 4]]) {
+                        ctx.beginPath(); ctx.arc(sx + ox, hy + oy + hairMotion.bounce * .4, 2.6, 0, Math.PI * 2); ctx.fill();
+                        line(sx + ox - .8, hy + oy - .9, sx + ox + .5, hy + oy - 1.3, shade(hair, 1.7), .5);
+                    }
+            }
             if (features.hair === 'curly') {
                 for (const [ox, oy] of [[-6, -6], [-3, -9], [1, -10], [5, -8], [7, -5]]) {
                     const by = hy + oy + hairMotion.bounce * (oy < -7 ? 1 : .55);
@@ -2123,10 +2137,38 @@
                 }
             }
             if (features.hair === 'long') {
+                const light = shade(hair, 1.5), dark = shade(hair, .68);
+                if (fy < 0) {
+                    // Full fall of hair down the back, swaying with the side locks.
+                    lock(sx - 7.5, sx + 7.5, hy - 2, hy + 15, hair);
+                    for (const x of [-5, -2.5, 0, 2.5, 5]) strand(sx + x, hy - 6, hy + 14, x % 5 ? light : dark);
+                    line(sx, hy - 8.6, sx, hy - 6, dark, .6);
+                } else {
+                    // Crown volume, a side part and swept bangs framing the face.
+                    for (const [ox, oy, rr] of [[-3.8, -7.4, 3], [1.8, -8.4, 2.8], [5, -6.4, 2.4]]) {
+                        ctx.beginPath(); ctx.arc(sx + ox, hy + oy + hairMotion.bounce * .25, rr, 0, Math.PI * 2); ctx.fill();
+                    }
+                    const part = sx + 1.6 + fx * 1.2;
+                    ctx.beginPath(); ctx.moveTo(part, hy - 9.4);
+                    ctx.quadraticCurveTo(sx - 4.5, hy - 8.6, sx - 7.4, hy - 1.5);
+                    ctx.quadraticCurveTo(sx - 5.4, hy - 4.6, sx - 1.5, hy - 5.2);
+                    ctx.quadraticCurveTo(part - .6, hy - 6.4, part, hy - 9.4); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(part, hy - 9.4);
+                    ctx.quadraticCurveTo(sx + 5.6, hy - 8.4, sx + 7.4, hy - 1.5);
+                    ctx.quadraticCurveTo(sx + 5.8, hy - 4.2, sx + 3, hy - 5.4);
+                    ctx.quadraticCurveTo(part + .6, hy - 6.6, part, hy - 9.4); ctx.fill();
+                    line(part, hy - 9.6, part - .3, hy - 7.2, dark, .7);
+                    for (const [x0, x1, y1] of [[-.6, -5.6, -3], [-1.6, -6.6, -1.8], [.9, 5.4, -3.4], [2.1, 6.6, -2]]) {
+                        ctx.beginPath(); ctx.moveTo(part + x0 * .4, hy - 9);
+                        ctx.quadraticCurveTo(sx + x1 * .6, hy - 8.4, sx + x1, hy + y1);
+                        ctx.strokeStyle = x0 < 0 ? light : shade(hair, 1.3); ctx.lineWidth = .5; ctx.stroke();
+                    }
+                    line(sx - 4.6, hy - 8.4, sx - 2.4, hy - 9.4, shade(hair, 1.85), .7);
+                }
                 lock(sx - 9, sx - 6, hy - 3, hy + 10, hair);
                 lock(sx + 6, sx + 9, hy - 3, hy + 10, hair);
                 for (const side of [-1, 1])
-                    for (let k = 0; k < 2; k++) strand(sx + side * (6.6 + k), hy - 4, hy + 9, shade(hair, 1.45));
+                    for (let k = 0; k < 2; k++) strand(sx + side * (6.6 + k), hy - 4, hy + 9, k ? light : shade(hair, 1.25));
             }
             if (features.hair === 'short') {
                 for (let i = -4; i <= 4; i += 2)

@@ -182,17 +182,20 @@ const ClothingCatalog = (() => {
                 ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(hx, hyand + 1.6, 1.7, 0, Math.PI * 2); ctx.fill();
             }
             const open = front ? (1 - zip) * 4.5 : 0, slider = lerp(bottom, top + 1, zip);
-            for (const side of [-1, 1]) {
+            if (front) for (const side of [-1, 1]) {
                 shape([[sx + side * 3.5, top - 1], [sx + side * 8.5, top], [sx + side * 9.5, top + 6], [sx + side * 9, bottom],
                     [sx, bottom], [sx, slider], [sx + side * open, top + 1]], c, shade(c, .55));
-                if (front && open > .2) line(sx, slider, sx + side * open, top + 1, shade(c, .6), .7);
+                if (open > .2) line(sx, slider, sx + side * open, top + 1, shade(c, .6), .7);
             }
+            // The back is one seamless panel.
+            else shape([[sx - 3.5, top - 1], [sx - 8.5, top], [sx - 9.5, top + 6], [sx - 9, bottom],
+                [sx + 9, bottom], [sx + 9.5, top + 6], [sx + 8.5, top], [sx + 3.5, top - 1]], c, shade(c, .55));
             line(sx - 9, bottom - 1.2, sx + 9, bottom - 1.2, t, 2);
             if (front) {
                 line(sx, bottom, sx, slider, '#cbd5e1', .8);
                 ctx.fillStyle = '#e5e7eb'; ctx.fillRect(sx - .9, slider - 1.4, 1.8, 2.8);
                 for (const side of [-1, 1]) line(sx + side * 3.4, bottom - 6, sx + side * 5.6, bottom - 3, shade(c, .6), .7);
-            } else line(sx, top + 2, sx, bottom - 2, shade(c, .8), .6);
+            }
         }
         if (cap && head) {
             const c = cap.hex, t = cap.trim;
@@ -220,7 +223,7 @@ const ClothingCatalog = (() => {
                 ctx.strokeStyle = inner; ctx.lineWidth = 1.1; ctx.stroke();
                 const sy0 = lerp(top + 1, cy + 7, hood);
                 for (const side of [-1, 1]) line(sx + side * 2.2, sy0, sx + side * 2.6, sy0 + 6, '#f3f4f6', .7);
-            } else line(sx, cy - ry * .8, sx, cy + ry * .7, shade(c, .7), .6);
+            }
         }
         if (cap && head && front) {
             const c = cap.hex, t = cap.trim, side = Math.abs(fx) > .5 && Math.abs(fy) < .5;
