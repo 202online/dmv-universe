@@ -74,7 +74,7 @@ const ResidentialArt = (() => {
         return { kind, variant, terrace, parts, door, path, bays, decorativeCars,
             available, listed: listing(b) !== null, garden, parking };
     }
-    function draw(b, { ctx: c, P, poly, box, shade }, active = false, time = 0) {
+    function draw(b, { ctx: c, P, poly, box, shade, entrances = [] }, active = false, time = 0) {
         const layout = plan(b), trim = b.trim, outline = '#17232899';
         const plane = (x, y, w, d, z, fill, stroke, width = 1) =>
             poly([P(x, y, z), P(x + w, y, z), P(x + w, y + d, z), P(x, y + d, z)], fill, stroke, width);
@@ -86,6 +86,12 @@ const ResidentialArt = (() => {
             c.strokeStyle = color; c.lineWidth = width; c.stroke();
         };
         plane(b.x, b.y, b.w, b.d, 0, layout.kind === 'apartment' ? '#6d7768' : '#55754c', layout.kind === 'house' ? null : '#9c9b7a');
+        if (entrances.length) {
+            c.save();
+            plane(b.x,b.y,b.w,b.d,0,null,null); c.clip();
+            for (const entrance of entrances) poly(entrance.map(p=>P(...p)), '#2e3340');
+            c.restore();
+        }
         const lot = layout.parking;
         plane(lot.x, lot.y, lot.w, lot.d, .3, '#2e3340', '#aaa99b');
         for (let y = lot.y + 9; y < lot.y + lot.d - 2; y += 14)

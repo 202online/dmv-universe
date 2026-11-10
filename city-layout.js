@@ -325,13 +325,11 @@
             q.approaches.push({ ...region(destination, layout.path), destination, pedestrian: true });
             const access = q.roadAccess.find(a => a.building === destination);
             const [ax, ay] = point(destination, ...world(...access.path[0]), true);
-            for (const [r, pedestrian] of [[layout.parking, false], [layout.path, true]]) {
-                const bottom = r.y + r.d, end = Math.max(bottom, ay);
-                if (end > bottom) q.approaches.push({ ...region(destination, { x: r.x, y: bottom, w: r.w, d: end - bottom }), destination, pedestrian });
-                const mid = r.x + r.w / 2;
-                q.approaches.push({ ...region(destination, { x: Math.min(mid, ax) - 10, y: end - 10,
-                    w: Math.abs(mid - ax) + 20, d: 20 }), destination, pedestrian });
-            }
+            const r = layout.path, bottom = r.y + r.d, end = Math.max(bottom, ay);
+            if (end > bottom) q.approaches.push({ ...region(destination, { x: r.x, y: bottom, w: r.w, d: end - bottom }), destination, pedestrian: true });
+            const mid = r.x + r.w / 2;
+            q.approaches.push({ ...region(destination, { x: Math.min(mid, ax) - 10, y: end - 10,
+                w: Math.abs(mid - ax) + 20, d: 20 }), destination, pedestrian: true });
             for (const bay of layout.bays.slice(0, layout.kind === 'apartment' ? 2 : undefined))
                 addBay(destination, area, region(destination, bay));
         }
@@ -390,6 +388,70 @@
             [{ x: b.x, y: b.y, w: b.w - 48, d: b.d },
                 { x: b.x + b.w - 48, y: b.y, w: 48, d: 2 },
                 { x: b.x + b.w - 48, y: b.y + b.d - 2, w: 48, d: 2 }].map(r => footprint(region(b, r))));
+        addParkingAprons(q);
+    }
+
+    function addParkingAprons(q) {
+        const roads = [
+            { e0: -70, e1: 70, s0: 0, s1: 2 * WORLD },
+            { e0: -WORLD, e1: WORLD, s0: WORLD - 100, s1: WORLD + 100 },
+            ...q.neighborhood.streets.map(r => ({
+                e0: Math.min(r.a[0],r.b[0]) - 30, e1: Math.max(r.a[0],r.b[0]) + 30,
+                s0: Math.min(r.a[1],r.b[1]) - 30, s1: Math.max(r.a[1],r.b[1]) + 30
+            }))
+        ];
+        const obstacles = [...q.buildings.filter(b => !b.garage), ...q.neighborhood.buildings,
+            ...q.activities.filter(b => b.type === 'boxing')].flatMap(buildingSolids).concat(q.parkingSolids);
+        for (const area of q.parkingAreas) {
+            const lot = footprint(area), candidates = [];
+            const blocked = obstacles.concat(targets(q).filter(b => b !== area.destination).map(footprint));
+            for (const road of roads) for (const axis of ['e','s']) {
+                const cross = axis === 'e' ? 's' : 'e';
+                const lo = Math.max(lot[`${cross}0`],road[`${cross}0`]);
+                const hi = Math.min(lot[`${cross}1`],road[`${cross}1`]);
+                if (hi - lo < 28) continue;
+                const mid = (lo + hi) / 2;
+                let start, end;
+                if (lot[`${axis}1`] < road[`${axis}0`]) {
+                    start = lot[`${axis}1`] - 4; end = road[`${axis}0`] + 4;
+                } else if (road[`${axis}1`] < lot[`${axis}0`]) {
+                    start = road[`${axis}1`] - 4; end = lot[`${axis}0`] + 4;
+                } else {
+                    const shared = (Math.max(lot[`${axis}0`],road[`${axis}0`]) +
+                        Math.min(lot[`${axis}1`],road[`${axis}1`])) / 2;
+                    start = shared - 4; end = shared + 4;
+                }
+                if (end - start > 400) continue;
+                const e0 = axis === 'e' ? start : mid - 14, e1 = axis === 'e' ? end : mid + 14;
+                const s0 = axis === 's' ? start : mid - 14, s1 = axis === 's' ? end : mid + 14;
+                const [cx,cy] = world((e0+e1)/2,(s0+s1)/2);
+                const w = (e1-e0) * Math.SQRT1_2, d = (s1-s0) * Math.SQRT1_2;
+                const apron = { x: cx-w/2, y: cy-d/2, w, d, roadAligned: true,
+                    destination: area.destination, pedestrian: false, vehicleEntrance: true };
+                const corners = footprint(apron).corners;
+                if (blocked.some(s => polygonsOverlap(corners,s.corners))) continue;
+                candidates.push({ apron, length: end-start });
+            }
+            if (!candidates.length) for (const road of roads) {
+                const e = Math.max(road.e0 + 16,Math.min(road.e1 - 16,(lot.e0+lot.e1)/2));
+                const s = Math.max(road.s0 + 16,Math.min(road.s1 - 16,(lot.s0+lot.s1)/2));
+                const start = world(Math.max(lot.e0+16,Math.min(lot.e1-16,e)),
+                    Math.max(lot.s0+16,Math.min(lot.s1-16,s)));
+                const end = world(e,s), dx = end[0]-start[0], dy = end[1]-start[1], length = Math.hypot(dx,dy);
+                if (!length || length > 240) continue;
+                const nx = -dy / length * 12, ny = dx / length * 12;
+                const corners = [[start[0]+nx,start[1]+ny],[end[0]+nx,end[1]+ny],
+                    [end[0]-nx,end[1]-ny],[start[0]-nx,start[1]-ny]];
+                if (blocked.some(o => polygonsOverlap(corners,o.corners))) continue;
+                const xs = corners.map(p=>p[0]), ys = corners.map(p=>p[1]);
+                const x = Math.min(...xs), y = Math.min(...ys);
+                candidates.push({ length, apron: { x, y, w: Math.max(...xs)-x, d: Math.max(...ys)-y,
+                    polygon: corners, destination: area.destination, pedestrian: false, vehicleEntrance: true } });
+            }
+            candidates.sort((a,b) => a.length-b.length);
+            if (!candidates.length) throw new Error(`No clear parking entrance for ${area.destination.name || area.kind}`);
+            q.approaches.push(candidates[0].apron);
+        }
     }
 
     const api = { apply, targets, nearRoad, intersects, designs, point, footprint, overlaps, distanceTo, front, polygonsOverlap,

@@ -193,7 +193,8 @@ Apartments use broad 160×110 lots and condos 140×100, compared with 100×104
 single-family yard plots and the main apartment's 170×130 footprint. Houses
 sit in continuous grass rows with 12-unit gaps between plots, inset side walls,
 and at least 25 units of front lawn. A light-grey sidewalk separates the lawn
-from the street; driveways end inside the yard. Their heights remain
+from the street; parking spaces stay inside the yard with a paved driveway
+entrance connecting them to the street. Their heights remain
 proportional rather than stretching into thin towers. Apartment courts are
 spaced around the library commons and southern lots are repositioned to keep
 the larger properties inside the map; local streets
@@ -202,12 +203,17 @@ All balconies, driveways and parking details stay within their property lots.
 Parking surfaces include pavement joints, drainage grates, wheel stops and
 clear bay outlines; larger lots also have directional arrows and worn asphalt
 details. All parking and driveway pavement matches the street's dark asphalt,
-with concrete-colored space outlines. Parking artwork leaves a four-unit
-gap outside street sidewalks, and the old painted connector paths to homes
-are no longer drawn; clear, walkable access is retained. Water gardens have shaded pool depths, ripples, falling-water foam and
+with concrete-colored space outlines. Parking pavement joins the street through open vehicle entrances that cut
+across the sidewalk, rather than leaving a gap or a sidewalk barrier.
+Sidewalks remain along street sides, and pedestrian connector paths to front
+doors are not painted; clear, walkable access is retained. Water gardens have shaded pool depths, ripples, falling-water foam and
 jointed stone coping. The SW waterfront has shallow-water color bands, moving
 wave highlights and a segmented stone edge. Trees use layered shaded crowns,
 leaf clusters, branching trunks and ground shadows that scale with map zoom.
+Each lot, driveway and garage has a clear asphalt entrance reaching the actual
+street surface, not just its sidewalk. Entrances avoid neighboring properties,
+walls and water gardens, and are drawn over sidewalk bands so concrete never
+blocks the vehicle opening.
 
 The city uses consistent **compact arcade proportions**, not real-world map
 distances. All sedans, whether drivable, in a driveway or in a parking lot,

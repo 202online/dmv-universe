@@ -114,8 +114,8 @@ test('single-family houses line up with small side yards and generous grassy fro
         }
     }
     assert.match(html, /streetRect\(r, CityLayout.halfWidth, '#c3c6c5'\)/);
-    assert.ok(!html.includes('for (const approach of q.approaches) roadAligned'), 'no visible connector paths between homes and parking');
-    assert.match(html, /leaveStreetGap\(-124, 124/);
+    assert.match(html, /q.approaches.filter\(a => !a.pedestrian\)/, 'only vehicle approaches cut through sidewalks; no paths to front doors');
+    assert.ok(!html.includes('leaveStreetGap'), 'parking entrances must not be clipped away from streets');
 });
 test('outdoor activities use a consistent arcade size hierarchy and parked cars match the Bucket', () => {
     const activities = Object.values(context.city).flatMap(q => q.activities);
@@ -380,12 +380,45 @@ test('cars without a parking pass use public lots while bicycles need no garage'
 test('attached lots and residential driveways keep their pedestrian approaches clear of parked pickups', () => {
     for (const q of Object.values(context.city)) for (const approach of q.approaches) {
         for (const b of CityLayout.targets(q).filter(b => b !== approach.destination))
-            assert.equal(CityLayout.overlaps(approach, b), false, 'The approach does not run through another property');
+            assert.equal(CityLayout.polygonsOverlap(approach.polygon || CityLayout.footprint(approach).corners,
+                CityLayout.footprint(b).corners),false,'approaches must not cross another property');
         if (!approach.pedestrian) continue;
         for (const bay of q.playerParking) {
             const corners = CityLayout.vehicleCorners(bay.x + bay.w / 2, bay.y + bay.d / 2, bay.heading, context.VehicleArt.sizes.truck);
             assert.equal(CityLayout.polygonsOverlap(corners, CityLayout.footprint(approach).corners), false,
                 `${bay.destination.name || bay.destination.kind} leaves the entrance approach clear`);
+        }
+    }
+});
+
+test('parking entrances overlap both lot pavement and street asphalt instead of stopping at sidewalks', () => {
+    for (const q of Object.values(context.city)) {
+        const streetPolygons = q.neighborhood.streets.map(r => {
+            const e0 = Math.min(r.a[0],r.b[0])-30, e1 = Math.max(r.a[0],r.b[0])+30;
+            const s0 = Math.min(r.a[1],r.b[1])-30, s1 = Math.max(r.a[1],r.b[1])+30;
+            return [[e0,s0],[e1,s0],[e1,s1],[e0,s1]].map(p=>world(...p));
+        }).concat([
+            [[-70,0],[70,0],[70,3200],[-70,3200]].map(p=>world(...p)),
+            [[-1600,1500],[1600,1500],[1600,1700],[-1600,1700]].map(p=>world(...p))
+        ]);
+        for (const area of q.parkingAreas.filter(a=>!CityLayout.residentialPlan(a.destination))) {
+            const entrances = q.approaches.filter(a=>a.vehicleEntrance && a.destination===area.destination);
+            assert.ok(entrances.some(a=>{
+                const corners = a.polygon || CityLayout.footprint(a).corners;
+                return CityLayout.polygonsOverlap(corners,CityLayout.footprint(area).corners) &&
+                    streetPolygons.some(road=>CityLayout.polygonsOverlap(corners,road));
+            }), `${area.destination.name || area.kind} has a continuous open street entrance`);
+        }
+        for (const apron of q.approaches.filter(a=>a.vehicleEntrance)) {
+            const corners = apron.polygon || CityLayout.footprint(apron).corners;
+            for (const b of [...q.buildings.filter(b=>!b.garage),...q.neighborhood.buildings])
+                for (const solid of CityLayout.buildingSolids(b))
+                    assert.equal(CityLayout.polygonsOverlap(corners,solid.corners),false,'entrance must not cross a building or garden');
+        }
+        for (const b of CityLayout.targets(q).filter(b=>CityLayout.residentialPlan(b))) {
+            assert.ok(q.approaches.filter(a=>!a.pedestrian && a.destination===b).some(a=>
+                streetPolygons.some(road=>CityLayout.polygonsOverlap(CityLayout.footprint(a).corners,road))),
+            `${b.name} driveway reaches the street, not just its sidewalk`);
         }
     }
 });
