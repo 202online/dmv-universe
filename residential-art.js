@@ -47,13 +47,20 @@ const ResidentialArt = (() => {
         const parking = kind === 'apartment' ?
             { x: b.x + b.w * .40, y: b.y + b.d * .48, w: b.w * .56, d: b.d * .50, spaces: 4 } :
             terrace ? { x: b.x + b.w * .30, y: b.y + b.d * .66, w: b.w * .66, d: b.d * .32, spaces: 2 } :
-            { x: b.x + b.w * (kind === 'house' ? .74 : .78), y: b.y + b.d * (kind === 'house' ? .10 : .04),
-                w: b.w * (kind === 'house' ? .22 : .20), d: b.d * (kind === 'house' ? .73 : .94), spaces: 1 };
+            { x: b.x + b.w * (kind === 'house' ? .73 : .78), y: b.y + b.d * (kind === 'house' ? .10 : .04),
+                w: b.w * (kind === 'house' ? .27 : .20), d: b.d * (kind === 'house' ? .73 : .94), spaces: 1 };
         const entrancePart = parts.filter(p => !p.z).sort((a, c) => c.y + c.d - a.y - a.d)[0];
         const doorX = kind === 'apartment' ? b.x + b.w * .30 :
             terrace ? b.x + b.w * .16 : entrancePart.x + entrancePart.w * .5;
         const door = { x: doorX, y: entrancePart.y + entrancePart.d, w: Math.min(16, entrancePart.w * .4), h: 28 };
         const path = { x: door.x - 10, y: door.y, w: 20, d: b.y + b.d - door.y };
+        const drivewayPath = kind === 'house' ? {
+            x: path.x, y: parking.y + parking.d, w: parking.x + parking.w - path.x,
+            d: Math.min(18, b.y + b.d - parking.y - parking.d)
+        } : null;
+        const steps = kind === 'house' ? Array.from({length:3},(_,i)=>({
+            x:path.x,y:door.y+i*3,w:path.w,d:3,h:6-i*2
+        })) : [];
         const bays = [];
         if (kind === 'apartment') {
             const slot = parking.w / parking.spaces;
@@ -72,7 +79,7 @@ const ResidentialArt = (() => {
             y: bay.y + bay.d / 2 - vehicles.sizes.car.d / 2, heading: bay.heading, color: ['#63879a', '#923d4b'][i]
         })) : [];
         const available = b.available ?? variant === 0;
-        return { kind, variant, terrace, parts, door, path, bays, decorativeCars,
+        return { kind, variant, terrace, parts, door, path, drivewayPath, steps, bays, decorativeCars,
             available, listed: listing(b) !== null, garden, parking };
     }
     function draw(b, { ctx: c, P, poly, box, shade, entrances = [] }, active = false, time = 0) {
@@ -117,6 +124,10 @@ const ResidentialArt = (() => {
                 c.save(); c.font = 'bold 10px system-ui'; c.fillStyle = '#e2e8d8'; c.textAlign = 'center';
                 c.fillText('P', sx, sy); c.restore();
             }
+        }
+        if(layout.kind==='house') {
+            for(const p of [layout.path,layout.drivewayPath])
+                plane(p.x,p.y,p.w,p.d,.7,'#c3c6c5');
         }
         for (const p of layout.parts) {
             const color = b.color;
@@ -171,6 +182,8 @@ const ResidentialArt = (() => {
                 }
             }
         }
+        for(const step of layout.steps)
+            box(step.x,step.y,0,step.w,step.d,step.h,'#c3c6c5','#a4a8a7');
         if (layout.garden) {
             const g = layout.garden, wallDepth = 3, height = 22;
             plane(g.x, g.y, g.w, g.d, .4, '#607f58', '#a6aa8a');

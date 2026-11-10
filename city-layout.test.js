@@ -160,6 +160,17 @@ test('single-family houses line up with small side yards and generous grassy fro
         assert.equal(q.houseYards.length, 1, 'a continuous lawn surrounds the residential row');
         for (let i = 0; i < houses.length; i++) {
             const b = houses[i], layout = ResidentialArt.plan(b);
+            assert.ok(layout.parking.w >= (CityLayout.halfWidth-CityLayout.roadHalfWidth)*Math.SQRT1_2*1.15,
+                'driveway is visibly wider than the street sidewalk');
+            assert.equal(layout.steps.length,3,'front door has three concrete steps');
+            assert.equal(layout.drivewayPath.y,layout.parking.y+layout.parking.d,'branch meets the driveway front edge');
+            assert.ok(layout.drivewayPath.x < layout.path.x+layout.path.w &&
+                layout.drivewayPath.x+layout.drivewayPath.w>layout.path.x,'walkways intersect');
+            const paths=q.approaches.filter(a=>a.pedestrian && a.destination===b);
+            assert.ok(paths.some(p=>CityLayout.footprint(p).corners.some(([x,y])=>{
+                const e=x-y,s=x+y;
+                return CityLayout.streetBounds(q).some(r=>e>=r.e0 && e<=r.e1 && s>=r.s0 && s<=r.s1);
+            })),'front path reaches the street sidewalk');
             assert.ok(Math.abs(centers[i][1] - centers[0][1]) < 1e-7, 'houses share a street-aligned frontage');
             if (i) assert.ok(Math.abs(centers[i][0] - centers[i-1][0] - 112 * Math.SQRT2) < 1e-7, 'twelve units of side yard separate plots');
             for (const part of layout.parts) {
@@ -174,7 +185,8 @@ test('single-family houses line up with small side yards and generous grassy fro
         }
     }
     assert.match(html, /for\(const r of CityLayout.streetBounds\(q\)\) compassRect\(r.e0,r.e1,r.s0,r.s1,'#c3c6c5'\)/);
-    assert.match(html, /q.approaches.filter\(a => !a.pedestrian\)/, 'only vehicle approaches cut through sidewalks; no paths to front doors');
+    assert.match(html, /q.approaches.filter\(a=>a.pedestrian && a.destination.kind==='house'\)/,
+        'house pedestrian paths render separately from asphalt vehicle entrances');
     assert.ok(!html.includes('leaveStreetGap'), 'parking entrances must not be clipped away from streets');
 });
 test('outdoor activities use a consistent arcade size hierarchy and parked cars match the Bucket', () => {

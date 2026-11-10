@@ -1690,6 +1690,8 @@
                 if (approach.polygon) poly(approach.polygon.map(p => P(...p)), '#2e3340');
                 else groundRect(approach.x, approach.y, approach.w, approach.d, '#2e3340');
             });
+            for(const path of q.approaches.filter(a=>a.pedestrian && a.destination.kind==='house'))
+                roadAligned(path,()=>groundRect(path.x,path.y,path.w,path.d,'#c3c6c5'));
         }
 
         function groundRect(x, y, w, d, fill, stroke, width = 1) {

@@ -37,6 +37,25 @@ test('houses, condos and apartments share one borderless lawn color', () => {
     }
 });
 
+test('house steps and both intersecting walkways use sidewalk concrete', () => {
+    for(const variant of [0,1,2]) {
+        const b={x:100,y:200,w:100,d:104,h:90,kind:'house',variant,color:'#976b53',trim:'#e3ceb0'};
+        const concrete=[],steps=[];
+        Art.draw(b,{
+            ctx:new Proxy({}, {get:()=>()=>{}}),P:(x,y,z=0)=>[x,y,z],
+            poly(points,fill){if(fill==='#c3c6c5')concrete.push(points);},
+            box(x,y,z,w,d,h,color){if(color==='#c3c6c5')steps.push({x,y,z,w,d,h});},
+            shade:c=>c
+        });
+        assert.equal(concrete.length,2,'front walk and driveway branch are rendered');
+        assert.equal(steps.length,3,'each tread is a solid concrete step');
+        assert.deepEqual(steps.map(s=>s.h),[6,4,2],'steps descend toward the walkway');
+        const plan=Art.plan(b);
+        assert.ok(concrete.every(points=>points.every(([x,y])=>x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.d)));
+        assert.equal(steps[0].y,plan.door.y,'stairs start at the front door');
+    }
+});
+
 test('roofs, balconies, driveways, garages and apartment spaces draw within each property boundary', () => {
     for (const [w, d] of [[80, 60], [140, 100], [160, 110], [170, 130]]) {
         const b = { x: 100, y: 200, w, d, h: 125, color: '#976b53', trim: '#e3ceb0' };

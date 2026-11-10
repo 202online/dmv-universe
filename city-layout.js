@@ -399,6 +399,16 @@
             q.approaches.push({ ...region(destination, layout.path), destination, pedestrian: true });
             const access = q.roadAccess.find(a => a.building === destination);
             const [ax, ay] = point(destination, ...world(...access.path[0]), true);
+            if(layout.kind==='house') {
+                q.approaches.push({...region(destination,layout.drivewayPath),destination,pedestrian:true});
+                const bottom=layout.path.y+layout.path.d;
+                const end=Math.max(bottom,ay-HALF*Math.SQRT1_2+2);
+                if(end>bottom) q.approaches.push({...region(destination,{
+                    x:layout.path.x,y:bottom,w:layout.path.w,d:end-bottom
+                }),destination,pedestrian:true});
+                for(const bay of layout.bays) addBay(destination,area,region(destination,bay));
+                continue;
+            }
             const r = layout.path, bottom = r.y + r.d, end = Math.max(bottom, ay);
             if (end > bottom) q.approaches.push({ ...region(destination, { x: r.x, y: bottom, w: r.w, d: end - bottom }), destination, pedestrian: true });
             const mid = r.x + r.w / 2;
@@ -494,7 +504,8 @@
         for(const building of objects) {
             const layout=residentialPlan(building);
             if(!layout) continue;
-            const reserved=[...layout.parts,layout.parking,layout.path,...(layout.garden?[layout.garden]:[])].map(r=>region(building,r));
+            const reserved=[...layout.parts,layout.parking,layout.path,...(layout.drivewayPath?[layout.drivewayPath]:[]),
+                ...(layout.garden?[layout.garden]:[])].map(r=>region(building,r));
             let count=0;
             for(const v of [.92,.78,.64]) for(const u of [.15,.58,.70,.05,.38,.86,.21,.35,.265]) {
                 if(count>=5) continue;
