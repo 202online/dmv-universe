@@ -94,6 +94,13 @@ All existing venues remain in their quadrants. Every home, venue, neighborhood
 shop and sports destination has an obstacle-free local street approach joining
 the main crossroads. Local streets use the main road's asphalt, sidewalks and
 yellow markings at a narrower neighborhood scale. Trees stay off the streets.
+Every quadrant mixes houses, apartments and condos while keeping its existing
+home count and neighborhood character. SE includes close-set apartment
+neighbors; SW includes attached, rowhome-style condos with shared party walls,
+matching rooflines and separate front parking.
+Buildings, arenas, fields and parking run parallel to the existing compass
+street grid. Artwork, collision polygons, entrances, garage attachments,
+parking orientation and map footprints share the same rotation.
 Neighborhood homes open the same saved home/computer/TV menu as The Crib.
 Each residential type now has three distinct silhouettes: bay-front, L-shaped
 and porch/setback houses; L-wing, stepped-tower and courtyard condos; slab,
@@ -106,9 +113,11 @@ garage shares its full rear wall, with side-facing roll-up doors and a physical
 **PARK HERE / GARAGE** board mounted on the garage wall. Apartment fronts have
 stone waterfall walls, animated falling water, catch pools and landscaped
 garden islands, separate from the parking bays. Selected
-houses carry hanging **FOR SALE** boards on cross-arm posts; apartments and
-condos advertise **1–4 BEDROOMS AVAILABLE** on framed, twin-post leasing
-boards. Sign panels have physical depth and lettering projected onto their
+houses carry hanging **FOR SALE** boards on cross-arm posts; selected apartments
+advertise **1–4 BEDROOMS AVAILABLE**, while selected condos use **AVAILABLE CONDOS /
+INQUIRE WITHIN**, on framed, twin-post boards. Occupied variants have no
+availability board; each quadrant has at most one advertised apartment and
+one advertised condo. Sign panels have physical depth and lettering projected onto their
 isometric faces, not floating screen labels. These are world-building signs, not new property
 purchases or separate bedroom inventories. Parking cars are decorative;
 the existing saved vehicle/garage menu is unchanged.
@@ -129,6 +138,76 @@ For-sale houses have empty driveways/garages; parked cars appear only at
 occupied houses. Basketball courts (150×140) are smaller than tennis courts
 (180×170), which are smaller than baseball diamonds and football/soccer
 grounds. Houses remain smaller than apartment blocks and major venues.
+
+The world camera starts at **150% zoom**, with accessible **− / +** controls
+from 100% to 225%. Buildings, people, vehicles, signs and scenery zoom
+together; menus and arcade canvases retain their original sizes.
+Each quadrant now spans 3,200 compass units instead of 2,000. Destination
+centres are spaced 60% farther apart without enlarging their footprints.
+Roads, crossings, district maps, lighting and collision-aware local approaches
+use the expanded bounds. Older saved parked rides migrate once to the larger
+layout; stars, ownership and campaign progress remain unchanged.
+
+### Bus and underground Metro
+
+Instant header fast travel is replaced with physical **Bus Stops** and
+**Underground Metro** entrances in each quadrant, marked on the city map.
+Stand nearby **on foot**, enter the station menu, and choose a destination.
+Provisional test fares are **2 stars by bus / 4 stars by train**, paid once
+when boarding. Cars stay behind; bicycles, scooters and e-bikes travel in the bag.
+The bus visibly arrives, you board, and it departs. Train passengers walk
+down the station steps; no above-ground train is drawn.
+
+Bus speed is **1.3× walking**, just below the scooter's 1.4×. The train runs
+at **2.6× walking**: exactly twice bus speed, faster than the pickup.
+Times depend on district distance (a diagonal trip takes twice an adjacent
+trip); train times are exactly half bus times for the same route.
+Trips lock movement and other travel until arrival at the destination station.
+Paid journeys persist, so reloading resumes/completes the journey without a
+second fare. These are local simulated services, not live transit schedules.
+
+Every public venue, game, field and currently accessible home has a dedicated
+**P** bay sized for the pickup, separate from decorative parking and clear of
+roads, trees and buildings. **Getting off does not move your ride.** It is
+secured in a nearby clear bay after 60 continuous seconds unattended (outside
+its 60-unit interaction area), even if you have left the quadrant. The bay is
+chosen near **where the vehicle was left**, not near the player's new location.
+Merely entering a nearby venue or getting off does not move it.
+On logout/reload, cars return to parking at **The Crib in SE**, rather than
+following the player. A message identifies the destination where a forgotten
+ride is secured; the map's
+blue vehicle marker shows the location. Future private homes marked
+`privateHome` do not receive public player parking bays.
+
+The **Item Bag** holds every owned bicycle, electric scooter and e-bike.
+Use a bag item to deploy it in a safe spot and start riding; pack it again to
+continue on foot. They automatically accompany bus, train and City Ride
+journeys without appearing alongside the vehicle. Deploying a bike does
+not erase your car: cars retain their separate saved locations, remain
+visible/retrievable, and follow the same delayed-parking rule. Bag rides
+cannot be deployed during travel or while already riding.
+
+**Settings → Respawn** lets you choose **Last Location** (default) or **Home**.
+Last Location returns you to a safe front-door approach of the venue you
+were last at or nearest to; Home returns you to The Crib's entrance.
+Your respawn choice does not change the vehicle rule: cars return home on
+logout. Saved settings, last location, bag ownership and separate parked-car
+records are optional additions to older saves.
+
+Residential driveways have a separate curbed setback from house/condo walls
+and roofs, with foreground cars drawn in front of the buildings. Only selected
+apartments and condos display physical availability boards; occupied variants
+have no leasing signs, and condos use their own availability wording.
+
+**City Ride** is a fictional local ride-hailing service, available from the
+header on foot. It picks you up at your exact position and offers public
+venues, games, fields and landmarks in all quadrants, with safe drop-off
+approaches. Every booking costs **6 stars**, regardless of distance.
+The confirmation shows the destination, fare and distance-based ETA before
+charging. The illustrated pickup car uses the same sedan scale; travel
+runs at the Bucket's 1.8× walking speed. Pickups are illustrated rather
+than AI vehicles navigating the entire city street network. Paid journeys
+resume after reload without another fare.
 
 The city map shows the local streets, tan home markers, blue neighborhood-shop
 markers and numbered venues, with descriptions of each district.

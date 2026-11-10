@@ -303,25 +303,27 @@ test('sensitive topics carry notes on bookshelves and individual media scenes', 
 test('theater (NW) and DMV (SW) are clear of roads and objects, solid and reachable', () => {
     const html = fs.readFileSync(`${__dirname}/index.html`, 'utf8');
     const world = html.split('// ---------- World data ----------')[1].split('// ---------- State & input ----------')[0];
-    const context = { WORLD: 1000, CityLayout: require('./city-layout.js'), VehicleArt: require('./vehicle-art.js') };
+    const context = { WORLD: 1600, CityLayout: require('./city-layout.js'), VehicleArt: require('./vehicle-art.js') };
     vm.runInNewContext(`${world}\nglobalThis.city = quadrants;`, context);
     for (const [qid, type] of [['NW', 'theater'], ['SW', 'dmv']]) {
         const q = context.city[qid], b = q.buildings.find(x => x.type === type);
         assert.ok(b, type);
-        const corners = [[b.x, b.y], [b.x + b.w, b.y], [b.x, b.y + b.d], [b.x + b.w, b.y + b.d]].map(([x, y]) => [x - y, x + y]);
-        assert.ok(corners.every(([e, s]) => Math.abs(e) > 150 && (s < 810 || s > 1190) && Math.abs(e) < 950 && s > 30 && s < 1970), `${type} clears roads`);
-        const overlaps = (a, o) => a.x < o.x + o.w && a.x + a.w > o.x && a.y < o.y + o.d && a.y + a.d > o.y;
+        const corners = context.CityLayout.footprint(b).corners.map(([x, y]) => [x - y, x + y]);
+        assert.ok(corners.every(([e, s]) => Math.abs(e) > 150 && (s < context.WORLD - 190 || s > context.WORLD + 190) &&
+            Math.abs(e) < context.WORLD - 50 && s > 30 && s < 2 * context.WORLD - 30), `${type} clears roads`);
+        const overlaps = context.CityLayout.overlaps;
         for (const item of [...q.buildings, ...q.activities, ...q.neighborhood.buildings])
             if (item !== b) assert.equal(overlaps(b, item), false, `${type} overlaps ${item.name || item.kind}`);
-        assert.ok(q.solids.some(s => s.x0 === b.x && s.y0 === b.y));
-        const walkable = (x, y) => Math.abs(x - y) < 980 && x + y > 20 && x + y < 1980 &&
-            !q.solids.some(s => x + 9 > s.x0 && x - 9 < s.x1 && y + 9 > s.y0 && y - 9 < s.y1);
-        const queue = [[500, 500]], seen = new Set(['500,500']);
+        assert.ok(q.solids.some(s => s.x === b.x && s.y === b.y && s.corners));
+        const walkable = (x, y) => Math.abs(x - y) < context.WORLD - 20 && x + y > 20 && x + y < 2 * context.WORLD - 20 &&
+            !q.solids.some(s => x+9>s.x0&&x-9<s.x1&&y+9>s.y0&&y-9<s.y1&&
+                (!s.corners||context.CityLayout.polygonsOverlap([[x-9,y-9],[x+9,y-9],[x+9,y+9],[x-9,y+9]],s.corners)));
+        const start = context.WORLD / 2;
+        const queue = [[start, start]], seen = new Set([`${start},${start}`]);
         let reachable = false;
         for (let i = 0; i < queue.length && !reachable; i++) {
             const [x, y] = queue[i];
-            const dx = Math.max(b.x - x, 0, x - (b.x + b.w)), dy = Math.max(b.y - y, 0, y - (b.y + b.d));
-            if (Math.hypot(dx, dy) < 50) reachable = true;
+            if (context.CityLayout.distanceTo(b,x,y) < 50) reachable = true;
             for (const [mx, my] of [[10, 0], [-10, 0], [0, 10], [0, -10]]) {
                 const k = `${x + mx},${y + my}`;
                 if (!seen.has(k) && walkable(x + mx, y + my)) { seen.add(k); queue.push([x + mx, y + my]); }

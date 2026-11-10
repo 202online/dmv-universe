@@ -34,24 +34,27 @@ test('weekly shelf stays stable during the UTC week and rotates at Monday midnig
 test('SE library clears roads and other destinations, is solid, and has a walkable approach from the crossroads', () => {
     const html = fs.readFileSync(`${__dirname}/index.html`, 'utf8');
     const world = html.split('// ---------- World data ----------')[1].split('// ---------- State & input ----------')[0];
-    const context = { WORLD: 1000, CityLayout: require('./city-layout.js'), VehicleArt: require('./vehicle-art.js') };
+    const context = { WORLD: 1600, CityLayout: require('./city-layout.js'), VehicleArt: require('./vehicle-art.js') };
     vm.runInNewContext(`${world}\nglobalThis.city = quadrants;`, context);
     const q = context.city.SE, library = q.buildings.find(b => b.type === 'library');
     assert.ok(library);
     assert.ok(library.x + library.w - library.y < -130);
-    assert.ok(library.x + library.y > 1170);
-    const overlaps = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.d && a.y + a.d > b.y;
+    assert.ok(library.x + library.y > context.WORLD + 170);
+    const overlaps = context.CityLayout.overlaps;
     for (const item of [...q.buildings, ...q.activities, ...q.neighborhood.buildings])
         if (item !== library) assert.equal(overlaps(library, item), false, `Overlaps ${item.name || item.kind}`);
-    assert.ok(q.solids.some(s => s.x0 === library.x && s.y0 === library.y));
-    const walkable = (x, y) => Math.abs(x - y) < 980 && x + y > 20 && x + y < 1980 &&
-        !q.solids.some(s => x + 9 > s.x0 && x - 9 < s.x1 && y + 9 > s.y0 && y - 9 < s.y1);
-    const queue = [[500, 500]], visited = new Set(['500,500']);
+    assert.ok(q.solids.some(s => s.x === library.x && s.y === library.y && s.corners));
+    const walkable = (x, y) => Math.abs(x - y) < context.WORLD - 20 && x + y > 20 && x + y < 2 * context.WORLD - 20 &&
+        !q.solids.some(s => x+9>s.x0&&x-9<s.x1&&y+9>s.y0&&y-9<s.y1&&
+            (!s.corners||context.CityLayout.polygonsOverlap([[x-9,y-9],[x+9,y-9],[x+9,y+9],[x-9,y+9]],s.corners)));
+    const start = context.WORLD / 2;
+    const queue = [[start, start]], visited = new Set([`${start},${start}`]);
     let reachable = false;
     for (let i = 0; i < queue.length; i++) {
         const [x, y] = queue[i];
-        if (x >= library.x && x <= library.x + library.w && y > library.y + library.d &&
-            y < library.y + library.d + 50) { reachable = true; break; }
+        const [lx,ly]=context.CityLayout.point(library,x,y,true);
+        if (lx >= library.x && lx <= library.x + library.w && ly > library.y + library.d &&
+            ly < library.y + library.d + 50) { reachable = true; break; }
         for (const [dx, dy] of [[10, 0], [-10, 0], [0, 10], [0, -10]]) {
             const key = `${x + dx},${y + dy}`;
             if (!visited.has(key) && walkable(x + dx, y + dy)) { visited.add(key); queue.push([x + dx, y + dy]); }

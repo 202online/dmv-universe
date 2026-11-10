@@ -121,14 +121,48 @@ test('property notices are supported 3D boards with lettering projected onto the
             poly() {}, box(x, y, z, w, d, h) { supports.push({ z, w, d, h }); }, shade: color => color
         };
         Art.draw({ x: 100, y: 200, w: 160, d: 90, h: 140, kind, variant, color: '#976b53', trim: '#e3ceb0' }, env);
-        if (kind === 'house' && variant === 1) {
-            assert.deepEqual(text, [], 'Occupied houses have parked cars instead of sale signs');
+        if (kind === 'house' && variant === 1 || kind !== 'house' && variant !== 0) {
+            assert.deepEqual(text, [], 'Occupied homes have no availability signs');
             continue;
         }
-        assert.deepEqual(text, kind === 'house' ? ['FOR SALE', 'CHOCOLATE CITY'] : ['1-4 BEDROOMS', 'AVAILABLE']);
+        assert.deepEqual(text, kind === 'house' ? ['FOR SALE', 'CHOCOLATE CITY'] :
+            kind === 'apartment' ? ['1-4 BEDROOMS', 'AVAILABLE'] : ['AVAILABLE CONDOS', 'INQUIRE WITHIN']);
         assert.equal(transforms.length, 1);
         assert.deepEqual(transforms[0].slice(0, 4), [1, .5, 0, 1]);
         assert.ok(supports.some(p => p.z === 0 && p.w === 2 && p.d === 2 && p.h >= 43), 'Boards have ground-supported posts');
         assert.ok(supports.some(p => p.z > 0 && p.w >= 40 && p.d === 2 && p.h >= 20), 'Board has physical thickness');
+    }
+});
+
+test('driveways have a visible setback from walls and roofs for every house and condo design', () => {
+    for (const kind of ['house', 'condo']) for (const variant of [0, 1, 2]) {
+        const { parts, parking } = Art.plan({ x: 100, y: 200, w: 80, d: 60, h: 125, kind, variant });
+        for (const part of parts) assert.ok(parking.x - part.x - part.w >= 6,
+            `${kind} ${variant}: driveway is separated from building geometry`);
+        assert.ok(parking.w >= 14, 'Driveway fits a shared-size sedan facing the street');
+    }
+});
+
+test('availability can be explicitly set without changing residential silhouettes', () => {
+    for (const kind of ['apartment', 'condo']) {
+        const b = { x: 100, y: 200, w: 160, d: 110, h: 140, kind };
+        assert.equal(Art.plan({ ...b, variant: 0 }).available, true);
+        assert.equal(Art.plan({ ...b, variant: 1 }).available, false);
+        assert.equal(Art.plan({ ...b, variant: 0, available: false }).available, false);
+        assert.equal(Art.plan({ ...b, variant: 2, available: true }).available, true);
+    }
+});
+
+test('rowhome condos reserve front parking bays below their shared wall and balconies', () => {
+    for (const variant of [0, 1, 2]) {
+        const b = { x: 100, y: 200, w: 140, d: 100, h: 120, kind: 'condo', terrace: true, variant };
+        const { parts, parking, terrace } = Art.plan(b);
+        assert.ok(terrace);
+        assert.equal(parts[0].x, b.x);
+        assert.equal(parts[0].w, b.w, 'Full-width walls can join the next rowhome');
+        assert.ok(parts.every(p => p.y + p.d + b.d * .08 < parking.y));
+        assert.equal(parking.spaces, 4);
+        assert.ok(parking.w / parking.spaces >= 14);
+        assert.ok(parking.d >= 30);
     }
 });

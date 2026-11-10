@@ -18,6 +18,7 @@
         header { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
         footer { display: flex; justify-content: space-between; font-size: 12px; }
         button { cursor: pointer; }
+        #city-ride-destination, #respawn-choice { display: block; box-sizing: border-box; width: 100%; max-width: 100%; min-height: 44px; margin: 8px 0; }
         #movement-pad { position: absolute; bottom: 24px; left: 24px; z-index: 10; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; width: 128px; height: 128px; }
         #movement-pad button, #movement-pad div { display: flex; align-items: center; justify-content: center; }
         #movement-pad button { background: #4c1d95; color: white; border: 1px solid #c084fc; border-radius: 6px; touch-action: none; }
@@ -170,18 +171,27 @@
             <span class="text-lg sm:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-purple-400 to-pink-500">DMV 2.5D UNIVERSE</span>
             <span id="current-quadrant-badge" class="px-2.5 py-1 text-xs font-bold rounded bg-purple-900/80 text-purple-200 border border-purple-500/50">NW: Uptown</span>
         </div>
+        <p id="transit-status" role="status" style="position:absolute;top:4px;left:12px;right:12px;margin:0;font-size:12px;background:#111827;color:#f3f4f6;padding:8px;border-radius:6px;z-index:10" hidden></p>
         <div class="flex items-center space-x-1.5">
-            <span class="text-xs text-gray-400 hidden md:inline">🧭 Metro:</span>
+            <span class="text-xs text-gray-400 hidden md:inline">Transit:</span>
             <button onclick="switchQuadrant('NW')" class="px-2.5 py-1 text-xs font-extrabold rounded bg-[#002B49] hover:bg-[#003f6b] text-white border border-red-500 shadow">NW</button>
             <button onclick="switchQuadrant('NE')" class="px-2.5 py-1 text-xs font-extrabold rounded bg-[#5A1414] hover:bg-[#7a1c1c] text-[#FFB612] border border-amber-400 shadow">NE</button>
             <button onclick="switchQuadrant('SE')" class="px-2.5 py-1 text-xs font-extrabold rounded bg-blue-700 hover:bg-blue-600 text-white border border-red-400 shadow">SE</button>
             <button onclick="switchQuadrant('SW')" class="px-2.5 py-1 text-xs font-extrabold rounded bg-[#AB0003] hover:bg-[#cb0004] text-white border border-blue-900 shadow">SW</button>
             <button type="button" id="map-open">Map</button>
+            <button type="button" id="bag-open">Item Bag</button>
+            <button type="button" id="ride-call">City Ride</button>
+            <button type="button" id="settings-open">Settings</button>
         </div>
     </header>
 
     <main class="relative flex-1 flex justify-center items-center overflow-hidden">
         <canvas id="gameCanvas" tabindex="0" aria-label="Game world" class="w-full h-full cursor-pointer"></canvas>
+        <div id="world-zoom" role="group" aria-label="World camera zoom" style="position:absolute;right:12px;bottom:24px;z-index:10;display:flex;align-items:center;gap:6px;background:#111827;padding:5px;border:1px solid #64748b;border-radius:8px">
+            <button type="button" id="zoom-out" aria-label="Zoom out" style="min-width:40px;min-height:40px">−</button>
+            <output id="zoom-value" aria-live="polite">150%</output>
+            <button type="button" id="zoom-in" aria-label="Zoom in" style="min-width:40px;min-height:40px">+</button>
+        </div>
 
         <div id="movement-pad" class="absolute bottom-6 left-6 z-10 grid grid-cols-3 gap-1 w-32 h-32 opacity-85 hover:opacity-100 transition-opacity">
             <div></div>
@@ -195,7 +205,7 @@
             <div></div>
         </div>
 
-        <div id="interaction-banner" class="absolute top-6 left-1/2 transform -translate-x-1/2 bg-black/90 border border-emerald-500/70 px-5 py-2.5 rounded-xl shadow-2xl hidden z-20 text-center">
+        <div id="interaction-banner" style="top:80px" class="absolute top-6 left-1/2 transform -translate-x-1/2 bg-black/90 border border-emerald-500/70 px-5 py-2.5 rounded-xl shadow-2xl hidden z-20 text-center">
             <p id="interaction-text" class="text-sm font-bold text-emerald-300 mb-1">Press [E] or Tap to Open Building</p>
             <button id="interaction-btn" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold rounded-lg shadow">Enter Venue</button>
         </div>
@@ -264,6 +274,9 @@
     <script src="learning.js"></script>
     <script src="city-layout.js"></script>
     <script src="vehicle-art.js"></script>
+    <script src="transit.js"></script>
+    <script src="ride-bag.js"></script>
+    <script src="ride-hail.js"></script>
     <script src="residential-art.js"></script>
     <script src="interiors.js"></script>
     <script src="mg-progression.js"></script>
@@ -297,9 +310,25 @@
         resize();
 
         // ---------- Isometric projection ----------
-        const KX = 0.87, KY = 0.5, WORLD = 1000, TILE = 50;
+        const KX = 0.87, KY = 0.5, WORLD = CityLayout.world, TILE = 50;
         const cam = { x: 0, y: 0 };
+        let worldZoom = 1.5;
+        function changeWorldZoom(delta) {
+            worldZoom = Math.max(1, Math.min(2.25, Math.round((worldZoom + delta) * 100) / 100));
+            document.getElementById('zoom-value').textContent = `${Math.round(worldZoom * 100)}%`;
+            document.getElementById('zoom-out').disabled = worldZoom === 1;
+            document.getElementById('zoom-in').disabled = worldZoom === 2.25;
+        }
+        document.getElementById('zoom-out').addEventListener('click', () => changeWorldZoom(-.25));
+        document.getElementById('zoom-in').addEventListener('click', () => changeWorldZoom(.25));
+        let renderPose = null;
+        function roadAligned(b, draw) {
+            const previous = renderPose;
+            renderPose = b.roadAligned ? b : null;
+            try { draw(); } finally { renderPose = previous; }
+        }
         function P(x, y, z = 0) {
+            if (renderPose) [x, y] = CityLayout.point(renderPose, x, y);
             return [(x - y) * KX - cam.x + W / 2, (x + y) * KY - z - cam.y + H / 2];
         }
         function poly(pts, fill, stroke, lw = 1) {
@@ -331,8 +360,9 @@
         // Text laid flat on the left face so it skews with the wall
         function faceText(b, text, u, z, maxSize, color, glow) {
             const [ox, oy] = P(b.x + u * b.w, b.y + b.d, z);
+            const [rx, ry] = P(b.x + u * b.w + 1, b.y + b.d, z);
             ctx.save();
-            ctx.setTransform(KX, KY, 0, 1, ox, oy);
+            ctx.transform(rx - ox, ry - oy, 0, 1, ox, oy);
             ctx.font = 'bold 10px sans-serif';
             const size = Math.min(maxSize, (b.w * 0.82) / ctx.measureText(text).width * 10);
             ctx.font = `900 ${size}px sans-serif`;
@@ -347,19 +377,14 @@
         // ---------- World data ----------
         const rng = n => { const s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s); };
 
-        // Compass coordinates: east = x - y, south = x + y. Main roads run along east = 0 and south = 1000.
+        // Base layout coordinates are expanded by CityLayout; the main crossroads is at south = WORLD.
         const fromCompass = (east, south) => [(south + east) / 2, (south - east) / 2];
-        const ROAD_CLEAR_E = 130, ROAD_CLEAR_S = [830, 1170];
+        const ROAD_CLEAR_E = 130, ROAD_CLEAR_S = [WORLD - 170, WORLD + 170];
         const commonTrees = [];
         for (let east = -900; east <= 900; east += 150) {
             for (let south = 120; south <= 1900; south += 150) {
                 if (rng(east * 0.37 + south * 0.11) > 0.6) commonTrees.push(fromCompass(east, south));
             }
-        }
-        const commonLamps = [];
-        for (const side of [-1, 1]) {
-            for (const south of [200, 450, 700, 1300, 1550, 1800]) commonLamps.push(fromCompass(side * 112, south));
-            for (const east of [250, 500, 750]) commonLamps.push(fromCompass(side * east, side > 0 ? 840 : 1160));
         }
 
         const quadrants = {
@@ -533,28 +558,39 @@
                 restaurant.kind = 'restaurant';
             }
             CityLayout.apply(id, q);
-            const overlapsObject = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x &&
-                a.y < b.y + b.d && a.y + a.d > b.y;
             const lot = q.parkingLot;
             q.cars = id === 'NW' ? [
                 { x: lot.x + 8, y: lot.y + 5, ...VehicleArt.sizes.car, color: '#cbd5e1', trim: '#475569' },
                 { x: lot.x + lot.w - 36, y: lot.y + 149, ...VehicleArt.sizes.car, color: '#1e3a8a', trim: '#e2e8f0' }
             ] : [];
-            const near = (list, x, y, m) => list.some(b => x >= b.x - m && x <= b.x + b.w + m && y >= b.y - m && y <= b.y + b.d + m);
+            for (const car of q.cars) {
+                const [cx, cy] = CityLayout.point(lot, car.x + car.w / 2, car.y + car.d / 2);
+                car.x = cx - car.w / 2; car.y = cy - car.d / 2;
+                car.heading = [Math.SQRT1_2, -Math.SQRT1_2]; car.roadAligned = true;
+            }
+            const near = (list, x, y, m) => list.some(b => CityLayout.distanceTo(b, x, y) <= m);
             const streetTrees = id === 'NW' ? [-900, -660, -420, 420, 660, 900].map(e => fromCompass(e, 90)) : [];
             q.trees = [...commonTrees, ...streetTrees]
+                .map(([x, y]) => [x * CityLayout.scale, y * CityLayout.scale])
                 .filter(([x, y]) => Math.abs(x - y) >= ROAD_CLEAR_E + 30 && (x + y < ROAD_CLEAR_S[0] - 30 || x + y > ROAD_CLEAR_S[1] + 30))
-                .filter(([x, y]) => Math.abs(x - y) <= 940 && x + y > 40 && x + y < 1960)
+                .filter(([x, y]) => Math.abs(x - y) <= WORLD - 60 && x + y > 40 && x + y < 2 * WORLD - 40)
                 .filter(([x, y]) => !near(q.activities, x, y, 25) && !near(q.buildings, x, y, 25) &&
-                    !near(q.neighborhood.buildings, x, y, 30) && !near(lot ? [lot] : [], x, y, 15))
+                    !near(q.neighborhood.buildings, x, y, 30) && !near(lot ? [lot] : [], x, y, 15) &&
+                    !near(q.playerParking, x, y, 15))
                 .filter(([x, y]) => !CityLayout.nearRoad(q, x, y, 24))
                 .map(([x, y]) => ({ x, y }));
-            q.lamps = commonLamps.map(([x, y]) => ({ x, y }));
-            q.neighborhoodSolids = q.neighborhood.buildings.map(b => ({ x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.d }));
+            q.lamps = [];
+            for (const side of [-1, 1]) {
+                for (let s = 180; s < 2 * WORLD; s += 240)
+                    if (Math.abs(s - WORLD) > 200) { const [x, y] = fromCompass(side * 112, s); q.lamps.push({ x, y }); }
+                for (let e = -WORLD + 180; e < WORLD; e += 240)
+                    if (Math.abs(e) > 160) { const [x, y] = fromCompass(e, WORLD + side * 145); q.lamps.push({ x, y }); }
+            }
+            q.neighborhoodSolids = q.neighborhood.buildings.map(CityLayout.footprint);
             q.solids = [
-                ...q.buildings.map(b => ({ x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.d })),
-                ...q.activities.filter(a => a.type === 'boxing').map(a => ({ x0: a.x, y0: a.y, x1: a.x + a.w, y1: a.y + a.d })),
-                ...q.cars.map(c => ({ x0: c.x, y0: c.y, x1: c.x + c.w, y1: c.y + c.d })),
+                ...q.buildings.map(CityLayout.footprint),
+                ...q.activities.filter(a => a.type === 'boxing').map(CityLayout.footprint),
+                ...q.cars.map(CityLayout.footprint),
                 ...q.trees.map(t => ({ x0: t.x - 6, y0: t.y - 6, x1: t.x + 6, y1: t.y + 6 })),
                 ...q.neighborhoodSolids
             ];
@@ -562,7 +598,7 @@
 
         // ---------- State & input ----------
         let currentQuadrant = 'NW';
-        const player = { x: 500, y: 500, speed: (3.6 / 5) * 1.2 * 1.2, r: 9, fx: 0, fy: 1, moving: false, appearance: null };
+        const player = { x: WORLD / 2, y: WORLD / 2, speed: (3.6 / 5) * 1.2 * 1.2, r: 9, fx: 0, fy: 1, moving: false, appearance: null };
         const keys = { up: false, down: false, left: false, right: false };
         const vehicles = {
             bike: { name: 'Bicycle', price: 0, speed: 1.2, ...VehicleArt.sizes.bike, color: '#38bdf8', trim: '#f8fafc', kind: 'bike' },
@@ -571,7 +607,11 @@
             impala: { name: 'the Bucket', price: 720, speed: 1.8, ...VehicleArt.sizes.car, color: '#5A1414', trim: '#FFB612', kind: 'car' },
             truck: { name: 'Pickup truck', price: 828, speed: 1.98, ...VehicleArt.sizes.truck, color: '#475569', trim: '#e2e8f0', kind: 'truck' }
         };
-        const ownCar = { ...vehicles.bike, x: 535, y: 500, ownRide: true };
+        const ownCar = { ...vehicles.bike, x: WORLD / 2 + 35, y: WORLD / 2, ownRide: true };
+        let transitTrip = null;
+        let ridePacked = false, parkedVehicles = {}, rideAwaySince = null;
+        const storedAwaySince = {};
+        let gameSettings = {respawn:'last'}, lastLocation = null;
         quadrants.NW.cars.push(ownCar);
         const driving = { active: false, quadrant: 'NW' };
         const SAVE_KEY = 'dmv-universe-save-v1';
@@ -600,9 +640,11 @@
         function saveProgress() {
             if (!saveEnabled || !player.appearance) return;
             const data = {
-                version: 1, appearance: player.appearance, features: player.features, stars: progress.stars,
+                version: 1, worldScale: CityLayout.scale, transit: transitTrip, appearance: player.appearance, features: player.features, stars: progress.stars,
                 property: progress.property, owned: progress.owned, shirt: progress.shirt, sportsbook, casino, pets, investing, learning, minigames: progress.minigames,
-                vehicle: { id: progress.vehicle, owned: progress.ownedVehicles, quadrant: driving.quadrant, x: ownCar.x, y: ownCar.y, heading: ownCar.heading || [1, 0] }
+                parkedVehicles, settings:gameSettings,
+                lastLocation: rememberLocation(),
+                vehicle: { id: progress.vehicle, owned: progress.ownedVehicles, quadrant: driving.quadrant, x: ownCar.x, y: ownCar.y, packed: ridePacked, heading: ownCar.heading || [1, 0] }
             };
             try {
                 localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -629,6 +671,13 @@
                     ride.heading.every(Number.isFinite) ? Math.hypot(...ride.heading) : 0;
                 if (data.version !== 1 || !['boy', 'girl'].includes(data.appearance) ||
                     (data.features !== undefined && !validFeatures(data.features)) ||
+                    (data.worldScale !== undefined && data.worldScale !== CityLayout.scale) ||
+                    (data.transit !== undefined && data.transit !== null && !CityTransit.valid(data.transit) && !RideHail.valid(data.transit)) ||
+                    (data.parkedVehicles !== undefined && !RideBag.validParked(data.parkedVehicles, ride?.owned || [], ride?.id, WORLD)) ||
+                    (data.settings !== undefined && (!data.settings || !['last','home'].includes(data.settings.respawn))) ||
+                    (data.lastLocation !== undefined && data.lastLocation !== null &&
+                        (!RideHail.pointValid(data.lastLocation)||typeof data.lastLocation.venue!=='string'||
+                        !CityLayout.targets(quadrants[data.lastLocation.quadrant]).some(b=>b.name===data.lastLocation.venue))) ||
                     (data.sportsbook !== undefined && !Sportsbook.valid(data.sportsbook)) ||
                     (data.casino !== undefined && !Casino.valid(data.casino)) ||
                     (data.pets !== undefined && !Pets.valid(data.pets)) ||
@@ -642,6 +691,7 @@
                     (ride !== undefined && (!ride || !Object.hasOwn(vehicles, ride.id) ||
                     !Array.isArray(ride.owned) || !ride.owned.includes('bike') || !ride.owned.includes(ride.id) ||
                     ride.owned.some(id => !Object.hasOwn(vehicles, id)) ||
+                    (ride.packed !== undefined && (typeof ride.packed !== 'boolean' || ride.packed && !RideBag.portable.includes(ride.id))) ||
                     !Object.hasOwn(quadrants, ride.quadrant) || !Number.isFinite(ride.x) || !Number.isFinite(ride.y) ||
                     Math.abs((ride.x + vehicles[ride.id].w / 2) - (ride.y + vehicles[ride.id].d / 2)) > WORLD ||
                     Math.abs((ride.x + vehicles[ride.id].w / 2) + (ride.y + vehicles[ride.id].d / 2) - WORLD) > WORLD ||
@@ -651,6 +701,10 @@
                 if (ride) {
                     const vehicle = vehicles[ride.id];
                     let cx = ride.x + vehicle.w / 2, cy = ride.y + vehicle.d / 2;
+                    if (data.worldScale === undefined) {
+                        cx *= CityLayout.scale; cy *= CityLayout.scale;
+                        ride.x = cx - vehicle.w / 2; ride.y = cy - vehicle.d / 2;
+                    }
                     if (carBlocked(cx, cy, ride.quadrant, ride.heading, vehicle)) {
                         // The map layout changed, so any saved position that is now blocked is moved to open ground.
                         const candidates = [];
@@ -668,6 +722,17 @@
                     }
                 }
                 player.appearance = data.appearance;
+                transitTrip = data.transit || null;
+                if (transitTrip) {
+                    currentQuadrant = transitTrip.mode === 'taxi' ? transitTrip.pickup.quadrant : transitTrip.origin;
+                    if (transitTrip.mode === 'taxi') {
+                        player.x = transitTrip.pickup.x; player.y = transitTrip.pickup.y;
+                    } else {
+                        const station = quadrants[currentQuadrant].buildings.find(b => b.type === (transitTrip.mode === 'bus' ? 'busstop' : 'metro'));
+                        [player.x, player.y] = CityLayout.front(station, 20);
+                    }
+                    document.getElementById('current-quadrant-badge').textContent = quadrants[currentQuadrant].name;
+                }
                 if (data.sportsbook !== undefined) sportsbook = data.sportsbook;
                 if (data.casino !== undefined) casino = data.casino;
                 if (data.pets !== undefined) pets = data.pets;
@@ -685,6 +750,22 @@
                     Object.assign(ownCar, vehicles[ride.id]);
                     moveCarToQuadrant(ride.quadrant);
                     ownCar.x = ride.x; ownCar.y = ride.y; ownCar.heading = ride.heading;
+                    setRidePacked(ride.packed === true);
+                }
+                parkedVehicles = data.parkedVehicles || {};
+                gameSettings=data.settings||{respawn:'last'};
+                lastLocation=data.lastLocation||null;
+                secureLogoutRides(false);
+                if(!transitTrip){
+                    if(lastLocation){
+                        currentQuadrant=lastLocation.quadrant;
+                        player.x=lastLocation.x;player.y=lastLocation.y;
+                    }
+                    const home=quadrants.SE.buildings.find(b=>b.style==='apartment');
+                    const last=lastLocation&&CityLayout.targets(quadrants[lastLocation.quadrant]).find(b=>b.name===lastLocation.venue);
+                    if(gameSettings.respawn==='home')spawnAtLocation('SE',home);
+                    else if(last)spawnAtLocation(lastLocation.quadrant,last);
+                    document.getElementById('current-quadrant-badge').textContent=quadrants[currentQuadrant].name;
                 }
                 if (blocked(player.x, player.y)) {
                     for (let y = 50; y <= 950; y += 50) {
@@ -758,8 +839,42 @@
             renderShirtShop(false);
         });
         loadProgress();
+        if(RideBag.portable.includes(progress.vehicle))setRidePacked(true);
         if (!player.appearance) openCreator(false);
-        window.addEventListener('pagehide', saveProgress);
+        window.addEventListener('pagehide', () => {
+            driving.active = false;
+            secureLogoutRides(false);
+            saveProgress();
+        });
+        function rememberLocation(){
+            const destinations=CityLayout.targets(quadrants[currentQuadrant]).filter(b=>b.name&&!b.privateHome);
+            const distance=b=>CityLayout.distanceTo(b,player.x,player.y);
+            const nearest=[...destinations].sort((a,b)=>distance(a)-distance(b))[0];
+            lastLocation={quadrant:currentQuadrant,x:player.x,y:player.y,venue:nearest.name};
+            return lastLocation;
+        }
+        function spawnAtLocation(quad,destination){
+            currentQuadrant=quad;
+            const spots=[0,.25,-.25].map(u=>CityLayout.front(destination,26,.5+u));
+            const access=quadrants[quad].roadAccess.find(a=>a.building===destination);
+            if(access)spots.push(fromCompass(...access.path[0]));
+            const spot=spots.find(([x,y])=>!blocked(x,y,quad));
+            if(!spot)throw new Error('No safe entrance spawn for '+destination.name);
+            [player.x,player.y]=spot;
+        }
+        function secureLogoutRides(notify=true){
+            driving.active=false;
+            const home=quadrants.SE.buildings.find(b=>b.style==='apartment');
+            if(RideBag.portable.includes(progress.vehicle))setRidePacked(true);
+            else{
+                moveCarToQuadrant('SE');
+                parkRide(home,notify);
+            }
+            for(const[id,p]of Object.entries(parkedVehicles)){
+                p.quadrant='SE';
+                secureStoredRide(id,home);
+            }
+        }
 
         function showDrivingMessage(message) {
             drivingMessage = message;
@@ -802,6 +917,7 @@
                 return false;
             }
             if (driving.active) moveCarToQuadrant(destination);
+            else saveProgress();
             enterQuadrant(destination);
             player.x = x;
             player.y = y;
@@ -811,19 +927,68 @@
 
         function switchQuadrant(quad) {
             if (!player.appearance || !avatarSelection.classList.contains('hidden')) return;
-            if (driving.active) {
-                if (carBlocked(500, 500, quad)) {
-                    showDrivingMessage('Metro destination is blocked. Exit your ride to travel on foot.');
-                    return;
-                }
-                moveCarToQuadrant(quad);
+            if (transitTrip) return;
+            const station = nearbyTransit();
+            if (!station || driving.active) {
+                transitNotice('Walk to a Bus Stop or Underground Metro entrance first. Find them on the Map; park your ride before boarding.');
+                return;
             }
-            enterQuadrant(quad);
-            player.x = 500; player.y = 500;
-            if (driving.active) syncCarPosition();
-            snapCamera();
+            openTransit(station, quad);
+        }
+        function nearbyTransit() {
+            return quadrants[currentQuadrant].buildings.find(b => ['busstop', 'metro'].includes(b.type) &&
+                CityLayout.distanceTo(b,player.x,player.y) < 60);
+        }
+        function transitNotice(message) {
+            const el = document.getElementById('transit-status');
+            el.hidden = !message; el.textContent = message;
+        }
+        function openTransit(station, selected) {
+            if (!station || transitTrip || driving.active || station !== nearbyTransit()) return;
             closeModal();
-            if (driving.active) saveProgress();
+            const mode = station.type === 'busstop' ? 'bus' : 'train', service = CityTransit.services[mode];
+            modalEl.classList.remove('hidden');
+            modalContent.innerHTML = `<div class="sports-game library-reader"><h2>${station.name}</h2>
+                <p>${service.label}: ${service.fare} star${service.fare === 1 ? '' : 's'} per trip. Speed: ${service.speed}× walking.
+                ${mode === 'train' ? 'Walk down into the underground Metro; trains stay below the map.' : 'Your bus arrives here after you choose a destination.'}</p>
+                <p>Balance: ${progress.stars} stars. Your parked ride stays in its current quadrant.</p>
+                <div class="sports-controls">${['NW', 'NE', 'SE', 'SW'].filter(q => q !== currentQuadrant).map(q =>
+                    `<button type="button" data-transit-to="${q}" ${progress.stars < service.fare ? 'disabled' : ''}>${q}${selected === q ? ' — selected' : ''}: ${service.fare} star${service.fare === 1 ? '' : 's'} · ${Math.ceil(CityTransit.duration(mode, currentQuadrant, q) / 1000)}s</button>`).join('')}</div>
+                <p data-transit-error role="alert"></p></div>`;
+            modalContent.querySelectorAll('[data-transit-to]').forEach(button => button.addEventListener('click', () => {
+                try {
+                    if (station !== nearbyTransit() || driving.active || transitTrip) throw new Error('Stand at this station on foot to board');
+                    if (RideBag.portable.includes(progress.vehicle)) setRidePacked(true);
+                    transitTrip = CityTransit.start(mode, currentQuadrant, button.dataset.transitTo, progress.stars, Date.now());
+                    progress.stars -= service.fare;
+                    updateProgressHud(); closeModal(); saveProgress();
+                    transitNotice(`${service.label} to ${transitTrip.destination} — fare paid: ${service.fare} star${service.fare === 1 ? '' : 's'}.`);
+                } catch (error) {
+                    console.error('Unable to board transit:', error);
+                    modalContent.querySelector('[data-transit-error]').textContent = error.message;
+                }
+            }));
+            modalContent.querySelector('h2').tabIndex = -1;
+            modalContent.querySelector('h2').focus();
+        }
+        function updateTransit() {
+            if (!transitTrip) return;
+            if (transitTrip.mode === 'taxi') { updateCityRide(); return; }
+            const p = CityTransit.position(transitTrip, Date.now()), service = CityTransit.services[transitTrip.mode];
+            transitNotice(`${service.label} to ${transitTrip.destination} — ${Math.ceil((1 - p) * CityTransit.duration(transitTrip.mode, transitTrip.origin, transitTrip.destination) / 1000)}s remaining.`);
+            if (p < 1) return;
+            const trip = transitTrip;
+            transitTrip = null;
+            enterQuadrant(trip.destination);
+            const station = quadrants[currentQuadrant].buildings.find(b => b.type === (trip.mode === 'bus' ? 'busstop' : 'metro'));
+            spawnAtLocation(currentQuadrant,station);
+            if (RideBag.portable.includes(progress.vehicle)) {
+                setRidePacked(true); moveCarToQuadrant(trip.destination);
+                ownCar.x = player.x - ownCar.w / 2; ownCar.y = player.y - ownCar.d / 2;
+            }
+            for (const k in keys) keys[k] = false;
+            snapCamera(); saveProgress();
+            transitNotice(`Arrived in ${trip.destination} by ${service.label.toLowerCase()}. Bikes and scooters are in your Item Bag; cars stay parked.`);
         }
 
         // Signs use screen-relative compass directions, matching movement controls.
@@ -915,9 +1080,19 @@
         });
         function modalOpen() { return !modalEl.classList.contains('hidden'); }
         function checkInteraction() {
+            if (transitTrip) return;
             if (!player.appearance || modalOpen()) return;
             if (driving.active) {
                 exitCar();
+                return;
+            }
+            if (activeBuilding?.parkedRideId) {
+                const id = activeBuilding.parkedRideId;
+                try {
+                    selectRide(id);
+                    driving.active = true; player.x = ownCar.x + ownCar.w / 2; player.y = ownCar.y + ownCar.d / 2;
+                    snapCamera(); saveProgress();
+                } catch (error) { console.error('Unable to retrieve ride:', error); transitNotice(error.message); }
                 return;
             }
             if (activeBuilding === ownCar) {
@@ -937,6 +1112,8 @@
         document.getElementById('interaction-btn').addEventListener('click', checkInteraction);
 
         function overlaps(rect, s) {
+            if (s.corners) return CityLayout.polygonsOverlap(
+                [[rect.x0,rect.y0],[rect.x1,rect.y0],[rect.x1,rect.y1],[rect.x0,rect.y1]],s.corners);
             return rect.x1 > s.x0 && rect.x0 < s.x1 && rect.y1 > s.y0 && rect.y0 < s.y1;
         }
 
@@ -959,24 +1136,21 @@
 
         function carIntersectsRect(cx, cy, rect, heading = ownCar.heading || [1, 0], vehicle = ownCar) {
             const corners = carCorners(cx, cy, heading, vehicle);
-            const rectCorners = [[rect.x0, rect.y0], [rect.x1, rect.y0], [rect.x1, rect.y1], [rect.x0, rect.y1]];
-            const axes = [[1, 0], [0, 1], heading, [-heading[1], heading[0]]];
-            return axes.every(([ax, ay]) => {
-                const carProjection = corners.map(([x, y]) => x * ax + y * ay);
-                const rectProjection = rectCorners.map(([x, y]) => x * ax + y * ay);
-                return Math.max(...carProjection) > Math.min(...rectProjection) &&
-                       Math.max(...rectProjection) > Math.min(...carProjection);
-            });
+            const rectCorners = rect.corners || [[rect.x0, rect.y0], [rect.x1, rect.y0], [rect.x1, rect.y1], [rect.x0, rect.y1]];
+            return CityLayout.polygonsOverlap(corners,rectCorners);
         }
 
         function blocked(px, py, quadrant = currentQuadrant) {
             const rect = { x0: px - player.r, y0: py - player.r, x1: px + player.r, y1: py + player.r };
             return quadrants[quadrant].solids.some(s => overlaps(rect, s)) ||
-                (driving.quadrant === quadrant && carIntersectsRect(ownCar.x + ownCar.w / 2, ownCar.y + ownCar.d / 2, rect));
+                parkedRideObjects(quadrant).some(c => overlaps(rect, {corners:carCorners(c.x+c.w/2,c.y+c.d/2,c.heading,c)})) ||
+                (!ridePacked && driving.quadrant === quadrant && carIntersectsRect(ownCar.x + ownCar.w / 2, ownCar.y + ownCar.d / 2, rect));
         }
 
-        function carBlocked(x, y, quadrant = currentQuadrant, heading = ownCar.heading || [1, 0], vehicle = ownCar) {
-            return quadrants[quadrant].solids.some(s => carIntersectsRect(x, y, s, heading, vehicle));
+        function carBlocked(x, y, quadrant = currentQuadrant, heading = ownCar.heading || [1, 0], vehicle = ownCar, ignoreStoredId = null) {
+            return quadrants[quadrant].solids.some(s => carIntersectsRect(x, y, s, heading, vehicle)) ||
+                parkedRideObjects(quadrant).filter(c => c.parkedRideId !== ignoreStoredId).some(c =>
+                    carIntersectsRect(x,y,{corners:carCorners(c.x+c.w/2,c.y+c.d/2,c.heading,c)},heading,vehicle));
         }
 
         function syncCarPosition() {
@@ -987,9 +1161,66 @@
         function moveCarToQuadrant(quad) {
             if (quad === driving.quadrant) return;
             const cars = quadrants[driving.quadrant].cars;
-            cars.splice(cars.indexOf(ownCar), 1);
-            quadrants[quad].cars.push(ownCar);
+            const index = cars.indexOf(ownCar);
+            if (index >= 0) cars.splice(index, 1);
+            if (!ridePacked) quadrants[quad].cars.push(ownCar);
             driving.quadrant = quad;
+        }
+        function setRidePacked(packed) {
+            ridePacked = packed;
+            const cars = quadrants[driving.quadrant].cars, index = cars.indexOf(ownCar);
+            if (packed && index >= 0) cars.splice(index, 1);
+            else if (!packed && index < 0) cars.push(ownCar);
+        }
+        function parkedRideObjects(quadrant) {
+            return Object.entries(parkedVehicles).filter(([, p]) => p.quadrant === quadrant).map(([id,p]) =>
+                ({ ...vehicles[id], x:p.x, y:p.y, ownRide:true, parkedRideId:id, heading:p.heading||[1,0] }));
+        }
+        function secureStoredRide(id,destination=null) {
+            const p=parkedVehicles[id],vehicle=vehicles[id];
+            if(!p)return;
+            const anchor=destination?{x:destination.x+destination.w/2,y:destination.y+destination.d/2}:{x:p.x+vehicle.w/2,y:p.y+vehicle.d/2};
+            const bays=[...quadrants[p.quadrant].playerParking].sort((a,b)=>
+                Math.hypot(a.x+a.w/2-anchor.x,a.y+a.d/2-anchor.y)-Math.hypot(b.x+b.w/2-anchor.x,b.y+b.d/2-anchor.y));
+            const heading=[Math.SQRT1_2,-Math.SQRT1_2];
+            const bay=bays.find(b=>!carBlocked(b.x+b.w/2,b.y+b.d/2,p.quadrant,heading,vehicle,id) &&
+                (ridePacked||driving.quadrant!==p.quadrant||!carIntersectsRect(b.x+b.w/2,b.y+b.d/2,
+                    {corners:carCorners(ownCar.x+ownCar.w/2,ownCar.y+ownCar.d/2)},heading,vehicle)));
+            if(!bay){console.error('Unable to secure stored vehicle',id);transitNotice('No clear parking bay was found for '+vehicle.name);return;}
+            p.x=bay.x+(bay.w-vehicle.w)/2;p.y=bay.y+(bay.d-vehicle.d)/2;
+            p.heading=heading;
+            delete storedAwaySince[id];
+        }
+        function parkRide(destination = null, notify = true) {
+            if (driving.active) return false;
+            if (ridePacked) return true;
+            const q = quadrants[driving.quadrant];
+            const cx = ownCar.x+ownCar.w/2;
+            const cy = ownCar.y+ownCar.d/2;
+            const preferred = destination ?
+                q.playerParking.find(b => b.destination === destination) : null;
+            const bays = [...q.playerParking].sort((a, b) => {
+                if (a === preferred) return -1;
+                if (b === preferred) return 1;
+                return Math.hypot(a.x + a.w / 2 - cx, a.y + a.d / 2 - cy) -
+                    Math.hypot(b.x + b.w / 2 - cx, b.y + b.d / 2 - cy);
+            });
+            const heading=[Math.SQRT1_2,-Math.SQRT1_2];
+            const bay = bays.find(b => !carBlocked(b.x + b.w / 2, b.y + b.d / 2, driving.quadrant, heading) &&
+                (driving.quadrant !== currentQuadrant ||
+                !carIntersectsRect(b.x + b.w / 2, b.y + b.d / 2,
+                    { x0: player.x - player.r, y0: player.y - player.r, x1: player.x + player.r, y1: player.y + player.r }, heading)));
+            if (!bay) {
+                console.error('Unable to park ride: no clear public parking bay', driving.quadrant);
+                if (notify) transitNotice('No clear parking bay was found. Your ride has not been moved.');
+                return false;
+            }
+            ownCar.x = bay.x + (bay.w - ownCar.w) / 2;
+            ownCar.y = bay.y + (bay.d - ownCar.d) / 2;
+            ownCar.heading = heading;
+            rideAwaySince = null;
+            if (notify) transitNotice(`Your ${ownCar.name} is parked at ${bay.destination.name || 'the neighborhood shop'} (${driving.quadrant}).`);
+            return true;
         }
 
         function exitCar() {
@@ -1014,8 +1245,24 @@
         }
 
         function update() {
+            updateTransit();
+            for(const [id,p] of Object.entries(parkedVehicles)){
+                const distance=p.quadrant===currentQuadrant?
+                    Math.hypot(player.x-p.x-vehicles[id].w/2,player.y-p.y-vehicles[id].d/2):Number.MAX_SAFE_INTEGER;
+                const unattended=RideBag.abandonment(distance,storedAwaySince[id],Date.now());
+                if(unattended.since===null)delete storedAwaySince[id];
+                else storedAwaySince[id]=unattended.since;
+                if(unattended.secure){secureStoredRide(id);saveProgress();}
+            }
+            if (!driving.active && !ridePacked) {
+                const distance = driving.quadrant===currentQuadrant ?
+                    Math.hypot(player.x - ownCar.x - ownCar.w / 2, player.y - ownCar.y - ownCar.d / 2) : Number.MAX_SAFE_INTEGER;
+                const unattended=RideBag.abandonment(distance,rideAwaySince,Date.now());
+                rideAwaySince=unattended.since;
+                if(unattended.secure){parkRide();saveProgress();}
+            } else rideAwaySince = null;
             let dx = 0, dy = 0, sx = 0, sy = 0;
-            if (player.appearance && !modalOpen()) {
+            if (player.appearance && !modalOpen() && !transitTrip) {
                 // Screen-relative controls mapped onto the isometric world axes
                 if (keys.up) { dx -= 1; dy -= 1; sy -= 1; }
                 if (keys.down) { dx += 1; dy += 1; sy += 1; }
@@ -1064,13 +1311,16 @@
             let nearest = 60;
             for (const b of [...quadrants[currentQuadrant].buildings, ...quadrants[currentQuadrant].activities,
                 ...quadrants[currentQuadrant].neighborhood.buildings.filter(b => b.type === 'crib')]) {
-                const ddx = Math.max(b.x - player.x, 0, player.x - (b.x + b.w));
-                const ddy = Math.max(b.y - player.y, 0, player.y - (b.y + b.d));
-                const distance = Math.hypot(ddx, ddy);
+                const distance = CityLayout.distanceTo(b,player.x,player.y);
                 if (distance < nearest) { activeBuilding = b; nearest = distance; }
             }
 
-            if (!driving.active && driving.quadrant === currentQuadrant) {
+            for (const parked of parkedRideObjects(currentQuadrant)) {
+                const dx = Math.max(parked.x - player.x, 0, player.x - parked.x - parked.w);
+                const dy = Math.max(parked.y - player.y, 0, player.y - parked.y - parked.d);
+                if (Math.hypot(dx, dy) < 40) activeBuilding = parked;
+            }
+            if (!driving.active && !ridePacked && driving.quadrant === currentQuadrant) {
                 const bounds = carBounds(ownCar.x + ownCar.w / 2, ownCar.y + ownCar.d / 2);
                 const dx = Math.max(bounds.x0 - player.x, 0, player.x - bounds.x1);
                 const dy = Math.max(bounds.y0 - player.y, 0, player.y - bounds.y1);
@@ -1081,9 +1331,9 @@
                     drivingMessage : `Riding ${ownCar.name} — press [E] to get off`;
                 document.getElementById('interaction-btn').textContent = 'Get Off';
                 bannerEl.classList.remove('hidden');
-            } else if (activeBuilding && !modalOpen()) {
-                if (activeBuilding === ownCar) {
-                    document.getElementById('interaction-text').textContent = `Near your ${ownCar.name} — press [E] to ride`;
+            } else if (activeBuilding && !modalOpen() && !transitTrip) {
+                if (activeBuilding === ownCar || activeBuilding.parkedRideId) {
+                    document.getElementById('interaction-text').textContent = `Near your ${activeBuilding.name} — press [E] to ride`;
                     document.getElementById('interaction-btn').textContent = 'Ride';
                     bannerEl.classList.remove('hidden');
                     return;
@@ -1117,43 +1367,43 @@
                 Math.min(r.a[1], r.b[1]) - half, Math.max(r.a[1], r.b[1]) + half, color);
             q.neighborhood.streets.forEach(r => streetRect(r, CityLayout.halfWidth, '#948f8c'));
             compassRect(-120, 120, 0, 2 * WORLD, '#948f8c', '#aaa5a1');
-            compassRect(-WORLD, WORLD, 835, 1165, '#948f8c', '#aaa5a1');
+            compassRect(-WORLD, WORLD, WORLD - 165, WORLD + 165, '#948f8c', '#aaa5a1');
             q.neighborhood.streets.forEach(r => streetRect(r, 30, '#2e3340'));
             compassRect(-70, 70, 0, 2 * WORLD, '#2e3340');
-            compassRect(-WORLD, WORLD, 900, 1100, '#2e3340');
+            compassRect(-WORLD, WORLD, WORLD - 100, WORLD + 100, '#2e3340');
             for (const r of q.neighborhood.streets) {
                 const vertical = r.a[0] === r.b[0], axis = vertical ? 1 : 0;
                 const start = Math.min(r.a[axis], r.b[axis]), end = Math.max(r.a[axis], r.b[axis]);
                 for (let n = Math.ceil(start / 60) * 60; n + 20 < end; n += 60) {
                     const e = vertical ? r.a[0] : n, s = vertical ? n : r.a[1];
-                    if (Math.abs(e) < 80 || Math.abs(s - 1000) < 110) continue;
+                    if (Math.abs(e) < 80 || Math.abs(s - WORLD) < 110) continue;
                     compassRect(e - (vertical ? 2 : 0), e + (vertical ? 2 : 20),
                         s - (vertical ? 0 : 2), s + (vertical ? 20 : 2), '#fbbf24');
                 }
             }
             // Lane dashes
             for (let s = 30; s < 2 * WORLD; s += 100) {
-                if (s + 40 > 890 && s < 1110) continue;
+                if (s + 40 > WORLD - 110 && s < WORLD + 110) continue;
                 compassRect(-3, 3, s, s + 40, '#fbbf24');
             }
             for (let e = -WORLD + 30; e < WORLD; e += 100) {
                 if (e + 40 > -80 && e < 80) continue;
-                compassRect(e, e + 40, 997, 1003, '#fbbf24');
+                compassRect(e, e + 40, WORLD - 3, WORLD + 3, '#fbbf24');
             }
             // Crosswalks at the four sides of the intersection
             for (let i = 0; i < 6; i++) {
                 const o = -60 + i * 22;
-                compassRect(o, o + 10, 1105, 1160, 'rgba(255,255,255,.65)');
-                compassRect(o, o + 10, 840, 895, 'rgba(255,255,255,.65)');
+                compassRect(o, o + 10, WORLD + 105, WORLD + 160, 'rgba(255,255,255,.65)');
+                compassRect(o, o + 10, WORLD - 160, WORLD - 105, 'rgba(255,255,255,.65)');
             }
             for (let i = 0; i < 4; i++) {
-                const o = 906 + i * 24;
+                const o = WORLD - 94 + i * 24;
                 compassRect(75, 118, o, o + 12, 'rgba(255,255,255,.65)');
                 compassRect(-118, -75, o, o + 12, 'rgba(255,255,255,.65)');
             }
             if (currentQuadrant === 'SW') {
-                compassRect(-1200, -1000, 250, 1750, '#386c79');
-                compassRect(-1000, -970, 250, 1750, '#a89a80');
+                compassRect(-WORLD - 200, -WORLD, 250, 2 * WORLD - 250, '#386c79');
+                compassRect(-WORLD, -WORLD + 30, 250, 2 * WORLD - 250, '#a89a80');
             }
             // Small cocoa-toned utility covers along the sidewalks.
             [[95, 500], [-95, 1500], [-95, 400], [95, 1650], [400, 1135], [-400, 865]].forEach(([e, s]) => {
@@ -1163,12 +1413,25 @@
                 groundRect(x - 1, y - 6, 2, 12, '#8a6c5e');
             });
             if (q.parkingLot) {
+                roadAligned(q.parkingLot,()=>{
                 const { x, y, w, d } = q.parkingLot;
                 groundRect(x, y, w, d, '#34343a');
                 for (const bx of [x + 5, x + w - 41]) {
                     for (let i = 0; i <= 8; i++) groundRect(bx, y + i * 24, 36, 1, '#ddd2bd');
                     for (let i = 0; i < 8; i++) groundRect(bx + 2, y + i * 24 + 4, 2, 16, '#a99583');
                 }
+                });
+            }
+            for (const bay of q.playerParking) {
+                roadAligned(bay,()=>{
+                    groundRect(bay.x, bay.y, bay.w, bay.d, '#304754', '#c8dedb', 1.5);
+                    groundRect(bay.x + 2, bay.y + 3, 2, bay.d - 6, '#d6d5bd');
+                    const [sx, sy] = P(bay.x + bay.w / 2, bay.y + bay.d / 2);
+                    const rx=P(bay.x+bay.w/2+1,bay.y+bay.d/2), down=P(bay.x+bay.w/2,bay.y+bay.d/2+1);
+                    ctx.save(); ctx.transform(rx[0]-sx,rx[1]-sy,down[0]-sx,down[1]-sy,sx,sy);
+                    ctx.font = '900 15px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#d3e8e4';
+                    ctx.fillText('P', 0, 5); ctx.restore();
+                });
             }
         }
 
@@ -1398,6 +1661,7 @@
 
         function drawBuilding(b, active, t) {
             const { x, y, w, d, h } = b, Y = y + d;
+            if (['busstop', 'metro'].includes(b.type)) { drawTransitStation(b); return; }
             if (b.type === 'crib') {
                 if (b.garage) ResidentialArt.drawGarage(b, { ctx, P, poly, box, shade }, active, t);
                 else ResidentialArt.draw({ ...b, kind: 'apartment', variant: 1 }, { ctx, P, poly, box, shade }, active, t);
@@ -1570,7 +1834,7 @@
         function wheel(wx, wy, z, hub) {
             const [ox, oy] = P(wx, wy, z);
             ctx.save();
-            ctx.setTransform(KX, KY, 0, 1, ox, oy);
+            ctx.transform(KX, KY, 0, 1, ox, oy);
             ctx.fillStyle = '#0a0a0a'; ctx.beginPath(); ctx.arc(0, 0, 8, 0, 7); ctx.fill();
             ctx.fillStyle = '#d1d5db'; ctx.beginPath(); ctx.arc(0, 0, 4.5, 0, 7); ctx.fill();
             ctx.fillStyle = hub; ctx.beginPath(); ctx.arc(0, 0, 1.8, 0, 7); ctx.fill();
@@ -1745,7 +2009,74 @@
             ctx.restore();
         }
 
+        function drawTransitStation(b) {
+            const { x, y, w, d } = b;
+            groundRect(x, y, w, d, '#a0a5a0', '#e3d9b8');
+            if (b.type === 'busstop') {
+                for (const dx of [2, w - 4]) box(x + dx, y + 2, 0, 2, 2, 42, '#667e86');
+                box(x, y, 42, w, d * .65, 3, '#365362', '#d2ddd9');
+                poly([P(x + 3, y + 3, 5), P(x + w - 3, y + 3, 5), P(x + w - 3, y + 3, 39), P(x + 3, y + 3, 39)], '#97ced755', '#afc8c9');
+                box(x + 4, y + 7, 9, w - 8, 5, 3, '#966d4d');
+                box(x + w - 4, y + d - 2, 0, 2, 2, 48, '#c8d0d5');
+                const sign = { x: x + w - 19, y: y + d - 4, w: 18, d: 2 };
+                box(sign.x, sign.y, 36, 18, 2, 15, '#1d6176');
+                faceText(sign, 'BUS', .5, 44, 8, '#fff5dc');
+            } else {
+                groundRect(x + 3, y + 3, w - 6, d - 6, '#101e29', '#c4b38e');
+                for (let i = 0; i < 6; i++)
+                    groundRect(x + 5, y + d - 6 - i * 4, w - 10, 3, ['#a8a99d', '#888f89', '#6e7c7d', '#536570', '#344956', '#233846'][i]);
+                for (const dx of [1, w - 3]) box(x + dx, y, 0, 2, d, 12, '#5e6f73', '#a8b7b2');
+                box(x + w - 4, y + 2, 0, 3, 3, 52, '#323d49');
+                const sign = { x: x + w - 28, y: y + 3, w: 27, d: 3 };
+                box(sign.x, sign.y, 37, 27, 3, 17, '#172d40', '#e8d2a0');
+                faceText(sign, 'METRO', .5, 46, 8, '#fff2ce');
+            }
+        }
+        function drawTransitBus(cx, cy) {
+            const length = 56, width = 23, f = Math.SQRT1_2;
+            const point = (forward, side, z = 0) => P(cx + forward * f - side * f, cy + forward * f + side * f, z);
+            const face = (points, color) => poly(points.map(([a, b, z]) => point(a, b, z)), color, '#24343f');
+            face([[-length/2,-width/2,4],[length/2,-width/2,4],[length/2,-width/2,31],[-length/2,-width/2,31]], '#e6ddd0');
+            face([[-length/2,width/2,4],[length/2,width/2,4],[length/2,width/2,31],[-length/2,width/2,31]], '#c9d4ce');
+            face([[length/2,-width/2,4],[length/2,width/2,4],[length/2,width/2,31],[length/2,-width/2,31]], '#34847d');
+            face([[-length/2,-width/2,31],[length/2,-width/2,31],[length/2,width/2,31],[-length/2,width/2,31]], '#f0d7a6');
+            for (const side of [-1, 1]) {
+                for (let i = 0; i < 5; i++) {
+                    const a = -24 + i * 10, s = side * (width / 2 + .1);
+                    face([[a,s,17],[a+7,s,17],[a+7,s,27],[a,s,27]], '#305566');
+                }
+                for (const a of [-18, 18]) {
+                    const [x, y] = point(a, side * width / 2, 5);
+                    ctx.fillStyle = '#19242b'; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#b7c4c6'; ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill();
+                }
+            }
+            face([[length/2+.1,-9,17],[length/2+.1,9,17],[length/2+.1,9,27],[length/2+.1,-9,27]], '#284c61');
+        }
         function drawPlayer() {
+            if (transitTrip) {
+                const elapsed = Math.max(0, (Date.now() - transitTrip.started) / 1000);
+                if(transitTrip.mode==='taxi'){if(elapsed>=2)return;drawAvatar(ctx,...P(player.x,player.y),player.appearance,player.features,shirts[progress.shirt].color,0,0,0,1);return;}
+                if (elapsed >= (transitTrip.mode === 'train' ? 1 : 3)) return;
+                const station = quadrants[currentQuadrant].buildings.find(b => b.type === (transitTrip.mode === 'train' ? 'metro' : 'busstop'));
+                if (transitTrip.mode === 'train') {
+                    const p = Math.min(1,elapsed);
+                    const startX = station.x + station.w / 2, startY = station.y + station.d + 20;
+                    const [sx, sy] = P(...CityLayout.point(station,startX,startY-p*(station.d*.75+20)),-p*14);
+                    ctx.save(); ctx.translate(sx, sy); ctx.scale(1-p*.6,1-p*.6);
+                    drawAvatar(ctx, 0, 0, player.appearance, player.features, shirts[progress.shirt].color, 0, 0, 0, -1);
+                    ctx.restore();
+                    return;
+                }
+                if (elapsed >= 2) {
+                    const p = elapsed - 2;
+                    const e = (player.x-player.y)*(1-p)+55*p;
+                    const s = (player.x+player.y)*(1-p)+(station.x+station.y+(station.w+station.d)/2)*p;
+                    const [sx, sy] = P(...fromCompass(e, s));
+                    drawAvatar(ctx, sx, sy, player.appearance, player.features, shirts[progress.shirt].color, 0, 0, -1, 0);
+                    return;
+                }
+            }
             const [sx, sy] = P(player.x, player.y);
             const t = performance.now() / 1000;
             const bob = player.moving ? Math.abs(Math.sin(t * 10)) * 2 : 0;
@@ -1758,10 +2089,27 @@
             const t = performance.now() / 1000;
             ctx.fillStyle = '#0b0f19';
             ctx.fillRect(0, 0, W, H);
+            ctx.save();
+            ctx.translate(W / 2, H / 2);
+            ctx.scale(worldZoom, worldZoom);
+            ctx.translate(-W / 2, -H / 2);
             drawGround(q);
-            q.activities.filter(a => a.type !== 'boxing').forEach(drawActivityGround);
+            q.activities.filter(a => a.type !== 'boxing').forEach(a=>roadAligned(a,()=>drawActivityGround(a)));
 
             const objs = [];
+            if(transitTrip?.mode==='taxi'&&Date.now()-transitTrip.started<4500){
+                const pickup=transitTrip.pickup;
+                objs.push({x0:pickup.x-14,y0:pickup.y-7,x1:pickup.x+14,y1:pickup.y+7,draw:()=>
+                    VehicleArt.draw({...VehicleArt.sizes.car,x:pickup.x-14,y:pickup.y-7,color:'#e6b342',trim:'#f1e7bf',kind:'car',heading:[1,0]},{ctx,P,poly,shade})});
+            }
+            if (transitTrip?.mode === 'bus' && Date.now() - transitTrip.started < 5500) {
+                const station = quadrants[currentQuadrant].buildings.find(b => b.type === 'busstop');
+                const elapsed = Math.max(0, (Date.now() - transitTrip.started) / 1000);
+                const offset = elapsed < 2 ? -220 * (1 - elapsed / 2) : elapsed > 3 ? 150 * (elapsed - 3) : 0;
+                const [, south] = [station.x - station.y, station.x + station.y + (station.w + station.d) / 2];
+                const [cx, cy] = fromCompass(55, south + offset);
+                objs.push({ x0: cx - 25, y0: cy - 25, x1: cx + 25, y1: cy + 25, draw: () => drawTransitBus(cx, cy) });
+            }
             if (pets.companion && player.appearance && !driving.active && !modalOpen()) {
                 petFollower = Pets.follow(petFollower, { x: player.x, y: player.y, quadrant: currentQuadrant }, blocked);
                 if (petFollower) {
@@ -1770,21 +2118,22 @@
                         draw: () => Pets.drawCompanion(ctx, pets.companion.species, ...P(petPosition.x, petPosition.y), t) });
                 }
             }
-            q.activities.forEach(a => objs.push({ x0: a.x, y0: a.y, x1: a.x + a.w, y1: a.y + a.d, draw: () => {
+            q.activities.forEach(a => objs.push({ ...CityLayout.footprint(a), draw: () => roadAligned(a,()=>{
                 if (a.type === 'boxing') drawBuilding(a, a === activeBuilding, t);
                 else drawActivityEquipment(a);
-            } }));
-            q.buildings.forEach(b => objs.push({ x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.d, draw: () => drawBuilding(b, b === activeBuilding, t) }));
-            q.neighborhood.buildings.forEach(b => objs.push({ x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.d, draw: () => drawNeighborhoodBuilding(b) }));
-            q.cars.forEach(c => {
-                const bounds = c.ownRide ? carBounds(c.x + c.w / 2, c.y + c.d / 2) :
-                    { x0: c.x, y0: c.y, x1: c.x + c.w, y1: c.y + c.d };
+            }) }));
+            q.buildings.forEach(b => objs.push({ ...CityLayout.footprint(b), draw: () => roadAligned(b,()=>drawBuilding(b, b === activeBuilding, t)) }));
+            q.neighborhood.buildings.forEach(b => objs.push({ ...CityLayout.footprint(b), draw: () => roadAligned(b,()=>drawNeighborhoodBuilding(b)) }));
+            [...q.cars, ...parkedRideObjects(currentQuadrant)].forEach(c => {
+                const corners=carCorners(c.x+c.w/2,c.y+c.d/2,c.heading||[1,0],c);
+                const bounds={x0:Math.min(...corners.map(p=>p[0])),x1:Math.max(...corners.map(p=>p[0])),
+                    y0:Math.min(...corners.map(p=>p[1])),y1:Math.max(...corners.map(p=>p[1]))};
                 objs.push({ ...bounds, draw: () => drawCar(c) });
             });
             q.trees.forEach(tr => objs.push({ x0: tr.x - 6, y0: tr.y - 6, x1: tr.x + 6, y1: tr.y + 6, draw: () => drawTree(tr) }));
             const sg = NEIGHBORS[currentQuadrant];
             Object.keys(sg).forEach(e => {
-                const [x, y] = fromCompass(...{ E: [930, 1135], W: [-930, 1135], S: [95, 1940], N: [95, 60] }[e]);
+                const [x, y] = fromCompass(...{ E: [WORLD - 70, WORLD + 135], W: [-WORLD + 70, WORLD + 135], S: [95, 2 * WORLD - 60], N: [95, 60] }[e]);
                 objs.push({ x0: x - 2, y0: y - 2, x1: x + 2, y1: y + 2, draw: () => drawEdgeSign(e, x, y) });
             });
             q.lamps.forEach(l => objs.push({ x0: l.x - 2, y0: l.y - 2, x1: l.x + 2, y1: l.y + 2, draw: () => drawLamp(l) }));
@@ -1798,6 +2147,7 @@
             objs.filter(o => !inFront(o)).forEach(o => o.draw());
             if (player.appearance && !driving.active) drawPlayer();
             objs.filter(inFront).forEach(o => o.draw());
+            ctx.restore();
 
             const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
             v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)');
@@ -1864,7 +2214,8 @@
             mapCtx.fillRect(20, 20, 320, 320);
             for (const d of q.districts) {
                 mapCtx.fillStyle = d.color;
-                mapCtx.fillRect(20 + (d.e + WORLD) * .16, 20 + d.s * .16, d.w * .16, d.d * .16);
+                const scale = 320 / (2 * WORLD);
+                mapCtx.fillRect(20 + (d.e + WORLD) * scale, 20 + d.s * scale, d.w * scale, d.d * scale);
             }
             mapCtx.strokeStyle = '#73907b';
             mapCtx.strokeRect(20, 20, 320, 320);
@@ -1876,14 +2227,14 @@
             mapCtx.fillText('W', 10, 184);
             mapCtx.fillText('E', 350, 184);
             const roads = [
-                { a: [0, 0], b: [0, 2000], main: true },
-                { a: [-1000, 1000], b: [1000, 1000], main: true },
+                { a: [0, 0], b: [0, 2 * WORLD], main: true },
+                { a: [-WORLD, WORLD], b: [WORLD, WORLD], main: true },
                 ...q.neighborhood.streets
             ];
             for (const color of ['#948f8c', '#2e3340']) {
                 mapCtx.strokeStyle = color;
                 for (const r of roads) {
-                    mapCtx.lineWidth = (r.main ? 24 : 14) - (color === '#2e3340' ? 5 : 0);
+                    mapCtx.lineWidth = ((r.main ? 24 : 14) - (color === '#2e3340' ? 5 : 0)) / CityLayout.scale;
                     const start = project(...fromCompass(...r.a)), end = project(...fromCompass(...r.b));
                     mapCtx.beginPath(); mapCtx.moveTo(...start); mapCtx.lineTo(...end); mapCtx.stroke();
                 }
@@ -1893,6 +2244,12 @@
                 mapCtx.fillStyle = home.type === 'crib' ? '#e5c4a4' : '#93c5fd';
                 mapCtx.fillRect(x - 5, y - 5, 10, 10);
             }
+            for(const destination of CityLayout.targets(q)){
+                const corners=CityLayout.footprint(destination).corners.map(([x,y])=>project(x,y));
+                mapCtx.fillStyle=destination.type==='crib'?'#d2b292':'#77949d';
+                mapCtx.beginPath();corners.forEach(([x,y],i)=>i?mapCtx.lineTo(x,y):mapCtx.moveTo(x,y));
+                mapCtx.closePath();mapCtx.fill();
+            }
             mapDestinations(mapQuadrant).forEach((destination, i) => {
                 const [x, y] = project(destination.x + destination.w / 2, destination.y + destination.d / 2);
                 mapCtx.fillStyle = '#e6b959';
@@ -1900,7 +2257,11 @@
                 mapCtx.fillStyle = '#171a19'; mapCtx.font = 'bold 11px sans-serif';
                 mapCtx.textBaseline = 'middle'; mapCtx.fillText(String(i + 1), x, y);
             });
-            if (driving.quadrant === mapQuadrant && !driving.active) {
+            for (const parked of parkedRideObjects(mapQuadrant)) {
+                const [x,y] = project(parked.x + parked.w/2, parked.y + parked.d/2);
+                mapCtx.fillStyle = '#60a5fa'; mapCtx.fillRect(x-5,y-5,10,10);
+            }
+            if (!ridePacked && driving.quadrant === mapQuadrant && !driving.active) {
                 const [x, y] = project(ownCar.x + ownCar.w / 2, ownCar.y + ownCar.d / 2);
                 mapCtx.fillStyle = '#60a5fa'; mapCtx.fillRect(x - 5, y - 5, 10, 10);
             }
@@ -1928,7 +2289,7 @@
         }
 
         function openWorldMap() {
-            if (!player.appearance || !avatarSelection.classList.contains('hidden') || modalOpen()) return;
+            if (!player.appearance || !avatarSelection.classList.contains('hidden') || modalOpen() || transitTrip) return;
             for (const k in keys) keys[k] = false;
             modalEl.classList.remove('hidden');
             toast('');
@@ -1941,7 +2302,7 @@
                     </div>
                     <canvas id="world-map" width="360" height="360" role="img" aria-label="Quadrant map with numbered destinations. North is up; the destination list follows."></canvas>
                     <p id="map-identity"></p>
-                    <p>Use the Metro buttons outside this map to fast-travel.</p>
+                    <p>Walk to a Bus Stop (2 stars) or Underground Metro entrance (4 stars) to travel. The train takes half the time. City Ride picks you up anywhere for 6 stars. Header quadrant buttons work only while standing at a station.</p>
                     <p id="map-position"></p>
                     <ol id="map-legend" class="map-legend"></ol>
                 </div>`;
@@ -1952,6 +2313,132 @@
         }
 
         document.getElementById('map-open').addEventListener('click', openWorldMap);
+        document.getElementById('bag-open').addEventListener('click', openItemBag);
+        document.getElementById('ride-call').addEventListener('click',openCityRide);
+        document.getElementById('settings-open').addEventListener('click',()=>{
+            if(!player.appearance||!avatarSelection.classList.contains('hidden')||modalOpen()||transitTrip)return;
+            for(const k in keys)keys[k]=false;
+            modalEl.classList.remove('hidden');
+            modalContent.innerHTML=`<div class="sports-game library-reader"><h2>Settings</h2>
+                <label>Respawn after logging in <select id="respawn-choice">
+                <option value="last" ${gameSettings.respawn==='last'?'selected':''}>Last location — front entrance</option>
+                <option value="home" ${gameSettings.respawn==='home'?'selected':''}>Home — The Crib</option></select></label>
+                <p>Cars return to your home parking in SE when you log off. Choosing Last Location changes where you spawn, not where your cars are returned.</p>
+                <p>Getting off does not move your ride. After 60 seconds unattended, it is secured near where you left it. Bikes and scooters travel in your Item Bag.</p>
+                <p id="settings-saved" role="status"></p></div>`;
+            document.getElementById('respawn-choice').addEventListener('change',event=>{
+                gameSettings.respawn=event.target.value;saveProgress();document.getElementById('settings-saved').textContent='Respawn preference saved.';
+            });
+            modalContent.querySelector('h2').tabIndex=-1;modalContent.querySelector('h2').focus();
+        });
+        function openCityRide(){
+            if(!player.appearance||!avatarSelection.classList.contains('hidden')||modalOpen()||transitTrip)return;
+            if(driving.active){transitNotice('Get off your current ride before calling City Ride.');return;}
+            for(const k in keys)keys[k]=false;
+            modalEl.classList.remove('hidden');
+            const pickup={quadrant:currentQuadrant,x:player.x,y:player.y};
+            const destinations=[];
+            for(const [quad,q] of Object.entries(quadrants))for(const destination of CityLayout.targets(q).filter(b=>!b.privateHome&&b.type)){
+                const path=q.roadAccess.find(a=>a.building===destination).path;
+                const [x,y]=fromCompass(...path[0]);
+                const dropoff={quadrant:quad,x,y};
+                try{const quote=RideHail.quote(pickup,dropoff);destinations.push({dropoff,label:destination.name,quote});}catch(error){
+                    if(error.message!=='You are already at this destination')throw error;
+                }
+            }
+            modalContent.innerHTML=`<div class="sports-game library-reader"><h2>City Ride</h2>
+                <p>Pickup: your exact current location in ${currentQuadrant}. Flat fare: <strong>6 stars</strong>. Balance: ${progress.stars} stars.
+                Travel times depend on distance. Bikes and scooters ride in your Item Bag; cars stay behind.</p>
+                <label>Destination <select id="city-ride-destination">${destinations.map((d,i)=>
+                    `<option value="${i}">${d.dropoff.quadrant}: ${d.label} — ${Math.ceil(d.quote.duration/1000)}s</option>`).join('')}</select></label>
+                <p id="city-ride-quote"></p><button type="button" id="city-ride-confirm" ${progress.stars<6?'disabled':''}>Book pickup — 6 stars</button>
+                <p id="city-ride-error" role="alert"></p></div>`;
+            const select=document.getElementById('city-ride-destination');
+            const showQuote=()=>{const d=destinations[Number(select.value)];document.getElementById('city-ride-quote').textContent=
+                `${d.label}: 6 stars, approximately ${Math.ceil(d.quote.duration/1000)} seconds. Fare is paid when booking.`;};
+            select.addEventListener('change',showQuote);showQuote();
+            document.getElementById('city-ride-confirm').addEventListener('click',()=>{
+                try{
+                    if(transitTrip||driving.active||player.x!==pickup.x||player.y!==pickup.y||currentQuadrant!==pickup.quadrant)throw new Error('Pickup location changed. Reopen City Ride.');
+                    const d=destinations[Number(select.value)];
+                    transitTrip=RideHail.start(pickup,d.dropoff,d.label,progress.stars,Date.now());
+                    progress.stars-=d.quote.fare;
+                    if(RideBag.portable.includes(progress.vehicle))setRidePacked(true);
+                    updateProgressHud();closeModal();saveProgress();transitNotice('City Ride is picking you up here. Fare paid: 6 stars.');
+                }catch(error){console.error('Unable to book City Ride:',error);document.getElementById('city-ride-error').textContent=error.message;}
+            });
+            modalContent.querySelector('h2').tabIndex=-1;modalContent.querySelector('h2').focus();
+        }
+        function updateCityRide(){
+            const trip=transitTrip,p=RideHail.position(trip,Date.now()),quote=RideHail.quote(trip.pickup,trip.dropoff);
+            transitNotice(`City Ride to ${trip.label} — ${Math.ceil((1-p)*quote.duration/1000)}s remaining.`);
+            if(p<1)return;
+            transitTrip=null;enterQuadrant(trip.dropoff.quadrant);player.x=trip.dropoff.x;player.y=trip.dropoff.y;
+            if(RideBag.portable.includes(progress.vehicle)){setRidePacked(true);moveCarToQuadrant(currentQuadrant);ownCar.x=player.x-ownCar.w/2;ownCar.y=player.y-ownCar.d/2;}
+            for(const k in keys)keys[k]=false;
+            snapCamera();saveProgress();transitNotice(`City Ride arrived at ${trip.label}. Bikes and scooters are in your Item Bag.`);
+        }
+        function selectRide(id, deploy = false) {
+            if (!progress.ownedVehicles.includes(id)) throw new Error('You do not own this ride');
+            if (transitTrip || driving.active) throw new Error('Finish your trip or get off your current ride first');
+            const vehicle = vehicles[id], portable = RideBag.portable.includes(id), stored = parkedVehicles[id];
+            if(id===progress.vehicle&&!portable)return;
+            let quadrant = stored?.quadrant || currentQuadrant, x, y;
+            if (stored) { x = stored.x; y = stored.y; }
+            else {
+                const spots = portable && !deploy ? [[player.x,player.y]] :
+                    [[player.x+40,player.y],[player.x-40,player.y],[player.x,player.y+40],[player.x,player.y-40],
+                    ...quadrants[quadrant].playerParking.map(b => [b.x+b.w/2,b.y+b.d/2])];
+                const spot = spots.find(([cx,cy]) => Math.abs(cx-cy) < WORLD-20 && cx+cy > 20 && cx+cy < 2*WORLD-20 &&
+                    !carBlocked(cx,cy,quadrant,[1,0],vehicle,id) &&
+                    (ridePacked||id===progress.vehicle||driving.quadrant!==quadrant||
+                    !carIntersectsRect(cx,cy,{x0:ownCar.x,y0:ownCar.y,x1:ownCar.x+ownCar.w,y1:ownCar.y+ownCar.d},[1,0],vehicle)) &&
+                    (portable && !deploy || !carIntersectsRect(cx,cy,
+                        {x0:player.x-player.r,y0:player.y-player.r,x1:player.x+player.r,y1:player.y+player.r},[1,0],vehicle)));
+                if (!spot) throw new Error('No safe place to use this ride here. Move into open space first.');
+                x = spot[0]-vehicle.w/2; y = spot[1]-vehicle.d/2;
+            }
+            if (id !== progress.vehicle && !RideBag.portable.includes(progress.vehicle)){
+                parkedVehicles[progress.vehicle] = {quadrant:driving.quadrant,x:ownCar.x,y:ownCar.y,heading:[...ownCar.heading]};
+                delete storedAwaySince[progress.vehicle];
+            }
+            delete parkedVehicles[id];
+            delete storedAwaySince[id];
+            setRidePacked(true);
+            Object.assign(ownCar,vehicle,{x,y,heading:stored?.heading||[1,0]});
+            progress.vehicle=id;
+            moveCarToQuadrant(quadrant);
+            setRidePacked(portable && !deploy);
+            rideAwaySince=null;
+            if (deploy) {
+                driving.active=true; player.x=x+vehicle.w/2; player.y=y+vehicle.d/2;
+                snapCamera();
+            }
+            updateProgressHud();
+        }
+        function openItemBag() {
+            if (!player.appearance || !avatarSelection.classList.contains('hidden') || modalOpen()) return;
+            for (const k in keys) keys[k]=false;
+            modalEl.classList.remove('hidden');
+            modalContent.innerHTML=`<div class="sports-game library-reader"><h2>Item Bag</h2>
+                <p>Owned bicycles, electric scooters and e-bikes travel with you on buses and trains. Cars stay where you left them until secured in public parking.</p>
+                <div class="shop-list">${RideBag.portable.map(id=>`<div class="shop-row"><span>${vehicles[id].name}</span>
+                <button type="button" data-bag-ride="${id}" ${!progress.ownedVehicles.includes(id)||transitTrip||driving.active?'disabled':''}>
+                ${progress.ownedVehicles.includes(id)?'Use ride':'Not owned'}</button></div>`).join('')}</div>
+                ${RideBag.portable.includes(progress.vehicle)&&!ridePacked?'<button type="button" id="bag-pack">Put current ride in bag</button>':''}
+                <p>${transitTrip?'Your bag travels with you. Deploy a ride after arrival.':driving.active?'Get off or pack your current ride before deploying another.':'Choose an owned ride to deploy and start riding.'}</p>
+                <p data-bag-error role="alert"></p></div>`;
+            modalContent.querySelectorAll('[data-bag-ride]').forEach(button=>button.addEventListener('click',()=>{
+                try {selectRide(button.dataset.bagRide,true);closeModal();saveProgress();}
+                catch(error){console.error('Unable to use bag ride:',error);modalContent.querySelector('[data-bag-error]').textContent=error.message;}
+            }));
+            modalContent.querySelector('#bag-pack')?.addEventListener('click',()=>{
+                if(transitTrip)return;
+                driving.active=false;setRidePacked(true);rideAwaySince=null;closeModal();saveProgress();
+                transitNotice(`${ownCar.name} is in your Item Bag.`);
+            });
+            modalContent.querySelector('h2').tabIndex=-1;modalContent.querySelector('h2').focus();
+        }
 
         const btn = (label, msg, cls, extra = '') =>
             `<button data-msg="${msg.replace(/"/g, '&quot;')}" class="game-action p-3 ${cls} rounded-xl text-left font-bold text-sm text-white ${extra}">${label}</button>`;
@@ -2390,7 +2877,7 @@
             content.innerHTML = `
                 <div class="sports-game">
                     <h2>${shop ? 'Vehicle Shop' : 'Your Garage'}</h2>
-                    <p>${shop ? 'Buy any ride you can afford; there are no tier requirements.' : 'Switch between the rides you own.'} Your selected ride replaces the one at its parked location.</p>
+                    <p>${shop ? 'Buy any ride you can afford; there are no tier requirements.' : 'Switch between the rides you own.'} Bikes and scooters are stored in your Item Bag. Cars remain at their saved locations when you choose another ride.</p>
                     <p>Stars: ${progress.stars}</p>
                     <div class="shop-list">
                         ${Object.entries(vehicles).filter(([id]) => shop || progress.ownedVehicles.includes(id)).map(([id, vehicle]) => {
@@ -2410,29 +2897,24 @@
                     toast(`You need ${vehicle.price - progress.stars} more stars for ${vehicle.name}.`);
                     return;
                 }
-                const x = ownCar.x + ownCar.w / 2, y = ownCar.y + ownCar.d / 2;
-                const heading = ownCar.heading || [1, 0];
-                const playerRect = { x0: player.x - player.r, y0: player.y - player.r, x1: player.x + player.r, y1: player.y + player.r };
-                if (carBlocked(x, y, driving.quadrant, heading, vehicle) ||
-                    (driving.quadrant === currentQuadrant && carIntersectsRect(x, y, playerRect, heading, vehicle))) {
-                    toast('Not enough room for that ride at its parked location. Move your current ride to an open area first.');
-                    return;
+                if (!owned) progress.ownedVehicles.push(id);
+                try { selectRide(id); }
+                catch(error) {
+                    if(!owned)progress.ownedVehicles=progress.ownedVehicles.filter(ride=>ride!==id);
+                    console.error('Unable to select vehicle:',error);toast(error.message);return;
                 }
-                if (!owned) {
-                    progress.stars -= vehicle.price;
-                    progress.ownedVehicles.push(id);
-                }
-                progress.vehicle = id;
-                Object.assign(ownCar, vehicle, { x: x - vehicle.w / 2, y: y - vehicle.d / 2 });
+                if(!owned)progress.stars-=vehicle.price;
                 updateProgressHud();
                 saveProgress();
                 renderVehicleShop(shop);
-                toast(`${vehicle.name} selected at your parked location.`);
+                toast(RideBag.portable.includes(id)?`${vehicle.name} is in your Item Bag.`:`${vehicle.name} is in ${driving.quadrant}.`);
             }));
             document.getElementById('vehicle-back').addEventListener('click', () => openBuildingModal(shop ? 'retail' : 'crib'));
         }
 
         function openBuildingModal(type) {
+            if (transitTrip) return;
+            if (['busstop', 'metro'].includes(type)) { openTransit(nearbyTransit()); return; }
             const content = document.getElementById('modal-content');
             if (!modalOpen()) learningReturnFocus = document.activeElement;
             modalEl.removeAttribute('aria-labelledby');

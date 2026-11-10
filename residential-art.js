@@ -23,14 +23,17 @@ const ResidentialArt = (() => {
             [[0, 0, 1, .52, 0, .78, 'flat'], [.14, .10, .72, .32, .78, .22, 'flat']],
             [[.04, .04, .42, .48, 0, 1, 'flat'], [.54, .04, .42, .42, 0, .82, 'flat']]
         ][variant];
+        const terrace = kind === 'condo' && b.terrace === true;
+        if (terrace) pieces = [[0, .04, 1, .52, 0, 1, 'flat']];
         const parts = pieces.map(([x, y, w, d, z, h, roof]) => ({
             x: b.x + x * b.w, y: b.y + y * b.d, w: w * b.w, d: d * b.d, z: z * b.h, h: h * b.h, roof
         }));
-        return { kind, variant, parts, garden: kind === 'apartment' ?
+        return { kind, variant, terrace, parts, available: b.available ?? variant === 0, garden: kind === 'apartment' ?
             { x: b.x + b.w * .04, y: b.y + b.d * .56, w: b.w * .16, d: b.d * .34 } : null,
             parking: kind === 'apartment' ?
             { x: b.x + b.w * .24, y: b.y + b.d * .56, w: b.w * .72, d: b.d * .40, spaces: [6, 4, 5][variant] } :
-            { x: b.x + b.w * .74, y: b.y + b.d * .04, w: b.w * .22, d: b.d * .92 } };
+            terrace ? { x: b.x + b.w * .04, y: b.y + b.d * .66, w: b.w * .92, d: b.d * .30, spaces: 4 } :
+            { x: b.x + b.w * .78, y: b.y + b.d * .04, w: b.w * .18, d: b.d * .92 } };
     }
     function draw(b, { ctx: c, P, poly, box, shade }, active = false, time = 0) {
         const layout = plan(b), trim = b.trim, outline = '#17232899';
@@ -46,6 +49,7 @@ const ResidentialArt = (() => {
         plane(b.x, b.y, b.w, b.d, 0, layout.kind === 'apartment' ? '#6d7768' : '#55754c', '#9c9b7a');
         const lot = layout.parking;
         plane(lot.x, lot.y, lot.w, lot.d, .3, layout.kind === 'apartment' ? '#48515b' : '#a9a28d', '#d2c8a9');
+        const parkedCars = [];
         if (layout.kind === 'apartment') {
             const count = lot.spaces, slot = lot.w / count;
             for (let i = 0; i <= count; i++) {
@@ -55,11 +59,19 @@ const ResidentialArt = (() => {
             }
             line([[lot.x, lot.y + lot.d * .92, .6], [lot.x + lot.w, lot.y + lot.d * .92, .6]], '#d7dfdc');
             for (const [i, color] of [[0, '#63879a'], [2, '#923d4b'], [count - 1, '#c6b38d']])
-                parkedCar(lot.x + slot * (i + .5), lot.y + vehicles.sizes.car.w / 2 + 1, color);
+                parkedCars.push([lot.x + slot * (i + .5), lot.y + vehicles.sizes.car.w / 2 + 1, color]);
         } else {
-            for (let i = 1; i < 5; i++)
+            if (layout.terrace) box(lot.x, lot.y - 3, 0, lot.w, 2, 1, '#d0c8b3');
+            else box(lot.x - 3, lot.y, 0, 2, lot.d, 1, '#d0c8b3');
+            if (layout.terrace) {
+                const slot = lot.w / lot.spaces;
+                for (let i = 0; i <= lot.spaces; i++)
+                    line([[lot.x + slot * i, lot.y, .6], [lot.x + slot * i, lot.y + lot.d, .6]], '#efe1ad', 1.2);
+                for (let i = 0; i < lot.spaces; i++)
+                    box(lot.x + slot * (i + .2), lot.y + 1, .6, slot * .6, 1.5, 1, '#b8bcb6');
+            } else for (let i = 1; i < 5; i++)
                 line([[lot.x, lot.y + lot.d * i / 5, .6], [lot.x + lot.w, lot.y + lot.d * i / 5, .6]], '#827e70');
-            if (layout.variant === 1) {
+            if (layout.variant === 1 && !layout.terrace) {
                 const gx = lot.x, gy = lot.y;
                 box(gx, gy, 0, lot.w, lot.d * .31, b.h * .24, b.color, outline);
                 const garage = { x: gx, y: gy, w: lot.w, d: lot.d * .31 };
@@ -67,7 +79,7 @@ const ResidentialArt = (() => {
                 for (let z = 4; z < b.h * .20; z += 5) front(garage, .10, .90, z, z + .7, '#c0c6c3');
             }
             if (layout.variant === 1 || layout.kind === 'condo' && layout.variant === 2)
-                parkedCar(lot.x + lot.w / 2, lot.y + lot.d - vehicles.sizes.car.w / 2 - 1, '#8b3344');
+                parkedCars.push([lot.x + lot.w * (layout.terrace ? .625 : .5), lot.y + lot.d - vehicles.sizes.car.w / 2 - 1, '#8b3344']);
         }
         function parkedCar(cx, cy, color) {
             const size = vehicles.sizes.car;
@@ -111,7 +123,7 @@ const ResidentialArt = (() => {
                 }
             }
             if (layout.kind !== 'house' || layout.variant === 2) {
-                const depth = Math.min(b.d * .10, b.y + b.d * .98 - p.y - p.d);
+                const depth = Math.min(b.d * .10, (layout.terrace ? lot.y - 2 : b.y + b.d * .98) - p.y - p.d);
                 if (depth > 0) for (let level = 1; level < levels; level++) {
                     const z = p.z + level * p.h / levels, left = p.x + p.w * .1, right = p.x + p.w * .9, y = p.y + p.d + depth;
                     plane(left, p.y + p.d, right - left, depth, z, '#b9a58a', '#d7ccaf');
@@ -151,6 +163,7 @@ const ResidentialArt = (() => {
             plane(p.x + p.w * .1, p.y + p.d, p.w * .8, b.d * .14, z, '#9d8260', trim);
             for (const u of [.12, .88]) box(p.x + p.w * u, p.y + p.d + b.d * .1, 0, 2, 2, z, '#d6c6a3');
         }
+        for (const car of parkedCars) parkedCar(...car);
         if (layout.kind === 'house' && layout.variant !== 1) {
             const x = b.x + b.w * .06, y = b.y + b.d * .91, w = b.w * .50;
             box(x, y, 0, 2, 2, 43, '#f0e5cf', outline);
@@ -158,15 +171,16 @@ const ResidentialArt = (() => {
             for (const u of [.22, .83])
                 line([[x + w * u, y + 1, 41], [x + w * u, y + 1, 37]], '#687076', 1.2);
             sign(x + 4, y, 17, w, 20, 'FOR SALE', 'CHOCOLATE CITY', '#8e3442', { ctx: c, P, box }, true);
-        } else if (layout.kind !== 'house') {
+        } else if (layout.kind !== 'house' && layout.available) {
             const apartment = layout.kind === 'apartment';
-            const x = b.x + b.w * (apartment ? .24 : .05), y = b.y + b.d * (apartment ? .54 : .94);
+            const x = b.x + b.w * (apartment ? .24 : .05), y = b.y + b.d * (apartment ? .54 : layout.terrace ? .60 : .94);
             const w = b.w * (apartment ? .68 : .62);
             for (const u of [.08, .92]) {
                 box(x + w * u, y, 0, 2, 2, 46, '#c6b89d', outline);
                 box(x + w * u - .5, y - .5, 46, 3, 3, 1, '#e3d4b8', outline);
             }
-            sign(x, y, 23, w, 22, '1-4 BEDROOMS', 'AVAILABLE', '#215657', { ctx: c, P, box });
+            sign(x, y, 23, w, 22, apartment ? '1-4 BEDROOMS' : 'AVAILABLE CONDOS',
+                apartment ? 'AVAILABLE' : 'INQUIRE WITHIN', '#215657', { ctx: c, P, box });
         }
         if (active) {
             const [sx, sy] = P(b.x + b.w / 2, b.y + b.d, 34 + Math.sin(time * 5) * 3);
