@@ -87,9 +87,26 @@ const ResidentialArt = (() => {
         plane(b.x, b.y, b.w, b.d, 0, layout.kind === 'apartment' ? '#6d7768' : '#55754c', '#9c9b7a');
         const lot = layout.parking;
         plane(lot.x, lot.y, lot.w, lot.d, .3, layout.kind === 'apartment' ? '#48515b' : '#a9a28d', '#d2c8a9');
+        for (let y = lot.y + 9; y < lot.y + lot.d - 2; y += 14)
+            line([[lot.x + 1, y, .35], [lot.x + lot.w - 1, y, .35]], '#29313b25', .6);
+        for (let x = lot.x + 12; x < lot.x + lot.w - 2; x += 22)
+            line([[x, lot.y + 1, .35], [x, lot.y + lot.d - 1, .35]], '#d8d1b32b', .6);
+        const drainX = lot.x + lot.w - 5, drainY = lot.y + lot.d - 6;
+        plane(drainX, drainY, 4, 5, .45, '#35434a', '#83918b', .5);
+        for (let i = 1; i < 4; i++)
+            line([[drainX + .5, drainY + i, .5], [drainX + 3.5, drainY + i, .5]], '#a2aca1', .5);
         plane(layout.path.x, layout.path.y, layout.path.w, layout.path.d, .5, '#cabfa6');
+        for (let y = layout.path.y + 6; y < layout.path.y + layout.path.d; y += 9)
+            line([[layout.path.x, y, .55], [layout.path.x + layout.path.w, y, .55]], '#a79e86', .6);
         for (const [i, bay] of layout.bays.entries()) {
             plane(bay.x, bay.y, bay.w, bay.d, .6, null, '#efe1ad', 1.2);
+            if (layout.kind !== 'house') {
+                const vertical = Math.abs(bay.heading[1]) > Math.abs(bay.heading[0]);
+                const stop = vertical ?
+                    { x: bay.x + 3, y: bay.y + 2, w: bay.w - 6, d: 1.5 } :
+                    { x: bay.x + 2, y: bay.y + 3, w: 1.5, d: bay.d - 6 };
+                plane(stop.x, stop.y, stop.w, stop.d, .8, '#d6c69b', '#84795f', .5);
+            }
             if (i < (layout.kind === 'apartment' ? 2 : layout.bays.length)) {
                 const [sx, sy] = P(bay.x + bay.w / 2, bay.y + bay.d / 2, .7);
                 c.save(); c.font = 'bold 10px system-ui'; c.fillStyle = '#e2e8d8'; c.textAlign = 'center';
@@ -155,7 +172,15 @@ const ResidentialArt = (() => {
             box(g.x, g.y, 0, g.w, wallDepth, height, '#6d7f80', outline);
             for (let z = 5; z < height; z += 6)
                 front({ x: g.x, y: g.y, w: g.w, d: wallDepth }, .04, .96, z, z + .8, '#b1b8aa');
-            plane(g.x + 2, g.y + wallDepth, g.w - 4, g.d - wallDepth - 2, 1, '#4fa6b6');
+            plane(g.x + 2, g.y + wallDepth, g.w - 4, g.d - wallDepth - 2, 1, '#286878');
+            plane(g.x + 3, g.y + wallDepth + 1, g.w - 6, g.d - wallDepth - 4, 1.05, '#3f98a8');
+            plane(g.x + 4, g.y + wallDepth + 2, Math.max(1, g.w * .22), g.d - wallDepth - 6, 1.1, '#70bbba66');
+            for (let i = 0; i < 7; i++) {
+                const y = g.y + wallDepth + 2 + i * (g.d - wallDepth - 5) / 7;
+                const offset = Math.sin(time * 1.7 + i * 2.1) * .8;
+                line([[g.x + 3 + offset, y, 1.2], [g.x + g.w * .55, y + .5, 1.2],
+                    [g.x + g.w - 3 + offset, y, 1.2]], i % 2 ? '#a9e3dd88' : '#1f778c99', .6);
+            }
             front({ x: g.x, y: g.y, w: g.w, d: wallDepth + .1 }, .22, .78, 2, height - 2, '#69c5d6');
             for (let i = 0; i < 4; i++) {
                 const z = 3 + ((time * 9 + i * 4) % 16);
@@ -163,6 +188,15 @@ const ResidentialArt = (() => {
             }
             box(g.x, g.y + g.d - 2, 0, g.w, 2, 4, '#a0a997', outline);
             for (const x of [g.x, g.x + g.w - 2]) box(x, g.y + wallDepth, 0, 2, g.d - wallDepth, 4, '#919e8d');
+            for (let x = g.x + 5; x < g.x + g.w - 2; x += 6)
+                line([[x, g.y + g.d - 2, 4.1], [x, g.y + g.d, 4.1]], '#64766e', .7);
+            for (let y = g.y + wallDepth + 4; y < g.y + g.d - 2; y += 6)
+                for (const x of [g.x, g.x + g.w - 2])
+                    line([[x, y, 4.1], [x + 2, y, 4.1]], '#64766e', .7);
+            for (let i = 0; i < 5; i++) {
+                const x = g.x + g.w * (.3 + i * .1), y = g.y + wallDepth + 1 + (i % 2);
+                line([[x - .6, y, 1.3], [x + .6, y, 1.3]], '#e0faf0', 1.2);
+            }
             for (const u of [.15, .55, .82])
                 line([[g.x + g.w * u, g.y + g.d * .65, 1.2], [g.x + g.w * Math.min(.95, u + .12), g.y + g.d * .65, 1.2]], '#b6e4de');
             for (const x of [g.x + 1, g.x + g.w - 4]) {

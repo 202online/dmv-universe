@@ -196,6 +196,12 @@ spaced around the library commons and southern lots are repositioned to keep
 the larger properties inside the map; local streets
 and interaction approaches are rebuilt around their collision footprints.
 All balconies, driveways and parking details stay within their property lots.
+Parking surfaces include pavement joints, drainage grates, wheel stops and
+clear bay outlines; larger lots also have directional arrows and worn asphalt
+details. Water gardens have shaded pool depths, ripples, falling-water foam and
+jointed stone coping. The SW waterfront has shallow-water color bands, moving
+wave highlights and a segmented stone edge. Trees use layered shaded crowns,
+leaf clusters, branching trunks and ground shadows that scale with map zoom.
 
 The city uses consistent **compact arcade proportions**, not real-world map
 distances. All sedans, whether drivable, in a driveway or in a parking lot,

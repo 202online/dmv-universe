@@ -48,6 +48,39 @@ test('every outdoor sport renders its equipment and a defined map sign', () => {
     for (const q of Object.values(context.city))
         for (const activity of q.activities.filter(a => a.type !== 'boxing')) env.equipment(activity);
 });
+
+test('detailed parking, waterfront and trees render finite scalable scenery without changing access geometry', () => {
+    const polygons = [], ellipses = [];
+    const canvas = new Proxy({}, { get: (target, key) => key in target ? target[key] : (...args) => {
+        args.filter(a => typeof a === 'number').forEach(n => assert.ok(Number.isFinite(n), `${key}: ${n}`));
+        if (key === 'ellipse') ellipses.push(args);
+    } });
+    const env = {
+        ctx: canvas, WORLD, TILE: 100, W: 1200, H: 900, KX: 1.6, KY: .8,
+        CityLayout, currentQuadrant: 'SW', performance: { now: () => 1200 },
+        fromCompass: world, roadAligned: (_, draw) => draw(),
+        P: (x, y, z = 0) => [(x - y) * 1.6, (x + y) * .8 - z],
+        poly(points, fill) {
+            points.flat().forEach(n => assert.ok(Number.isFinite(n)));
+            polygons.push({ points, fill });
+        }
+    };
+    const ground = html.slice(html.indexOf('function drawGround('), html.indexOf('function groundCircle('));
+    const tree = html.slice(html.indexOf('function drawTree('), html.indexOf('function drawLamp('));
+    vm.runInNewContext(`${ground}\n${tree}\nglobalThis.ground=drawGround;globalThis.tree=drawTree;`, env);
+    const before = JSON.stringify(context.city.SW);
+    env.ground(context.city.SW);
+    assert.ok(polygons.filter(p => p.fill === '#b4e1d04d').length > 100, 'waterfront has layered wave highlights');
+    assert.ok(polygons.some(p => p.fill === '#26333b'), 'attached lots include storm drains');
+    assert.equal(JSON.stringify(context.city.SW), before, 'decorative details do not change parking or collisions');
+    env.tree({ x: 120, y: 210 });
+    assert.equal(ellipses.length, 23, 'trees have layered crowns and individual leaf clusters');
+    const normal = ellipses.map(args => args[2]);
+    ellipses.length = 0;
+    env.P = (x, y, z = 0) => [(x - y) * 3.2, (x + y) * 1.6 - z * 2];
+    env.tree({ x: 120, y: 210 });
+    ellipses.forEach((args, i) => assert.ok(Math.abs(args[2] - normal[i] * 2) < 1e-8, 'foliage scales with map zoom'));
+});
 test('apartments and condos have broad, multi-family footprints proportional to the main apartment', () => {
     const homes = Object.values(context.city).flatMap(q => q.neighborhood.buildings).filter(b => b.type === 'crib');
     const house = homes.find(b => b.kind === 'house');

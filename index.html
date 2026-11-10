@@ -1517,8 +1517,21 @@
                 compassRect(-118, -75, o, o + 12, 'rgba(255,255,255,.65)');
             }
             if (currentQuadrant === 'SW') {
-                compassRect(-WORLD - 200, -WORLD, 250, 2 * WORLD - 250, '#386c79');
+                compassRect(-WORLD - 200, -WORLD, 250, 2 * WORLD - 250, '#285766');
+                compassRect(-WORLD - 65, -WORLD, 250, 2 * WORLD - 250, '#397b86');
+                compassRect(-WORLD - 18, -WORLD, 250, 2 * WORLD - 250, '#649d9c');
+                const waveTime = performance.now() / 1000;
+                for (let s = 272; s < 2 * WORLD - 268; s += 34) {
+                    for (let i = 0; i < 3; i++) {
+                        const e = -WORLD - 180 + i * 62 + Math.sin(waveTime * .7 + s * .03 + i) * 4;
+                        compassRect(e, e + 14 + i * 4, s + i * 8, s + i * 8 + 1.2, '#b4e1d04d');
+                    }
+                }
                 compassRect(-WORLD, -WORLD + 30, 250, 2 * WORLD - 250, '#a89a80');
+                for (let s = 250; s < 2 * WORLD - 250; s += 18) {
+                    compassRect(-WORLD, -WORLD + 5, s, s + 15, '#75847d', '#b8b8a0');
+                    compassRect(-WORLD + 7, -WORLD + 29, s + 3, s + 3.8, '#877e6b');
+                }
             }
             // Small cocoa-toned utility covers along the sidewalks.
             [[95, 500], [-95, 1500], [-95, 400], [95, 1650], [400, 1135], [-400, 865]].forEach(([e, s]) => {
@@ -1531,16 +1544,35 @@
                 roadAligned(q.parkingLot,()=>{
                 const { x, y, w, d } = q.parkingLot;
                 groundRect(x, y, w, d, '#34343a');
+                for (let row = 0; row < 7; row++) {
+                    const py = y + 11 + row * 27;
+                    poly([P(x + 46, py), P(x + 53, py + 3), P(x + 51, py + 9),
+                        P(x + 59, py + 13)], null, '#23262b', .7);
+                }
+                groundRect(x + 44, y + 4, 2, d - 8, '#7b7c7255');
+                groundRect(x + w - 46, y + 4, 2, d - 8, '#7b7c7255');
                 for (const bx of [x + 5, x + w - 41]) {
                     for (let i = 0; i <= 8; i++) groundRect(bx, y + i * 24, 36, 1, '#ddd2bd');
-                    for (let i = 0; i < 8; i++) groundRect(bx + 2, y + i * 24 + 4, 2, 16, '#a99583');
+                    for (let i = 0; i < 8; i++) {
+                        groundRect(bx + 2, y + i * 24 + 4, 2, 16, '#c6b995', '#736c5c');
+                        groundRect(bx + 5, y + i * 24 + 6, 10, 4, '#25292d44');
+                    }
                 }
+                for (const py of [y + 50, y + 137])
+                    poly([[x + w / 2 - 2, py + 12], [x + w / 2 + 2, py + 12], [x + w / 2 + 2, py],
+                        [x + w / 2 + 7, py + 3], [x + w / 2, py - 7], [x + w / 2 - 7, py + 3],
+                        [x + w / 2 - 2, py]].map(p => P(...p)), '#ddd2bd');
                 });
             }
             for (const area of q.parkingAreas.filter(a => ['lot', 'garage'].includes(a.kind) && !CityLayout.residentialPlan(a.destination))) {
                 roadAligned(area, () => {
                     groundRect(area.x, area.y, area.w, area.d, '#414a50', '#a8a99a');
                     groundRect(area.x + 3, area.y + area.d - 18, area.w - 6, 2, '#c1c4ab');
+                    for (let x = area.x + 8; x < area.x + area.w - 4; x += 16)
+                        groundRect(x, area.y + 3, .7, area.d - 6, '#bac2b21c');
+                    groundRect(area.x + area.w - 8, area.y + area.d - 8, 5, 5, '#26333b', '#82908b');
+                    for (let i = 1; i < 4; i++)
+                        groundRect(area.x + area.w - 7.5, area.y + area.d - 8 + i, 4, .4, '#9ba79c');
                 });
             }
             for (const approach of q.approaches) roadAligned(approach, () =>
@@ -2011,16 +2043,34 @@
         }
 
         function drawTree(t) {
-            const [sx, sy] = P(t.x, t.y);
-            ctx.fillStyle = 'rgba(0,0,0,.3)';
-            ctx.beginPath(); ctx.ellipse(sx + 4, sy + 2, 16, 7, 0, 0, 7); ctx.fill();
-            ctx.fillStyle = '#5c392e'; ctx.fillRect(sx - 3, sy - 24, 6, 24);
-            ctx.fillStyle = '#805748'; ctx.fillRect(sx - 2, sy - 21, 1, 17);
-            ctx.fillStyle = '#432a25';
-            for (let y = sy - 18; y < sy - 3; y += 6) ctx.fillRect(sx + 1, y, 2, 1);
-            [[0, -44, 17, '#166534'], [-10, -34, 12, '#15803d'], [10, -34, 12, '#15803d'], [0, -52, 11, '#22c55e']].forEach(([ox, oy, r, col]) => {
-                ctx.fillStyle = col; ctx.beginPath(); ctx.arc(sx + ox, sy + oy, r, 0, 7); ctx.fill();
-            });
+            const seed = Math.abs(Math.round(t.x * 13 + t.y * 7)), size = .9 + seed % 5 * .05;
+            const [sx, sy] = P(t.x, t.y), [px, py] = P(t.x + 1, t.y);
+            const unit = Math.hypot(px - sx, py - sy) / Math.hypot(KX, KY);
+            const branch = (points, color, width) => {
+                ctx.beginPath(); points.forEach(([x, y], i) => i ? ctx.lineTo(sx + x * unit, sy + y * unit) : ctx.moveTo(sx + x * unit, sy + y * unit));
+                ctx.strokeStyle = color; ctx.lineWidth = width * unit; ctx.stroke();
+            };
+            const leaf = (x, y, rx, ry, color) => {
+                ctx.fillStyle = color; ctx.beginPath();
+                ctx.ellipse(sx + x * size * unit, sy + y * size * unit, rx * size * unit, ry * size * unit, 0, 0, Math.PI * 2); ctx.fill();
+            };
+            leaf(7, 2, 19, 7, '#132b2255');
+            leaf(0, 0, 6, 2.5, '#423a2b');
+            branch([[-5, 0], [0, -7], [1, -30]], '#50392d', 6);
+            branch([[0, -4], [-1, -22], [-10, -34]], '#7d5940', 2);
+            branch([[1, -15], [10, -27], [13, -35]], '#543b2c', 3);
+            branch([[0, -12], [-2, -8], [-1, -3]], '#ac8051', .8);
+            leaf(0, -38, 21, 20, '#174f36');
+            leaf(-13, -32, 13, 13, '#24633b');
+            leaf(13, -35, 13, 14, '#21633c');
+            leaf(-5, -49, 16, 13, '#357a43');
+            leaf(10, -47, 11, 12, '#42854a');
+            leaf(-10, -51, 8, 6, '#659b50');
+            for (let i = 0; i < 15; i++) {
+                const angle = i * 2.4 + seed, radius = 4 + i % 4 * 3.6;
+                const x = Math.cos(angle) * radius, y = -42 + Math.sin(angle) * radius;
+                leaf(x, y, 2.8 + i % 3, 1.5 + i % 2, ['#80ad5a99', '#102f2d66', '#a0bd6555'][i % 3]);
+            }
         }
 
         function drawLamp(l) {
