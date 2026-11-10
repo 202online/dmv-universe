@@ -72,6 +72,10 @@
         .shop-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; background: #1f2937; border-radius: 8px; }
         .shop-row button { padding: 8px 12px; color: white; background: #5b21b6; border: 1px solid #c084fc; border-radius: 6px; }
         .shop-row button:disabled { opacity: .65; }
+        .shop-row > span small { display: block; color: #9ca3af; }
+        .paint-row { display: flex; gap: 6px; margin-top: 6px; }
+        .shop-row .paint-swatch { width: 26px; height: 26px; padding: 0; border: 2px solid #4b5563; border-radius: 50%; }
+        .shop-row .paint-swatch[aria-pressed="true"] { border-color: #facc15; box-shadow: 0 0 0 2px #facc1566; }
         .book-card { padding: 12px; margin: 14px 0; background: #1f2937; border: 1px solid #475569; border-radius: 8px; }
         .book-card h3 { margin: 0 0 8px; }
         body:has(#modal-overlay:not(.hidden):not(.mg-mode)) { touch-action: pan-y; }
@@ -323,6 +327,7 @@
     <script src="learning.js"></script>
     <script src="city-layout.js"></script>
     <script src="vehicle-art.js"></script>
+    <script src="vehicle-paints.js"></script>
     <script src="transit.js"></script>
     <script src="ride-bag.js"></script>
     <script src="ride-hail.js"></script>
@@ -690,7 +695,9 @@
             Object.hasOwn(hairColors, features.color) && Object.hasOwn(skinColors, features.skin) &&
             ['none', 'mustache', 'beard'].includes(features.facial);
         player.features = defaultFeatures('boy');
-        const progress = { stars: 12, property: 1, owned: ['basic'], shirt: 'basic', ownedVehicles: ['bike'], vehicle: 'bike', minigames: MinigameProgression.initial() };
+        const progress = { stars: 12, property: 1, owned: ['basic'], shirt: 'basic', ownedVehicles: ['bike'], vehicle: 'bike', paints: VehiclePaints.initial(), minigames: MinigameProgression.initial() };
+        const rideLook = id => ({ ...vehicles[id], ...VehiclePaints.look(id, progress.paints[id]) });
+        Object.assign(ownCar, VehiclePaints.look('bike', progress.paints.bike));
         let sportsbook = Sportsbook.initial();
         let casino = Casino.initial();
         let pets = Pets.initial();
@@ -705,7 +712,7 @@
             const data = {
                 version: 1, worldScale: CityLayout.scale, transit: transitTrip, appearance: player.appearance, features: player.features, stars: progress.stars,
                 property: progress.property, owned: progress.owned, shirt: progress.shirt, sportsbook, casino, pets, investing, learning, minigames: progress.minigames,
-                parkedVehicles, settings:gameSettings,
+                parkedVehicles, settings:gameSettings, paints: progress.paints,
                 lastLocation: rememberLocation(),
                 vehicle: { id: progress.vehicle, owned: progress.ownedVehicles, quadrant: driving.quadrant, x: ownCar.x, y: ownCar.y, packed: ridePacked, heading: ownCar.heading || [1, 0] }
             };
@@ -807,10 +814,11 @@
                 progress.property = data.property;
                 progress.owned = [...new Set(data.owned)];
                 progress.shirt = data.shirt;
+                progress.paints = VehiclePaints.restore(data.paints);
                 if (ride) {
                     progress.vehicle = ride.id;
                     progress.ownedVehicles = [...new Set(ride.owned)];
-                    Object.assign(ownCar, vehicles[ride.id]);
+                    Object.assign(ownCar, rideLook(ride.id));
                     moveCarToQuadrant(ride.quadrant);
                     ownCar.x = ride.x; ownCar.y = ride.y; ownCar.heading = ride.heading;
                     setRidePacked(ride.packed === true);
@@ -1238,7 +1246,7 @@
         }
         function parkedRideObjects(quadrant) {
             return Object.entries(parkedVehicles).filter(([, p]) => p.quadrant === quadrant).map(([id,p]) =>
-                ({ ...vehicles[id], x:p.x, y:p.y, ownRide:true, parkedRideId:id, heading:p.heading||[1,0] }));
+                ({ ...rideLook(id), x:p.x, y:p.y, ownRide:true, parkedRideId:id, heading:p.heading||[1,0] }));
         }
         function secureStoredRide(id,destination=null) {
             const p=parkedVehicles[id],vehicle=vehicles[id];
@@ -2488,7 +2496,7 @@
         function selectRide(id, deploy = false) {
             if (!progress.ownedVehicles.includes(id)) throw new Error('You do not own this ride');
             if (transitTrip || driving.active) throw new Error('Finish your trip or get off your current ride first');
-            const vehicle = vehicles[id], portable = RideBag.portable.includes(id), stored = parkedVehicles[id];
+            const vehicle = rideLook(id), portable = RideBag.portable.includes(id), stored = parkedVehicles[id];
             if(id===progress.vehicle&&!portable)return;
             let quadrant = stored?.quadrant || currentQuadrant, x, y;
             if (stored) { x = stored.x; y = stored.y; }
@@ -2991,7 +2999,10 @@
                             const owned = progress.ownedVehicles.includes(id);
                             const selected = id === progress.vehicle;
                             const label = selected ? 'Selected' : owned ? 'Select' : `Buy · ${vehicle.price} stars`;
-                            return `<div class="shop-row"><span>${vehicle.name}</span><button type="button" data-vehicle="${id}" ${selected ? 'disabled' : ''}>${label}</button></div>`;
+                            const paints = owned ? VehiclePaints.options(id).map(p => `<button type="button" class="paint-swatch" data-paint-ride="${id}" data-paint="${p.id}"
+                                aria-label="Paint ${vehicle.name} ${p.name}" aria-pressed="${progress.paints[id] === p.id}" title="${p.name}" style="background:${p.color}"></button>`).join('') : '';
+                            const paintNote = !owned && VehiclePaints.paintable(id) ? `<small>Colors: ${VehiclePaints.options(id).map(p => p.name).join(', ')}</small>` : '';
+                            return `<div class="shop-row"><span>${vehicle.name}${paints ? `<span class="paint-row">${paints}</span>` : paintNote}</span><button type="button" data-vehicle="${id}" ${selected ? 'disabled' : ''}>${label}</button></div>`;
                         }).join('')}
                     </div>
                     <button type="button" id="vehicle-back">Back</button>
@@ -3015,6 +3026,15 @@
                 saveProgress();
                 renderVehicleShop(shop);
                 toast(RideBag.portable.includes(id)?`${vehicle.name} is in your Item Bag.`:`${vehicle.name} is in ${driving.quadrant}.`);
+            }));
+            content.querySelectorAll('[data-paint-ride]').forEach(button => button.addEventListener('click', () => {
+                const id = button.dataset.paintRide, paint = button.dataset.paint;
+                if (!progress.ownedVehicles.includes(id) || !VehiclePaints.valid(id, paint)) return;
+                progress.paints[id] = paint;
+                if (id === progress.vehicle) Object.assign(ownCar, VehiclePaints.look(id, paint));
+                saveProgress();
+                renderVehicleShop(shop);
+                toast(`${vehicles[id].name} painted ${VehiclePaints.paints[id][paint].name.toLowerCase()}.`);
             }));
             document.getElementById('vehicle-back').addEventListener('click', () => openBuildingModal(shop ? 'retail' : 'crib'));
         }

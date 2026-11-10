@@ -37,6 +37,26 @@ first clears takes 62 wins, and the pickup takes 71 (without other spending).
 Across all sixteen games, clearing their first five levels still leaves 144/252
 stars to earn toward those vehicles. These are win counts, not guaranteed hours.
 
+Owned rides can be repainted for free with the swatches in the Vehicle Shop or
+Your Garage (`vehicle-paints.js`). The paint is saved and applies to the ride
+you are using and to rides parked around the city.
+
+| Ride | Colors |
+| --- | --- |
+| The Bucket (starts red) | red, pink, black, sky blue |
+| Pickup truck (starts silver) | black, silver, blue, lavender |
+| Bicycle | sky blue, red, pink, lavender |
+| Electric scooter | purple, black, pink, lavender |
+| Electric bike | green, white, pink, lavender |
+
+Bikes and scooters start in a random color from their set. Saves from before
+paint existed get a random two-wheeler color and the default car colors.
+
+`clothing-catalog.js` defines the first wave of clothing: eight generic
+T-shirts, sweatpants and shoes (red, yellow, blue, green, black, pink, purple
+and orange) plus black jeans. These 25 items have no price (`price: null`), are
+not listed (`listed: false`), and are not loaded by the game or sold in any shop yet.
+
 The level picker shows a small moving window rather than an ever-growing list.
 Use Previous to revisit older levels or Latest unlocked to return to progression.
 There is no gameplay level cap. Levels after five use diminishing difficulty
