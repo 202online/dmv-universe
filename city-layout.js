@@ -1,6 +1,7 @@
 (function (root) {
     'use strict';
     const STEP = 20, HALF = 44, SCALE = 1.6, WORLD = 1600;
+    const projection = Object.freeze({ x: .87, y: .5 });
     const world = (e, s) => [(s + e) / 2, (s - e) / 2];
     const center = (b, e, s) => {
         const [x, y] = world(e, s);
@@ -90,7 +91,7 @@
     }
 
     function front(b, offset = 26, u = .5) {
-        if (b.garage) return point(b, b.x + b.w + offset, b.y + b.d * u);
+        if (b.garage) return point(b, b.x + b.w - 72, b.y + b.d + offset);
         return point(b, b.x + b.w * u, b.y + b.d + offset);
     }
 
@@ -132,6 +133,78 @@
             })));
     }
 
+    function compassArea(e0,e1,s0,s1) {
+        const [x,y]=world((e0+e1)/2,(s0+s1)/2),w=(e1-e0)*Math.SQRT1_2,d=(s1-s0)*Math.SQRT1_2;
+        return {x:x-w/2,y:y-d/2,w,d,roadAligned:true};
+    }
+
+    function visualSolids(b) {
+        if(!b.h) return [];
+        const layout=residentialPlan(b);
+        const parts=layout ? layout.parts : b.garage ?
+            [{x:b.x,y:b.y,w:b.w-100,d:b.d,h:b.h,z:0}] : [{...b,z:0}];
+        return parts.map(part=>{
+            const bounds=footprint(region(b,part));
+            const roof=part.roof==='gable'||part.roof==='hip'?18:12;
+            // Screen height projects north by height / KY in compass coordinates.
+            return compassArea(bounds.e0,bounds.e1,bounds.s0-(part.h+(part.z||0)+roof)/projection.y,bounds.s1);
+        });
+    }
+
+    function arrangeSightlines(q) {
+        const objects=targets(q),groups=[];
+        const garage=objects.find(b=>b.garage),apartment=garage && objects.find(b=>b.style==='apartment');
+        for(const b of objects) {
+            if(groups.some(g=>g.includes(b))) continue;
+            const group=[b],f=footprint(b);
+            for(const other of objects) {
+                if(other===b || groups.some(g=>g.includes(other))) continue;
+                const g=footprint(other);
+                if((b.kind==='house' && other.kind==='house') ||
+                    (b===apartment && other===garage) || (b===garage && other===apartment) ||
+                    (b.type==='crib' && other.type==='crib' && !b.garage && !other.garage &&
+                    Math.abs(f.s0-g.s0)<1 && Math.min(Math.abs(f.e1-g.e0),Math.abs(g.e1-f.e0))<14))
+                    group.push(other);
+            }
+            groups.push(group);
+        }
+        const reserved=q.parkingLot?[q.parkingLot]:[];
+        const mainRoads=[compassArea(-132,132,0,2*WORLD),compassArea(-WORLD,WORLD,WORLD-177,WORLD+177)];
+        const offsets=[];
+        for(let de=-1000;de<=1000;de+=20) for(let ds=-1000;ds<=1000;ds+=20)
+            offsets.push({de,ds,distance:de*de+ds*ds});
+        offsets.sort((a,b)=>a.distance-b.distance);
+        for(const group of groups) {
+            const original=group.map(b=>[b.x,b.y]);
+            let placed=false;
+            for(const {de,ds} of offsets) {
+                const [dx,dy]=world(de,ds);
+                group.forEach((b,i)=>{b.x=original[i][0]+dx;b.y=original[i][1]+dy;});
+                const surfaces=group.flatMap(b=>[b,...visualSolids(b)]);
+                const lots=group.filter(b=>!residentialPlan(b) && !b.garage).map(b=>{
+                    const lot=region(b,{x:b.x+b.w,y:b.y+b.d-140,w:90,d:140});
+                    return {building:b,lot};
+                });
+                surfaces.push(...lots.map(a=>a.lot));
+                const frontages=group.map(b=>region(b,{x:b.x,y:b.y+b.d,w:b.w+(!residentialPlan(b)&&!b.garage?90:0),d:112}));
+                if(surfaces.some(s=>{
+                    const f=footprint(s);
+                    return f.e0<-WORLD+8 || f.e1>WORLD-8 || f.s0<8 || f.s1>2*WORLD-8 ||
+                        mainRoads.some(r=>overlaps(r,s)) || reserved.some(r=>overlaps(r,s,12));
+                }) || frontages.some(s=>{
+                    const f=footprint(s);
+                    return f.e0<-WORLD+8 || f.e1>WORLD-8 || f.s1>2*WORLD-8 ||
+                        reserved.some(r=>overlaps(r,s,12));
+                })) continue;
+                reserved.push(...surfaces,...frontages);
+                for(const {building,lot} of lots) building.siteParking=lot;
+                if(group[0].kind==='house') for(const yard of q.houseYards||[]) {yard.x+=dx;yard.y+=dy;}
+                placed=true;break;
+            }
+            if(!placed) throw new Error(`No unobscured block for ${group[0].name || group[0].type || group[0].kind}`);
+        }
+    }
+
     function polygonsOverlap(a, b) {
         return [a, b].every(polygon => polygon.every(([x, y], i) => {
             const next = polygon[(i + 1) % polygon.length], ax = y - next[1], ay = next[0] - x;
@@ -165,7 +238,9 @@
 
     function connect(q) {
         const objects = targets(q);
-        const obstacles = [...objects, ...(q.parkingLot ? [q.parkingLot] : [])];
+        const parking=[...objects.filter(b=>b.siteParking).map(b=>b.siteParking),...(q.parkingLot?[q.parkingLot]:[])]
+            .map(b=>{const f=footprint(b);return compassArea(f.e0-12,f.e1+12,f.s0-12,f.s1+12);});
+        const obstacles = [...objects.flatMap(b => [b, ...visualSolids(b)]),...parking];
         const key = (e, s) => `${e},${s}`;
         const network = new Set(), free = new Set();
         const edgeCache = new Map();
@@ -187,7 +262,8 @@
         for (const b of objects) {
             // Prefer a front-door approach; other sides serve tightly packed courts.
             const candidates = [
-                ...(b.garage ? [[b.x + b.w + 64, b.y + b.d / 2]] : []),
+                ...(b.garage ? [[b.x + b.w - 72, b.y + b.d + 64]] : []),
+                ...(b.siteParking ? [[b.x+b.w+40,b.y+b.d+52]] : []),
                 [b.x + b.w / 2, b.y + b.d + 64],
                 [b.x - 64, b.y + b.d / 2],
                 [b.x + b.w + 64, b.y + b.d / 2],
@@ -257,8 +333,7 @@
         if (id === 'SE') {
             const apartment = q.buildings[0], garage = q.buildings[1];
             center(apartment, 650, 1740);
-            garage.w = apartment.w; garage.d = 70; garage.h = 55;
-            garage.x = apartment.x; garage.y = apartment.y - garage.d;
+            garage.w = apartment.w; garage.d = 100; garage.h = 55;
         }
         if (id === 'NE') {
             center(shops[0], 560, 1850);
@@ -271,7 +346,7 @@
         }
         if (id === 'SE') {
             const apartment = q.buildings[0], garage = q.buildings[1];
-            const [cx, cy] = point(apartment, apartment.x + apartment.w / 2, apartment.y - garage.d / 2);
+            const [cx, cy] = point(apartment, apartment.x + apartment.w + garage.w / 2, apartment.y + apartment.d - garage.d / 2);
             garage.x = cx - garage.w / 2; garage.y = cy - garage.d / 2;
         }
         arrangeHouses(q);
@@ -280,6 +355,7 @@
             center(station, e, s);
             q.buildings.push(station);
         }
+        arrangeSightlines(q);
         connect(q);
         assignParking(q);
     }
@@ -310,13 +386,10 @@
             w: houses.length * 100 + (houses.length - 1) * 12 + 12, d: 150 })];
     }
     function assignParking(q) {
-        const objects = [...targets(q), ...(q.parkingLot ? [q.parkingLot] : [])];
         q.playerParking = [];
         q.parkingAreas = q.parkingLot ? [{ ...q.parkingLot, destination: q.buildings[0], kind: 'overflow' }] : [];
         q.approaches = [];
         const addBay = (destination, area, bay) => q.playerParking.push({ ...bay, destination, area });
-        const bounded = r => footprint(r).corners.every(([x, y]) =>
-            Math.abs(x - y) <= WORLD - 4 && x + y >= 4 && x + y <= 2 * WORLD - 4);
         for (const destination of targets(q)) {
             const layout = residentialPlan(destination);
             if (!layout) continue;
@@ -337,62 +410,27 @@
             if (residentialPlan(destination)) continue;
             if (destination.garage) {
                 const area = { ...destination, destination, kind: 'garage' };
+                area.lane = region(destination, {x:destination.x+destination.w-96,y:destination.y+2,w:48,d:destination.d-2});
                 q.parkingAreas.push(area);
                 for (let i = 0; i < 3; i++)
-                    addBay(destination, area, region(destination, { x: destination.x + destination.w - 42,
-                        y: destination.y + 3 + i * 22, w: 38, d: 20, heading: [1, 0] }));
+                    addBay(destination, area, region(destination, { x: destination.x + destination.w - 44,
+                        y: destination.y + 4 + i * 30, w: 40, d: 26, heading: [1, 0] }));
                 continue;
             }
-            const access = q.roadAccess.find(a => a.building === destination);
-            const [ax, ay] = world(...access.path[0]);
-            const [lx, ly] = point(destination, ax, ay, true);
             const entrance = region(destination, { x: destination.x + destination.w / 2 - 11,
                 y: destination.y + destination.d, w: 22, d: 80 });
             q.approaches.push({ ...entrance, destination, pedestrian: true });
-            const candidates = [];
-            for (const side of ['front', 'right', 'left', 'rear']) for (const shift of [0, -20, 20, -40, 40, -60, 60, -80, 80, -100, 100, -140, 140, -180, 180]) {
-                const sideways = side === 'right' || side === 'left';
-                const along = sideways ? destination.y + destination.d / 2 : destination.x + destination.w / 2;
-                const local = sideways ?
-                    { x: side === 'right' ? destination.x + destination.w : destination.x - 90, y: along - 70 + shift, w: 90, d: 140 } :
-                    { x: along - 70 + shift, y: side === 'front' ? destination.y + destination.d : destination.y - 90, w: 140, d: 90 };
-                const frontage=sideways ?
-                    Math.min(local.y+local.d,destination.y+destination.d)-Math.max(local.y,destination.y) :
-                    Math.min(local.x+local.w,destination.x+destination.w)-Math.max(local.x,destination.x);
-                if(frontage<28) continue;
-                const area = { ...region(destination, local), destination, kind: 'lot' };
-                if (!bounded(area) || objects.filter(b => b !== destination).some(b => overlaps(area, b)) ||
-                    q.parkingAreas.some(b => overlaps(area, b))) continue;
-                const bounds=footprint(area);
-                if(streetBounds(q,12).some(r=>bounds.e1>r.e0 && bounds.e0<r.e1 && bounds.s1>r.s0 && bounds.s0<r.s1)) continue;
-                if (!nearRoad(q, area.x + area.w / 2, area.y + area.d / 2, 200)) continue;
-                const bays = [4, 96].map(offset => {
-                    let r;
-                    if (side === 'front') r = { x: local.x + offset, y: local.y + 3, w: 40, d: 22, heading: [1, 0] };
-                    if (side === 'rear') r = { x: local.x + offset, y: local.y + local.d - 25, w: 40, d: 22, heading: [1, 0] };
-                    if (side === 'right') r = { x: local.x + 3, y: local.y + offset, w: 22, d: 40, heading: [0, 1] };
-                    if (side === 'left') r = { x: local.x + local.w - 25, y: local.y + offset, w: 22, d: 40, heading: [0, 1] };
-                    return region(destination, r);
-                }).filter(bay => !overlaps(bay, entrance) && !q.neighborhood.streets.some(r => intersects(r, bay)) && (() => {
-                    const bounds = footprint(bay);
-                    return (bounds.e1 < -125 || bounds.e0 > 125) &&
-                        (bounds.s1 < WORLD - 170 || bounds.s0 > WORLD + 170);
-                })());
-                if (!bays.length) continue;
-                candidates.push({ area, bays, distance: distanceTo(area, ax, ay) + Math.abs(shift) + Math.hypot(lx - (local.x + local.w / 2), ly - (local.y + local.d / 2)) });
-            }
-            candidates.sort((a, b) => a.distance - b.distance);
-            if (!candidates.length) throw new Error(`No attached parking lot for ${destination.name || destination.kind}`);
-            const { area, bays } = candidates[0];
+            if(!destination.siteParking) throw new Error(`No planned parking lot for ${destination.name || destination.kind}`);
+            const area={...destination.siteParking,destination,kind:'lot'};
+            area.lane=region(area,{x:area.x+30,y:area.y+2,w:58,d:area.d-2});
+            const bays=[4,96].map(offset=>region(area,{x:area.x+3,y:area.y+offset,w:22,d:40,heading:[0,1]}));
             q.parkingAreas.push(area);
             bays.forEach(bay => addBay(destination, area, bay));
         }
-        // The rear garage has real open interior bays and a driveable side entrance.
-        // Keep its back and side walls solid, rather than treating the entire floor as a wall.
         q.parkingSolids = targets(q).filter(b => b.garage).flatMap(b =>
-            [{ x: b.x, y: b.y, w: b.w - 48, d: b.d },
-                { x: b.x + b.w - 48, y: b.y, w: 48, d: 2 },
-                { x: b.x + b.w - 48, y: b.y + b.d - 2, w: 48, d: 2 }].map(r => footprint(region(b, r))));
+            [{ x: b.x, y: b.y, w: b.w - 100, d: b.d },
+                { x: b.x + b.w - 100, y: b.y, w: 100, d: 2 },
+                { x: b.x + b.w - 2, y: b.y, w: 2, d: b.d }].map(r => footprint(region(b, r))));
         addParkingAprons(q);
     }
 
@@ -435,7 +473,8 @@
         for(const side of [-1,1]) for(let s=300;s<2*WORLD-150;s+=360) {
             if(Math.abs(s-WORLD)<220) continue;
             const [x,y]=world(side*96,s), area={x:x-8,y:y-8,w:16,d:16,roadAligned:true};
-            if(!blocked(area) && !q.lamps.some(l=>Math.hypot(l.x-x,l.y-y)<30) &&
+            if(!blocked(area) && !q.neighborhood.streets.some(r=>intersects(r,area)) &&
+                !q.lamps.some(l=>Math.hypot(l.x-x,l.y-y)<30) &&
                 !q.trees.some(t=>Math.hypot(t.x-x,t.y-y)<40)) q.trees.push({x,y,scale:.82});
         }
         q.trees.forEach((tree,i)=>{
@@ -483,8 +522,9 @@
         const obstacles = [...q.buildings.filter(b => !b.garage), ...q.neighborhood.buildings,
             ...q.activities.filter(b => b.type === 'boxing')].flatMap(buildingSolids).concat(q.parkingSolids);
         for (const area of q.parkingAreas) {
-            const lot = footprint(area), candidates = [];
-            const blocked = obstacles.concat(targets(q).filter(b => b !== area.destination).map(footprint));
+            const lot = footprint(area.lane || area), candidates = [];
+            const blocked = obstacles.concat(targets(q).filter(b => b !== area.destination).map(footprint),
+                targets(q).flatMap(visualSolids).map(footprint));
             for (const road of roads) for (const axis of ['e','s']) {
                 const cross = axis === 'e' ? 's' : 'e';
                 const lo = Math.max(lot[`${cross}0`],road[`${cross}0`]);
@@ -529,14 +569,14 @@
                     polygon: corners, destination: area.destination, pedestrian: false, vehicleEntrance: true } });
             }
             candidates.sort((a,b) => a.length-b.length);
-            if (!candidates.length) throw new Error(`No clear parking entrance for ${area.destination.name || area.kind}`);
+            if (!candidates.length) throw new Error(`No clear parking entrance for ${area.destination.name || area.destination.type || area.kind}`);
             q.approaches.push(candidates[0].apron);
         }
     }
 
     const api = { apply, targets, nearRoad, intersects, designs, point, footprint, overlaps, distanceTo, front, polygonsOverlap,
-        residentialPlan, region, vehicleCorners, contains, buildingSolids, streetBounds, grassAt, landscape,
-        halfWidth: HALF, world: WORLD, scale: SCALE };
+        residentialPlan, region, vehicleCorners, contains, buildingSolids, visualSolids, streetBounds, grassAt, landscape,
+        halfWidth: HALF, world: WORLD, scale: SCALE, projection };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     root.CityLayout = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

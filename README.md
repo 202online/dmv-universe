@@ -176,8 +176,10 @@ balcony railings, planters and varied window bands distinguish them. Homes
 and condos have visible driveways, some with decorative parked cars or a
 small garage; apartment lots have **4–6 individually marked spaces**, wheel
 stops, an access aisle and several detailed parked cars. The main apartment's
-garage shares its full rear wall, with side-facing roll-up doors and a physical
-**PARK HERE / GARAGE** board mounted on the garage wall. Apartment fronts have
+garage attaches beside the apartment, outside its projected roofline. Its
+open-sky parking deck has three bays and a separate 48-unit driving aisle,
+with an opaque roofed service wing and a wall-mounted **PARK HERE / GARAGE**
+board. Cars enter through the aisle, not through another parking space. Apartment fronts have
 stone waterfall walls, animated falling water, catch pools and landscaped
 garden islands placed beside entrances, with clear door approaches even in
 the isometric projection. Selected
@@ -228,9 +230,12 @@ bays. Continuous perimeter outlines and cross-lot border stripes are removed
 so the matching asphalt flows into the street without an entrance seam.
 Public lot pavement stays 12 units outside the street-side sidewalk edge, leaving a
 distinct entrance apron rather than a lot that visually intersects the road.
-Only the asphalt entrance crosses that setback. Buildings keep their full
-dimensions, but portions projected over streets, parking or vehicle entrances
-use a translucent cutaway so roofs cannot hide the driving surface.
+Only the asphalt entrance crosses that setback. Buildings stay fully opaque:
+layout placement reserves their projected roof height, moves conflicting
+blocks, and positions attached lots beside buildings before streets are
+connected. Rooflines therefore clear parking and vehicle entrances without
+transparency or shrinking buildings. Vehicle headings follow each bay's
+long axis, matching the painted parking-space orientation.
 Trees on grass have visible root collars and spreading root flares. Trees on
 hardscape sit in soil-filled sidewalk openings, edged raised planters or
 landscaped berms rather than growing through unbroken paving. Main sidewalks

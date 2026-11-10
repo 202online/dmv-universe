@@ -74,7 +74,7 @@ const ResidentialArt = (() => {
         return { kind, variant, terrace, parts, door, path, bays, decorativeCars,
             available, listed: listing(b) !== null, garden, parking };
     }
-    function draw(b, { ctx: c, P, poly, box, shade, entrances = [], withSightlines = draw => draw() }, active = false, time = 0) {
+    function draw(b, { ctx: c, P, poly, box, shade, entrances = [] }, active = false, time = 0) {
         const layout = plan(b), trim = b.trim, outline = '#17232899';
         const plane = (x, y, w, d, z, fill, stroke, width = 1) =>
             poly([P(x, y, z), P(x + w, y, z), P(x + w, y + d, z), P(x, y + d, z)], fill, stroke, width);
@@ -117,7 +117,6 @@ const ResidentialArt = (() => {
                 c.fillText('P', sx, sy); c.restore();
             }
         }
-        withSightlines(() => {
         for (const p of layout.parts) {
             const color = b.color;
             box(p.x, p.y, p.z, p.w, p.d, p.h, color, outline);
@@ -223,7 +222,6 @@ const ResidentialArt = (() => {
             plane(p.x + p.w * .1, p.y + p.d, p.w * .8, b.d * .14, z, '#9d8260', trim);
             for (const u of [.12, .88]) box(p.x + p.w * u, p.y + p.d + b.d * .1, 0, 2, 2, z, '#d6c6a3');
         }
-        });
         for (const car of layout.decorativeCars)
             vehicles.draw({ ...car, kind: 'car', trim: '#d3d9d4' }, { ctx: c, P, poly, shade });
         if (layout.kind === 'house' && layout.listed) {
@@ -269,22 +267,16 @@ const ResidentialArt = (() => {
     }
     function drawGarage(b, env, active = false, time = 0) {
         const { P, poly, box } = env;
-        box(b.x, b.y, 0, b.w - 48, b.d, b.h, b.color, '#34434b');
-        box(b.x + b.w - 48, b.y, 0, 48, 2, b.h, b.color, '#34434b');
-        box(b.x + b.w - 48, b.y + b.d - 2, 0, 48, 2, b.h, b.color, '#34434b');
-        poly([P(b.x, b.y, b.h), P(b.x + b.w, b.y, b.h),
-            P(b.x + b.w, b.y + b.d, b.h), P(b.x, b.y + b.d, b.h)], '#718184', b.trim, 2);
-        const side = (u0, u1, z0, z1, color) =>
-            poly([P(b.x + b.w, b.y + b.d * u0, z0), P(b.x + b.w, b.y + b.d * u1, z0),
-                P(b.x + b.w, b.y + b.d * u1, z1), P(b.x + b.w, b.y + b.d * u0, z1)], color, b.trim);
-        for (const u of [.08, .39, .70]) {
-            side(u, u + .23, b.h * .60, b.h * .85, '#425965');
-            for (let z = b.h * .60 + 2; z < b.h * .85; z += 5) side(u, u + .23, z, z + .6, '#a7b5b4');
-        }
-        sign(b.x + b.w, b.y + b.d * .10, b.h * .62, b.d * .80, 18,
-            'PARK HERE', 'GARAGE', '#215657', env, false, true);
+        // The parking deck is open to the sky; only the service wing has a roof.
+        box(b.x, b.y, 0, b.w - 100, b.d, b.h, b.color, '#34434b');
+        box(b.x + b.w - 100, b.y, 0, 100, 2, 7, b.color, '#34434b');
+        box(b.x + b.w - 2, b.y, 0, 2, b.d, 7, b.color, '#34434b');
+        poly([P(b.x, b.y, b.h), P(b.x + b.w-100, b.y, b.h),
+            P(b.x + b.w-100, b.y + b.d, b.h), P(b.x, b.y + b.d, b.h)], '#718184', b.trim, 2);
+        sign(b.x+3, b.y+b.d-2, b.h*.48, b.w-106, 18,
+            'PARK HERE', 'GARAGE', '#215657', env);
         if (active) {
-            const [sx, sy] = P(b.x + b.w, b.y + b.d / 2, b.h + 12 + Math.sin(time * 5) * 3);
+            const [sx, sy] = P(b.x+b.w-72, b.y+b.d, 24 + Math.sin(time * 5) * 3);
             poly([[sx - 7, sy - 10], [sx + 7, sy - 10], [sx, sy]], '#34d399', '#15392d');
         }
     }

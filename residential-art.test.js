@@ -75,17 +75,19 @@ test('apartment parking has four full-size spaces, an aisle and a separate anima
     }
 });
 
-test('residential sightline cutaways apply to structures but keep parking and signs opaque', () => {
+test('residential structures, parking and signs render without a transparency override', () => {
     const b={x:100,y:200,w:160,d:110,h:150,kind:'apartment',variant:0,color:'#976b53',trim:'#e3ceb0'};
-    let clipping=false,clips=0,parking=0,structures=0,signs=0;
+    let parking=0,structures=0,signs=0;
+    const canvas=new Proxy({globalAlpha:1,fillText(text){if(text==='P')parking++;else signs++;}},
+        {get:(target,key)=>target[key]||(()=>{}),set(target,key,value){
+            if(key==='globalAlpha')assert.equal(value,1);target[key]=value;return true;
+        }});
     Art.draw(b,{
-        ctx:new Proxy({fillText(text){if(text==='P'){assert.equal(clipping,false);parking++;}
-            else {assert.equal(clipping,false);signs++;}}},{get:(target,key)=>target[key]||(()=>{})}),
+        ctx:canvas,
         P:(x,y,z=0)=>[x-y,(x+y)/2-z],poly(){},shade:c=>c,
-        box(x,y,z,w,d,h){if(h>50){assert.equal(clipping,true);structures++;}},
-        withSightlines(draw){clips++;clipping=true;draw();clipping=false;}
+        box(x,y,z,w,d,h){if(h>50)structures++;}
     });
-    assert.equal(clips,1);assert.ok(structures>0);assert.equal(parking,2);assert.ok(signs>0);
+    assert.ok(structures>0);assert.equal(parking,2);assert.ok(signs>0);
 });
 
 test('listing text exactly follows visible sale and availability boards, including style-based buildings', () => {
@@ -112,8 +114,8 @@ test('listing text exactly follows visible sale and availability boards, includi
     assert.equal(Art.listing({ kind: 'shop' }), null);
 });
 
-test('rear garages have roll-up doors and a physical PARK HERE board fixed to their side wall', () => {
-    const b = { x: 100, y: 200, w: 170, d: 70, h: 55, color: '#746c65', trim: '#bb9c84' };
+test('garages have an opaque service wing beside an uncovered parking deck and a wall-mounted board', () => {
+    const b = { x: 100, y: 200, w: 170, d: 100, h: 55, color: '#746c65', trim: '#bb9c84' };
     const text = [], transforms = [], panels = [], solids = [];
     const env = {
         ctx: new Proxy({
@@ -135,10 +137,11 @@ test('rear garages have roll-up doors and a physical PARK HERE board fixed to th
     };
     Art.drawGarage(b, env, true, 1);
     assert.deepEqual(text, ['PARK HERE', 'GARAGE']);
-    assert.deepEqual(transforms[0].slice(0, 4), [1, -.5, 0, 1]);
-    assert.equal(panels.filter(p => p.color === '#425965').length, 3);
-    const sign = solids.find(s => s.w === 2);
-    assert.equal(sign.x + sign.w, b.x + b.w, 'Board is fixed to the garage side wall');
+    assert.deepEqual(transforms[0].slice(0, 4), [1, .5, 0, 1]);
+    const roof=panels.find(p=>p.color==='#718184');
+    assert.ok(roof.points.every(([x,y])=>x+y*2+2*b.h<=2*(b.x+b.w-100)+1e-7),'roof covers only the service wing, not the parking deck');
+    const sign = solids.find(s => s.z>0 && s.d===2);
+    assert.ok(sign.x+sign.w<=b.x+b.w-100,'Board stays on the service wing, away from the driving lane');
     assert.ok(sign.z > 0 && sign.z + sign.h <= b.h, 'Board remains below the garage roof');
 });
 

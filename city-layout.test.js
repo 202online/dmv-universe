@@ -241,17 +241,14 @@ test('residential entrances and paths are physically walkable and waterfalls are
         }
     }
 });
-test('apartment garages attach flush to the rear wall, never a separate front or side outbuilding', () => {
+test('apartment garages attach beside the residence so its roof cannot hide their parking deck', () => {
     for (const q of Object.values(context.city)) for (const garage of q.buildings.filter(b => b.garage)) {
         const apartment = q.buildings.find(b => b.style === 'apartment');
         assert.ok(apartment);
         assert.equal(garage.w, apartment.w);
-        const rear=CityLayout.point(apartment,apartment.x,apartment.y);
+        const side=CityLayout.point(apartment,apartment.x+apartment.w,apartment.y+apartment.d);
         const attached=CityLayout.point(garage,garage.x,garage.y+garage.d);
-        assert.ok(Math.hypot(rear[0]-attached[0],rear[1]-attached[1])<1e-7,'Garage shares the rotated rear wall');
-        const rearWall = ResidentialArt.plan({ ...apartment, variant: 1 }).parts.find(p => p.z === 0);
-        assert.equal(garage.w, rearWall.w);
-        assert.equal(rearWall.y,apartment.y,'Rendered rear wall uses the same footprint');
+        assert.ok(Math.hypot(side[0]-attached[0],side[1]-attached[1])<1e-7,'Garage shares the residence side boundary');
         assert.ok(garage.h < apartment.h);
     }
     assert.match(html, /if \(b\.garage\) ResidentialArt\.drawGarage/);
@@ -472,27 +469,73 @@ test('parking entrances overlap both lot pavement and street asphalt instead of 
     }
 });
 
-test('street setbacks leave a visible entrance apron and building cutaways preserve driving sightlines', () => {
-    const stack=[],clips=[],alphas=[];
-    const ctx={globalAlpha:1,save(){stack.push(this.globalAlpha);},restore(){this.globalAlpha=stack.pop();},
-        beginPath(){},rect(){},lineTo(){},moveTo(){},closePath(){},clip(rule){clips.push(rule);}};
-    const env={ctx,WORLD,CityLayout,quadrants:context.city,currentQuadrant:'NW',
-        fromCompass:world,P:(x,y,z=0)=>[(x-y)*1.6,(x+y)*.8-z]};
-    const source=html.slice(html.indexOf('function buildingSightlines('),html.indexOf('function drawScene('));
-    vm.runInNewContext(source+';globalThis.sightlines=buildingSightlines;globalThis.draw=drawWithClearSightlines;',env);
-    let cutaways=0;
-    for(const [id,q]of Object.entries(context.city)) {
-        env.currentQuadrant=id;
-        for(const building of CityLayout.targets(q).filter(b=>b.h)) {
-            const areas=env.sightlines(building);
-            areas.flat(2).forEach(n=>assert.ok(Number.isFinite(n)));
-            if(!areas.length)continue;
-            cutaways++;
-            env.draw(building,()=>alphas.push(ctx.globalAlpha));
-            assert.deepEqual(alphas.splice(0),[.12,1],'obscuring surfaces become translucent without shrinking buildings');
-            assert.equal(ctx.globalAlpha,1,'cutaway never leaks alpha to vehicles or other scenery');
+test('opaque buildings are repositioned so projected roofs clear roads, parking and entrances', () => {
+    assert.doesNotMatch(html,/drawWithClearSightlines|worldSightlines|withSightlines|globalAlpha\s*\*=\s*\.12/);
+    assert.match(html,/KX = CityLayout\.projection\.x, KY = CityLayout\.projection\.y/,'placement and canvas use exactly the same projection');
+    for(const q of Object.values(context.city)) for(const b of CityLayout.targets(q)) {
+        const layout=CityLayout.residentialPlan(b);
+        if(layout) for(const part of layout.parts) {
+            const height=part.z+part.h+(part.roof==='gable'||part.roof==='hip'?18:12);
+            for(const [x,y] of CityLayout.footprint(CityLayout.region(b,part)).corners) {
+                const projected=world(x-y,x+y-height/CityLayout.projection.y);
+                assert.ok(CityLayout.visualSolids(b).some(v=>CityLayout.contains(v,[projected])),
+                    'clearance contains the actual projected roof vertices, including upper floors');
+            }
+        }
+        for(const visual of CityLayout.visualSolids(b)) {
+            const f=CityLayout.footprint(visual);
+            f.corners.flat().forEach(n=>assert.ok(Number.isFinite(n)));
+            for(const r of q.neighborhood.streets)
+                assert.equal(CityLayout.intersects(r,visual),false,`${b.name||b.type} roof stays off local streets`);
+            assert.ok(f.e1<=-120 || f.e0>=120,`${b.name} roof stays off main north-south street`);
+            assert.ok(f.s1<=WORLD-165 || f.s0>=WORLD+165,`${b.name} roof stays off main east-west street`);
+            for(const bay of q.playerParking)
+                assert.equal(CityLayout.overlaps(visual,bay),false,`${b.name} cannot obscure a parking bay`);
+            for(const other of CityLayout.targets(q).filter(other=>other!==b))
+                assert.equal(CityLayout.overlaps(visual,other),false,`${b.name} roof stays off neighboring properties`);
+            for(const a of q.approaches.filter(a=>a.vehicleEntrance))
+                assert.equal(CityLayout.polygonsOverlap(f.corners,a.polygon||CityLayout.footprint(a).corners),false,
+                    `${b.name} cannot obscure a driving entrance`);
         }
     }
-    assert.ok(cutaways>10,'sightline protection applies across the city, not just one building');
-    assert.ok(clips.every(rule=>rule==='evenodd'));
+});
+
+test('all parked vehicles follow the painted bay long axis in the shared road rotation', () => {
+    for(const q of Object.values(context.city)) for(const bay of q.playerParking) {
+        const expected=CityLayout.region(bay,{x:0,y:0,w:1,d:1,heading:bay.w>bay.d?[1,0]:[0,1]}).heading;
+        const dot=bay.heading[0]*expected[0]+bay.heading[1]*expected[1];
+        assert.ok(Math.abs(Math.abs(dot)-1)<1e-8,`${bay.destination.name||bay.destination.type} vehicle runs parallel to its bay`);
+    }
+});
+
+test('garage lane stays separate from every aligned bay and connects to its entrance', () => {
+    for(const q of Object.values(context.city)) for(const area of q.parkingAreas.filter(a=>a.kind==='garage')) {
+        const bays=q.playerParking.filter(b=>b.area===area),lane=area.lane;
+        assert.equal(bays.length,3);assert.ok(lane.w>=48);
+        assert.ok(CityLayout.contains(area,CityLayout.footprint(lane).corners));
+        const apron=q.approaches.find(a=>a.destination===area.destination && a.vehicleEntrance);
+        assert.ok(CityLayout.polygonsOverlap(CityLayout.footprint(lane).corners,apron.polygon||CityLayout.footprint(apron).corners));
+        for(const bay of bays) {
+            assert.equal(CityLayout.overlaps(lane,bay),false);
+            const localHeading=CityLayout.region(area,{x:0,y:0,w:1,d:1,heading:[1,0]}).heading;
+            assert.deepEqual(bay.heading,localHeading,'parked vehicles run parallel to the long sides of the garage markings');
+            const [bx,by]=CityLayout.point(area,bay.x+bay.w/2,bay.y+bay.d/2,true);
+            for(let x=area.destination.x+area.destination.w-72;x<=bx;x+=3) {
+                const center=CityLayout.point(area.destination,x,by);
+                const corners=CityLayout.vehicleCorners(...center,bay.heading,context.VehicleArt.sizes.truck);
+                for(const solid of q.solids)
+                    assert.equal(CityLayout.polygonsOverlap(corners,solidCorners(solid)),false,'pickup can drive from aisle into each bay');
+            }
+            for(let y=area.destination.y+18;y<area.destination.y+area.destination.d+20;y+=2) {
+                const center=CityLayout.point(area.destination,area.destination.x+area.destination.w-72,y);
+                const heading=CityLayout.region(area.destination,{x:0,y:0,w:1,d:1,heading:[0,1]}).heading;
+                const corners=CityLayout.vehicleCorners(...center,heading,context.VehicleArt.sizes.truck);
+                for(const solid of q.solids)
+                    assert.equal(CityLayout.polygonsOverlap(corners,solidCorners(solid)),false,'pickup drives the entire aisle to the apron');
+                for(const bay of bays)
+                    assert.equal(CityLayout.polygonsOverlap(corners,CityLayout.footprint(bay).corners),false,
+                        'aisle remains usable when every bay is occupied');
+            }
+        }
+    }
 });

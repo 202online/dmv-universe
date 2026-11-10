@@ -369,7 +369,7 @@
         resize();
 
         // ---------- Isometric projection ----------
-        const KX = 0.87, KY = 0.5, WORLD = CityLayout.world, TILE = 50;
+        const KX = CityLayout.projection.x, KY = CityLayout.projection.y, WORLD = CityLayout.world, TILE = 50;
         const cam = { x: 0, y: 0 };
         let worldZoom = 1.5;
         function changeWorldZoom(delta) {
@@ -1678,7 +1678,8 @@
             for (const bay of q.playerParking.filter(b => !CityLayout.residentialPlan(b.destination))) {
                 roadAligned(bay,()=>{
                     groundRect(bay.x, bay.y, bay.w, bay.d, '#2e3340', '#d6d5ca', 1.5);
-                    groundRect(bay.x + 2, bay.y + 3, 2, bay.d - 6, '#d6d5bd');
+                    if(bay.w>bay.d) groundRect(bay.x + bay.w-4, bay.y + 3, 2, bay.d - 6, '#d6d5bd');
+                    else groundRect(bay.x+3,bay.y+2,bay.w-6,2,'#d6d5bd');
                     const [sx, sy] = P(bay.x + bay.w / 2, bay.y + bay.d / 2);
                     const rx=P(bay.x+bay.w/2+1,bay.y+bay.d/2), down=P(bay.x+bay.w/2,bay.y+bay.d/2+1);
                     ctx.save(); ctx.transform(rx[0]-sx,rx[1]-sy,down[0]-sx,down[1]-sy,sx,sy);
@@ -1686,6 +1687,15 @@
                     ctx.fillText('P', 0, 5); ctx.restore();
                 });
             }
+            for(const area of q.parkingAreas.filter(a=>a.lane)) roadAligned(area.lane,()=>{
+                const lane=area.lane;
+                groundRect(lane.x,lane.y,lane.w,lane.d,'#353b46');
+                for(let y=lane.y+10;y<lane.y+lane.d-6;y+=18)
+                    groundRect(lane.x+lane.w/2-1,y,2,8,'#e1c468');
+                const x=lane.x+lane.w/2,y=lane.y+lane.d*.6;
+                poly([[x-2,y+9],[x+2,y+9],[x+2,y-2],[x+6,y-2],[x,y-9],[x-6,y-2],[x-2,y-2]]
+                    .map(p=>P(...p)),'#dddac8');
+            });
             for (const approach of q.approaches.filter(a => !a.pedestrian)) roadAligned(approach, () => {
                 if (approach.polygon) poly(approach.polygon.map(p => P(...p)), '#2e3340');
                 else groundRect(approach.x, approach.y, approach.w, approach.d, '#2e3340');
@@ -1838,8 +1848,7 @@
         // ---------- Rendering: objects ----------
         function drawNeighborhoodBuilding(b) {
             if (['house', 'apartment', 'condo'].includes(b.kind)) {
-                ResidentialArt.draw(b, { ctx, P, poly, box, shade, entrances: residentialEntrances(b),
-                    withSightlines: draw => worldSightlines(b,draw) }, b === activeBuilding, performance.now() / 1000);
+                ResidentialArt.draw(b, { ctx, P, poly, box, shade, entrances: residentialEntrances(b) }, b === activeBuilding, performance.now() / 1000);
                 return;
             }
             const { x, y, w, d, h } = b;
@@ -1927,8 +1936,7 @@
             if (['busstop', 'metro'].includes(b.type)) { drawTransitStation(b); return; }
             if (b.type === 'crib') {
                 if (b.garage) ResidentialArt.drawGarage(b, { ctx, P, poly, box, shade }, active, t);
-                else ResidentialArt.draw({ ...b, kind: 'apartment', variant: 1 }, { ctx, P, poly, box, shade, entrances: residentialEntrances(b),
-                    withSightlines: draw => worldSightlines(b,draw) }, active, t);
+                else ResidentialArt.draw({ ...b, kind: 'apartment', variant: 1 }, { ctx, P, poly, box, shade, entrances: residentialEntrances(b) }, active, t);
                 return;
             }
             if (b.shape === 'oval') { drawOvalArena(b, active, t); return; }
@@ -2536,52 +2544,6 @@
             drawAvatar(ctx, sx, sy, player.appearance, player.features, shirts[progress.shirt].color, m.bob, m.sw, player.fx, player.fy, m);
         }
 
-        function buildingSightlines(building) {
-            const q=quadrants[currentQuadrant], bounds=CityLayout.footprint(building);
-            const roads=[
-                [[-70,0],[70,0],[70,2*WORLD],[-70,2*WORLD]],
-                [[-WORLD,WORLD-100],[WORLD,WORLD-100],[WORLD,WORLD+100],[-WORLD,WORLD+100]],
-                ...q.neighborhood.streets.map(r=>{
-                    const e0=Math.min(r.a[0],r.b[0])-30,e1=Math.max(r.a[0],r.b[0])+30;
-                    const s0=Math.min(r.a[1],r.b[1])-30,s1=Math.max(r.a[1],r.b[1])+30;
-                    return [[e0,s0],[e1,s0],[e1,s1],[e0,s1]];
-                })
-            ].map(points=>points.map(p=>fromCompass(...p)));
-            const ground=roads.concat(q.parkingAreas.map(a=>CityLayout.footprint(a).corners),
-                q.approaches.filter(a=>a.vehicleEntrance).map(a=>a.polygon||CityLayout.footprint(a).corners));
-            const base=bounds.corners.map(p=>P(...p));
-            const left=Math.min(...base.map(p=>p[0]))-12,right=Math.max(...base.map(p=>p[0]))+12;
-            const bottom=Math.max(...base.map(p=>p[1])),top=Math.min(...base.map(p=>p[1]))-(building.h||50)-32;
-            return ground.map(points=>points.map(p=>P(...p))).filter(points=>
-                Math.max(...points.map(p=>p[0]))>left && Math.min(...points.map(p=>p[0]))<right &&
-                Math.max(...points.map(p=>p[1]))>top && Math.min(...points.map(p=>p[1]))<bottom);
-        }
-        function drawWithClearSightlines(building,draw) {
-            const areas=buildingSightlines(building);
-            if(!areas.length){draw();return;}
-            // Preserve the silhouette, but cut away surfaces that hide driving routes.
-            ctx.save();ctx.globalAlpha*=.12;draw();ctx.restore();
-            ctx.save();
-            for(const points of areas) {
-                ctx.beginPath();ctx.rect(-100000,-100000,200000,200000);
-                points.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));
-                ctx.closePath();ctx.clip('evenodd');
-            }
-            draw();ctx.restore();
-        }
-        function worldSightlines(building,draw) {
-            const pose=renderPose;
-            renderPose=null;
-            try { drawWithClearSightlines(building,()=>{
-                renderPose=pose;
-                try { draw(); } finally { renderPose=null; }
-            }); } finally { renderPose=pose; }
-        }
-        function drawCityBuilding(building,draw) {
-            if(CityLayout.residentialPlan(building)) draw();
-            else drawWithClearSightlines(building,draw);
-        }
-
         function drawScene() {
             const q = quadrants[currentQuadrant];
             const t = performance.now() / 1000;
@@ -2617,11 +2579,11 @@
                 }
             }
             q.activities.forEach(a => objs.push({ ...CityLayout.footprint(a), draw: () => {
-                if (a.type === 'boxing') drawWithClearSightlines(a,()=>roadAligned(a,()=>drawBuilding(a,a===activeBuilding,t)));
+                if (a.type === 'boxing') roadAligned(a,()=>drawBuilding(a,a===activeBuilding,t));
                 else roadAligned(a,()=>drawActivityEquipment(a));
             } }));
-            q.buildings.forEach(b => objs.push({ ...CityLayout.footprint(b), draw: () => drawCityBuilding(b,()=>roadAligned(b,()=>drawBuilding(b, b === activeBuilding, t))) }));
-            q.neighborhood.buildings.forEach(b => objs.push({ ...CityLayout.footprint(b), draw: () => drawCityBuilding(b,()=>roadAligned(b,()=>drawNeighborhoodBuilding(b))) }));
+            q.buildings.forEach(b => objs.push({ ...CityLayout.footprint(b), draw: () => roadAligned(b,()=>drawBuilding(b, b === activeBuilding, t)) }));
+            q.neighborhood.buildings.forEach(b => objs.push({ ...CityLayout.footprint(b), draw: () => roadAligned(b,()=>drawNeighborhoodBuilding(b)) }));
             [...q.cars, ...parkedRideObjects(currentQuadrant)].forEach(c => {
                 const corners=carCorners(c.x+c.w/2,c.y+c.d/2,c.heading||[1,0],c);
                 const bounds={x0:Math.min(...corners.map(p=>p[0])),x1:Math.max(...corners.map(p=>p[0])),
