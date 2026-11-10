@@ -5,6 +5,7 @@ const VenueInteriors = (() => {
     const item = (selector, label, art) => ({ selector, label, art });
     const rooms = {
         crib: { title: 'Your living room', wall: '#48667b', floor: '#78553d', items: [
+            item('#open-home-quests', 'My To-Do List', 'todo'),
             item('#open-home-tv', 'Watch TV', 'tv'), item('#open-personal-computer', 'Use computer', 'computer'),
             item('#open-wardrobe', 'Open wardrobe', 'wardrobe'), item('#open-vehicle-garage', 'Enter garage', 'garage'),
             item('#open-pet-profile', 'Pet habitat & companion care', 'habitat')
@@ -56,6 +57,7 @@ const VenueInteriors = (() => {
     };
     const aliases = { gogo: 'venue' };
     const art = {
+        todo: '<path d="M25 6h110v116H25z" fill="#f3e5b7" stroke="#ad8053" stroke-width="4"/><path d="M44 8v111" stroke="#c56c65" stroke-width="2"/><text x="52" y="25" fill="#654d37" font-size="12" font-weight="bold">My To-Do List</text><text x="62" y="41" fill="#8b6750" font-size="11">Quest</text><path d="M34 53h8v8h-8zm0 22h8v8h-8zm0 22h8v8h-8z" fill="none" stroke="#7e8d72" stroke-width="2"/><path d="M50 58h67m-67 22h56m-56 22h63" stroke="#9eaa98" stroke-width="2"/><path d="M33 55l5 5 9-11" fill="none" stroke="#4d875a" stroke-width="3"/>',
         habitat: '<rect x="14" y="20" width="132" height="82" rx="7" fill="#4a8ba2" stroke="#bfd8dc" stroke-width="5"/><path d="M17 85h126v14H17z" fill="#caa36f"/><path d="M39 87V54m0 14-13-12m13 8 12-15" stroke="#7ab46b" stroke-width="5"/><ellipse cx="89" cy="61" rx="21" ry="13" fill="#e7ac5d"/><path d="M109 60l17-12v25z" fill="#e7ac5d"/><circle cx="79" cy="58" r="2" fill="#20354b"/><path d="M22 104h116v11H22z" fill="#805437"/>',
         tv: '<rect x="12" y="12" width="136" height="82" rx="8" fill="#121c30"/><rect x="20" y="20" width="120" height="64" rx="4" fill="#2388a0"/><path d="M25 75L60 38 90 60 120 30 140 70" fill="#86d5b5"/><path d="M70 94v12H42v7h76v-7H90V94" fill="#c6d1de"/><circle cx="80" cy="89" r="2" fill="#67e8f9"/>',
         computer: '<path d="M14 96h132v9H14zM22 105v18m116-18v18" stroke="#573c2b" stroke-width="8"/><rect x="28" y="14" width="104" height="69" rx="5" fill="#111827"/><rect x="34" y="20" width="92" height="56" fill="#386ab0"/><path d="M44 34h27v22H44zm37 0h35v4H81zm0 12h26v4H81z" fill="#91d8f0"/><path d="M74 83v10h16V83M45 94h70" stroke="#cbd5e1" stroke-width="5"/><rect x="135" y="63" width="15" height="31" rx="3" fill="#1e293b"/>',
@@ -85,7 +87,7 @@ const VenueInteriors = (() => {
         if (!Object.hasOwn(art, name)) throw new Error(`Unknown interior object: ${name}`);
         return `<svg viewBox="0 0 160 128" aria-hidden="true" focusable="false">${art[name]}</svg>`;
     }
-    function mount(content, type, overlay, { preview = false } = {}) {
+    function mount(content, type, overlay, { preview = false, locked = {} } = {}) {
         const key = aliases[type] || type, room = rooms[key];
         if (!room) throw new Error(`Unknown venue interior: ${type}`);
         overlay.dataset.interior = key;
@@ -125,6 +127,14 @@ const VenueInteriors = (() => {
             button.className = 'venue-object';
             button.setAttribute('aria-label', spec.label);
             button.innerHTML = illustration(spec.art) + `<span>${spec.label}</span>`;
+            if (spec.art === 'todo') button.innerHTML += '<small>Quest</small>';
+            if (locked[spec.selector]) {
+                button.setAttribute('title', locked[spec.selector]);
+                button.setAttribute('aria-label', `${spec.label} - locked. ${locked[spec.selector]}`);
+                const message = document.createElement('small');
+                message.textContent = 'Locked - purchase required';
+                button.append(message);
+            }
             stage.append(button);
         }
         const gallery = document.createElement('div');

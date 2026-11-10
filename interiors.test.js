@@ -39,8 +39,9 @@ test('all building interiors reuse live buttons as keyboard-accessible illustrat
 
 test('home, gym, carryout, club and arena expose their actual working activities', () => {
     const html = fs.readFileSync(`${__dirname}/index.html`, 'utf8');
-    for (const selector of ['#open-home-tv', '#open-personal-computer', '#open-library-gaming'])
+    for (const selector of ['#open-personal-computer', '#open-library-gaming'])
         assert.match(html, new RegExp(`id="${selector.slice(1)}"`));
+    assert.ok(html.includes("'#open-home-tv': { feature: 'tv'"));
     assert.ok(Interiors.rooms.crib.items.some(i => i.art === 'tv'));
     assert.ok(Interiors.rooms.crib.items.some(i => i.art === 'computer'));
     assert.ok(Interiors.rooms.boxing.items.some(i => i.art === 'ring'));
@@ -70,6 +71,7 @@ test('residential entry distinguishes the starter home, listed tours and private
     const html = fs.readFileSync(`${__dirname}/index.html`, 'utf8');
     const owned = { type: 'crib' }, garage = { type: 'crib', garage: true };
     const env = {
+        homeResidence: () => owned, homeLife: { quadrant: 'SE' },
         quadrants: { SW: { buildings: [owned, garage] }, NW: { buildings: [] } },
         ResidentialArt: { listing: b => b.listed ? 'AVAILABLE' : null }
     };
@@ -83,6 +85,19 @@ test('residential entry distinguishes the starter home, listed tours and private
     assert.match(html, /if \(homeAccess\(b\) === 'private'\) continue/);
     assert.match(html, /openBuildingModal\(activeBuilding.type, activeBuilding\)/);
     assert.match(html, /VenueInteriors.mount\(content, type, modalEl, \{ preview: true \}\);\s*return;/);
+});
+
+test('locked home objects explain purchases while retaining clickable, keyboard-accessible controls', () => {
+    const buttons = new Map(Interiors.rooms.crib.items.map(spec => [spec.selector, node()]));
+    const content = node(), overlay = node();
+    content.querySelector = selector => buttons.get(selector);
+    Interiors.mount(content, 'crib', overlay, { locked: { '#open-home-tv': 'Must be purchased before home use.' } });
+    const tv = buttons.get('#open-home-tv');
+    assert.match(tv.attributes.title, /purchased/);
+    assert.match(tv.attributes['aria-label'], /locked/);
+    assert.notEqual(tv.disabled, true);
+    assert.ok(Interiors.rooms.crib.items.some(spec => spec.art === 'todo' && spec.label === 'My To-Do List'));
+    assert.match(Interiors.illustration('todo'), /Quest/);
 });
 
 test('oval arena and detailed avatars render finite geometry for all saved appearance choices', () => {

@@ -86,10 +86,36 @@ test('apartments and condos have broad, multi-family footprints proportional to 
     const house = homes.find(b => b.kind === 'house');
     const mainApartment = context.city.SE.buildings.find(b => b.style === 'apartment');
     for (const b of homes.filter(b => ['apartment', 'condo'].includes(b.kind))) {
-        assert.ok(b.w * b.d >= house.w * house.d * 2.5, 'Multi-family lots are substantially larger than a house');
+        assert.ok(b.w * b.d > house.w * house.d, 'Multi-family lots remain larger than the expanded single-family yard plots');
         assert.ok(b.w >= mainApartment.w * .8, 'Width is comparable to the existing main apartment');
         assert.ok(b.h / b.w <= 1.1, 'Residential blocks do not become thin towers');
     }
+});
+
+test('single-family houses line up with small side yards and generous grassy front setbacks', () => {
+    for (const q of Object.values(context.city)) {
+        const houses = q.neighborhood.buildings.filter(b => b.kind === 'house');
+        assert.ok(houses.length >= 2, 'single-family homes have neighboring houses instead of an isolated plot');
+        const centers = houses.map(b => [b.x + b.w / 2 - b.y - b.d / 2, b.x + b.w / 2 + b.y + b.d / 2]);
+        assert.equal(q.houseYards.length, 1, 'a continuous lawn surrounds the residential row');
+        for (let i = 0; i < houses.length; i++) {
+            const b = houses[i], layout = ResidentialArt.plan(b);
+            assert.ok(Math.abs(centers[i][1] - centers[0][1]) < 1e-7, 'houses share a street-aligned frontage');
+            if (i) assert.ok(Math.abs(centers[i][0] - centers[i-1][0] - 112 * Math.SQRT2) < 1e-7, 'twelve units of side yard separate plots');
+            for (const part of layout.parts) {
+                assert.ok(part.x >= b.x + 10, 'house walls are inset from the left yard edge');
+                assert.ok(part.y + part.d <= b.y + b.d - 25, 'at least 25 units of front lawn before the plot edge');
+            }
+            assert.ok(layout.parking.y + layout.parking.d < b.y + b.d - 10, 'driveway ends inside the yard, before the sidewalk');
+            const [e,s] = q.roadAccess.find(a => a.building === b).path[0];
+            const [lx,ly] = CityLayout.point(b, ...world(e,s), true);
+            assert.ok(ly > b.y + b.d + 45 && Math.abs(lx - b.x - b.w / 2) < 15,
+                'each house faces its street across the front lawn, never a rear or side service road');
+        }
+    }
+    assert.match(html, /streetRect\(r, CityLayout.halfWidth, '#c3c6c5'\)/);
+    assert.ok(!html.includes('for (const approach of q.approaches) roadAligned'), 'no visible connector paths between homes and parking');
+    assert.match(html, /leaveStreetGap\(-124, 124/);
 });
 test('outdoor activities use a consistent arcade size hierarchy and parked cars match the Bucket', () => {
     const activities = Object.values(context.city).flatMap(q => q.activities);
@@ -235,7 +261,7 @@ for (const [id, q] of Object.entries(context.city)) {
 test('every quadrant keeps its homes and mixes houses, apartments and condos with selective availability', () => {
     for (const [id, q] of Object.entries(context.city)) {
         const homes = q.neighborhood.buildings.filter(b => b.type === 'crib');
-        assert.equal(homes.length, id === 'SW' ? 5 : 6);
+        assert.equal(homes.length, CityLayout.designs[id].homes.length);
         assert.equal(new Set(homes.map(b => b.kind)).size, 3);
         const multi = homes.filter(b => b.kind !== 'house');
         assert.ok(multi.some(b => !ResidentialArt.plan(b).available), 'Not every multi-family building has a sign');
@@ -279,6 +305,7 @@ test('rotated collision polygons leave their empty bounding-box corners walkable
 
 function rideWorld() {
     const env = { WORLD, CityLayout, VehicleArt: context.VehicleArt, TravelArt: require('./travel-art.js'),
+        HomeLife: require('./home-life.js'), homeLife: { quadrant: 'SE', residence: 'The Crib (Apartment)', parkingUntil: Date.now() + 86400000 },
         RideBag: require('./ride-bag.js'), console, updateProgressHud() {}, snapCamera() {}, transitNotice() {} };
     vm.runInNewContext(`${source}
         ${html.slice(html.indexOf('const starterBay ='), html.indexOf('const SAVE_KEY ='))}
@@ -327,6 +354,27 @@ test('starter, purchased, called and secured rides use their bay heading and per
     parkedIn('impala', {...env.ownCar, quadrant: env.driving.quadrant});
     const parkedTruck = vm.runInNewContext('parkedVehicles.truck', env);
     parkedIn('truck', parkedTruck);
+});
+
+test('cars without a parking pass use public lots while bicycles need no garage', () => {
+    const env = rideWorld();
+    env.homeLife.parkingUntil = 0;
+    env.setRidePacked(true);
+    env.selectRide('impala');
+    env.secureLogoutRides(false);
+    const car = env.ownCar;
+    const bay = env.quadrants[env.driving.quadrant].playerParking.find(b =>
+        CityLayout.contains(b, CityLayout.vehicleCorners(car.x + car.w / 2, car.y + car.d / 2, car.heading, car), 1));
+    assert.ok(bay);
+    assert.notEqual(bay.destination.type, 'crib');
+    env.selectRide('bike');
+    assert.equal(env.progress.vehicle, 'bike');
+    const garage = env.quadrants.SE.playerParking.find(b => b.area.kind === 'garage');
+    const cx = garage.x + garage.w / 2, cy = garage.y + garage.d / 2;
+    assert.equal(env.carBlocked(cx,cy,'SE',garage.heading,env.vehicles.impala), true, 'locked physical garage blocks car entry');
+    assert.equal(env.carBlocked(cx,cy,'SE',garage.heading,env.vehicles.bike), false, 'bike needs no garage pass');
+    env.homeLife.parkingUntil = Date.now() + 86400000;
+    assert.equal(env.carBlocked(cx,cy,'SE',garage.heading,env.vehicles.impala), false, 'valid pass permits garage entry');
 });
 
 test('attached lots and residential driveways keep their pedestrian approaches clear of parked pickups', () => {

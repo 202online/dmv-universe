@@ -11,6 +11,15 @@
 .venue-object span { padding: 7px 8px; background: #071321ed; border: 1px solid #8cc4cd; border-radius: 7px; }
 .venue-object:enabled:hover, .venue-object:focus-visible { background: #ffffff20; outline: 3px solid #67e8f9; outline-offset: -3px; }
 .venue-room-stage > .venue-object:disabled { cursor: default; opacity: 1; }
+.home-todo { color: #3e4538; background: repeating-linear-gradient(#f5ebca 0 31px, #b8c5b8 32px 33px); border: 8px solid #aa8055; border-radius: 8px; padding: 18px 22px; box-shadow: inset 12px 0 #d9b38e; }
+.home-todo h2 { font-size: 24px; font-weight: 900; margin: 0; }
+.home-todo-subtitle { font-weight: 700; color: #766149; }
+.home-todo section { margin: 20px 0; }
+.home-todo h3 { font-weight: 800; }
+.home-todo summary { cursor: pointer; font-weight: 700; padding: 8px 0; }
+.home-todo li { display: flex; gap: 10px; align-items: center; padding: 5px 0; }
+.home-todo .task-done { text-decoration: line-through; color: #52724c; }
+.home-todo button { background: #355a4b; color: white; border-radius: 8px; padding: 10px 16px; }
 .venue-room-decor { position: absolute; z-index: -1; inset: 0; pointer-events: none; }
 .room-city-mural { position: absolute; top: 4px; left: 4%; width: 92%; height: 110px; opacity: .8; }
 .room-city-mural > svg { width: 100%; height: 100%; }

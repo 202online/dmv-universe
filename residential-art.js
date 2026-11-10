@@ -35,7 +35,8 @@ const ResidentialArt = (() => {
             x: b.x + x * b.w, y: b.y + y * b.d, w: w * b.w, d: d * b.d, z: z * b.h, h: h * b.h, roof
         }));
         if (kind === 'house') for (const p of parts) {
-            p.x = b.x + (p.x - b.x) * .88; p.w *= .88;
+            p.x = b.x + b.w * .10 + (p.x - b.x) * .78; p.w *= .78;
+            p.y = b.y + b.d * .08 + (p.y - b.y) * .65; p.d *= .65;
         }
         if (kind === 'apartment') for (const p of parts) {
             p.y = b.y + (p.y - b.y) * .84; p.d *= .84;
@@ -45,8 +46,8 @@ const ResidentialArt = (() => {
         const parking = kind === 'apartment' ?
             { x: b.x + b.w * .40, y: b.y + b.d * .48, w: b.w * .56, d: b.d * .50, spaces: 4 } :
             terrace ? { x: b.x + b.w * .30, y: b.y + b.d * .66, w: b.w * .66, d: b.d * .32, spaces: 2 } :
-            { x: b.x + b.w * (kind === 'house' ? .70 : .78), y: b.y + b.d * .04,
-                w: b.w * (kind === 'house' ? .28 : .20), d: b.d * .94, spaces: 1 };
+            { x: b.x + b.w * (kind === 'house' ? .74 : .78), y: b.y + b.d * (kind === 'house' ? .10 : .04),
+                w: b.w * (kind === 'house' ? .22 : .20), d: b.d * (kind === 'house' ? .73 : .94), spaces: 1 };
         const entrancePart = parts.filter(p => !p.z).sort((a, c) => c.y + c.d - a.y - a.d)[0];
         const doorX = kind === 'apartment' ? b.x + b.w * .30 :
             terrace ? b.x + b.w * .16 : entrancePart.x + entrancePart.w * .5;
@@ -84,9 +85,9 @@ const ResidentialArt = (() => {
             c.beginPath(); points.forEach(([x, y, z], i) => { const p = P(x, y, z); i ? c.lineTo(...p) : c.moveTo(...p); });
             c.strokeStyle = color; c.lineWidth = width; c.stroke();
         };
-        plane(b.x, b.y, b.w, b.d, 0, layout.kind === 'apartment' ? '#6d7768' : '#55754c', '#9c9b7a');
+        plane(b.x, b.y, b.w, b.d, 0, layout.kind === 'apartment' ? '#6d7768' : '#55754c', layout.kind === 'house' ? null : '#9c9b7a');
         const lot = layout.parking;
-        plane(lot.x, lot.y, lot.w, lot.d, .3, layout.kind === 'apartment' ? '#48515b' : '#a9a28d', '#d2c8a9');
+        plane(lot.x, lot.y, lot.w, lot.d, .3, '#2e3340', '#aaa99b');
         for (let y = lot.y + 9; y < lot.y + lot.d - 2; y += 14)
             line([[lot.x + 1, y, .35], [lot.x + lot.w - 1, y, .35]], '#29313b25', .6);
         for (let x = lot.x + 12; x < lot.x + lot.w - 2; x += 22)
@@ -95,11 +96,8 @@ const ResidentialArt = (() => {
         plane(drainX, drainY, 4, 5, .45, '#35434a', '#83918b', .5);
         for (let i = 1; i < 4; i++)
             line([[drainX + .5, drainY + i, .5], [drainX + 3.5, drainY + i, .5]], '#a2aca1', .5);
-        plane(layout.path.x, layout.path.y, layout.path.w, layout.path.d, .5, '#cabfa6');
-        for (let y = layout.path.y + 6; y < layout.path.y + layout.path.d; y += 9)
-            line([[layout.path.x, y, .55], [layout.path.x + layout.path.w, y, .55]], '#a79e86', .6);
         for (const [i, bay] of layout.bays.entries()) {
-            plane(bay.x, bay.y, bay.w, bay.d, .6, null, '#efe1ad', 1.2);
+            plane(bay.x, bay.y, bay.w, bay.d, .6, null, '#d6d5ca', 1.2);
             if (layout.kind !== 'house') {
                 const vertical = Math.abs(bay.heading[1]) > Math.abs(bay.heading[0]);
                 const stop = vertical ?

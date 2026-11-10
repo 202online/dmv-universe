@@ -30,7 +30,7 @@
         SE: {
             identity: 'Close-set garden apartments mixed with condos and houses beside the library commons',
             homes: [[-800, 1300, 'condo'], [-800, 1690, 'apartment'], [-800 + 168 * Math.SQRT2 / SCALE, 1690, 'apartment'],
-                [-280, 1750, 'house'], [320, 1320, 'condo'], [760, 1320, 'apartment']],
+                [-280, 1750, 'house'], [320, 1320, 'condo'], [760, 1320, 'apartment'], [-80, 1750, 'house']],
             colors: ['#956e5d', '#a27d65', '#87685b'],
             districts: [
                 { name: 'Library Commons', e: -940, s: 1210, w: 1880, d: 410, color: '#426752' },
@@ -274,6 +274,7 @@
             const [cx, cy] = point(apartment, apartment.x + apartment.w / 2, apartment.y - garage.d / 2);
             garage.x = cx - garage.w / 2; garage.y = cy - garage.d / 2;
         }
+        arrangeHouses(q);
         for (const [type, e, s, w, d] of [['busstop', 165, WORLD + 340, 36, 24], ['metro', -180, WORLD - 300, 48, 36]]) {
             const station = { type, name: `${id} ${type === 'busstop' ? 'Bus Stop' : 'Underground Metro'}`, w, d, h: 48, roadAligned: true };
             center(station, e, s);
@@ -281,6 +282,32 @@
         }
         connect(q);
         assignParking(q);
+    }
+
+    function arrangeHouses(q) {
+        const houses = q.neighborhood.buildings.filter(b => b.kind === 'house');
+        if (!houses.length) return;
+        const preferredE = houses.reduce((sum,b) => sum + b.x + b.w / 2 - b.y - b.d / 2, 0) / houses.length;
+        const preferredS = houses.reduce((sum,b) => sum + b.x + b.w / 2 + b.y + b.d / 2, 0) / houses.length;
+        const obstacles = [...targets(q).filter(b => b.kind !== 'house'), ...(q.parkingLot ? [q.parkingLot] : [])];
+        const spacing = 112 * Math.SQRT2;
+        for (const b of houses) { b.w = 100; b.d = 104; }
+        const candidates = [];
+        for (let s = 140; s <= 2 * WORLD - 140; s += 40)
+            for (let e = -WORLD + 110; e + spacing * (houses.length - 1) <= WORLD - 110; e += 40)
+                candidates.push({ e, s, score: Math.hypot(e + spacing * (houses.length - 1) / 2 - preferredE, s - preferredS) });
+        candidates.sort((a,b) => a.score - b.score);
+        const row = candidates.find(({e,s}) => houses.every((b,i) => {
+            center(b, e + i * spacing, s);
+            const f = footprint(b);
+            const frontage = region(b, { x: b.x - 6, y: b.y + b.d, w: b.w + 12, d: 112 });
+            return (f.e1 < -140 || f.e0 > 140) && (f.s1 < WORLD - 185 || f.s0 > WORLD + 185) &&
+                !obstacles.some(o => overlaps(b,o,16) || overlaps(frontage,o,8));
+        }));
+        if (!row) throw new Error('No safe single-family residential row');
+        houses.forEach((b,i) => center(b, row.e + i * spacing, row.s));
+        q.houseYards = [region(houses[0], { x: houses[0].x - 6, y: houses[0].y - 6,
+            w: houses.length * 100 + (houses.length - 1) * 12 + 12, d: 150 })];
     }
     function assignParking(q) {
         const objects = [...targets(q), ...(q.parkingLot ? [q.parkingLot] : [])];

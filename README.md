@@ -187,10 +187,13 @@ INQUIRE WITHIN**, on framed, twin-post boards. Occupied variants have no
 availability board; each quadrant has at most one advertised apartment and
 one advertised condo. Sign panels have physical depth and lettering projected onto their
 isometric faces, not floating screen labels. These are world-building signs, not new property
-purchases or separate bedroom inventories. Parking cars are decorative;
-the existing saved vehicle/garage menu is unchanged.
-Apartments use broad 160×110 lots and condos 140×100, compared with 80×60
-rowhouses and the main apartment's 170×130 footprint. Their heights remain
+purchases or separate bedroom inventories. Decorative parking cars remain
+separate from player vehicles.
+Apartments use broad 160×110 lots and condos 140×100, compared with 100×104
+single-family yard plots and the main apartment's 170×130 footprint. Houses
+sit in continuous grass rows with 12-unit gaps between plots, inset side walls,
+and at least 25 units of front lawn. A light-grey sidewalk separates the lawn
+from the street; driveways end inside the yard. Their heights remain
 proportional rather than stretching into thin towers. Apartment courts are
 spaced around the library commons and southern lots are repositioned to keep
 the larger properties inside the map; local streets
@@ -198,7 +201,10 @@ and interaction approaches are rebuilt around their collision footprints.
 All balconies, driveways and parking details stay within their property lots.
 Parking surfaces include pavement joints, drainage grates, wheel stops and
 clear bay outlines; larger lots also have directional arrows and worn asphalt
-details. Water gardens have shaded pool depths, ripples, falling-water foam and
+details. All parking and driveway pavement matches the street's dark asphalt,
+with concrete-colored space outlines. Parking artwork leaves a four-unit
+gap outside street sidewalks, and the old painted connector paths to homes
+are no longer drawn; clear, walkable access is retained. Water gardens have shaded pool depths, ripples, falling-water foam and
 jointed stone coping. The SW waterfront has shallow-water color bands, moving
 wave highlights and a segmented stone edge. Trees use layered shaded crowns,
 leaf clusters, branching trunks and ground shadows that scale with map zoom.
@@ -262,8 +268,9 @@ secured in a nearby clear bay after 60 continuous seconds unattended (outside
 its 60-unit interaction area), even if you have left the quadrant. The bay is
 chosen near **where the vehicle was left**, not near the player's new location.
 Merely entering a nearby venue or getting off does not move it.
-On logout/reload, cars return to parking at **The Crib in SE**, rather than
-following the player. A message identifies the destination where a forgotten
+On logout/reload, a valid apartment parking pass returns cars to the player's
+chosen home quadrant; without a pass, cars are secured in public venue lots
+near where they were left. A message identifies the destination where a forgotten
 ride is secured; the map's
 blue vehicle marker shows the location. Future private homes marked
 `privateHome` do not receive public player parking bays.
@@ -278,9 +285,9 @@ cannot be deployed during travel or while already riding.
 
 **Settings → Respawn** lets you choose **Last Location** (default) or **Home**.
 Last Location returns you to a safe front-door approach of the venue you
-were last at or nearest to; Home returns you to The Crib's entrance.
-Your respawn choice does not change the vehicle rule: cars return home on
-logout. Saved settings, last location, bag ownership and separate parked-car
+were last at or nearest to; Home returns you to your chosen apartment's entrance.
+Your respawn choice does not change the parking-pass requirement. Saved
+settings, last location, bag ownership and separate parked-car
 records are optional additions to older saves.
 
 Residential driveways have a separate curbed setback from house/condo walls
@@ -308,10 +315,38 @@ launch the same saved baseball campaign.
 
 ## Interactive interiors and appearance
 
-The starter apartment and its garage remain fully usable. Other homes,
+New players create a character, then choose NW, NE, SE or SW as their living
+quadrant. Each gets a free apartment there and starts at its entrance. The choice
+and ownership persist; older saves retain the existing SE apartment, balances,
+vehicles, pets and progress. Existing unpurchased home features now start locked.
+
+Only the **closet** and **My To-Do List** (subtitle **Quest**) are included.
+The illustrated to-do list opens into a larger lined-paper notebook with
+on-going, completed and upcoming quest sections. Task checkboxes are read-only,
+checked and struck through by task-completion events; completing every task
+completes the quest and can unlock dependent quests. The quest definitions are
+intentionally empty pending the owner's content; there are no invented tasks
+or rewards. Definitions and durable state live in `home-life.js`.
+
+TV, home computer and pet-care access require individual purchases. Locked
+objects remain visible and keyboard/click accessible, with hover descriptions
+and a purchase explanation instead of opening the feature. The library computer
+is still free. Apartment garage access requires a **7-day** or **30-day**
+parking pass, measured in real elapsed time including offline time; the monthly
+pass costs **60% more** than the weekly pass. Renewals extend from the later of
+now or current expiry. Bikes, scooters and electric bikes use the Item Bag and
+never require a garage or pass.
+
+All home-feature prices and the weekly pass price are currently `null` in
+`HomeLife.features` / `HomeLife.parking`: the UI says **Coming soon - price not
+set**, and purchases cannot grant access or spend stars until prices are
+configured. The monthly price derives from the weekly price; no prices have
+been chosen on the owner's behalf.
+
+Other homes,
 apartments and condos open only when their exterior actually displays a
 FOR SALE or AVAILABLE sign. Those entrances lead to a **view-only model-home
-tour**, showing the TV, computer, wardrobe, garage and pet space with all
+tour**, showing the TV, computer, wardrobe, to-do list, garage and pet space with all
 actions disabled. Unmarked residences stay private. Tours do not spend stars
 or change inventory, pets, learning data or progress; they do not introduce a
 new purchase/rental economy.

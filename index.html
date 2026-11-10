@@ -321,6 +321,7 @@
     <script src="casino-events.js"></script>
     <script src="casino.js"></script>
     <script src="pets.js"></script>
+    <script src="home-life.js"></script>
     <script src="investing.js"></script>
     <script src="library.js"></script>
     <script src="library-data.js"></script>
@@ -726,15 +727,16 @@
         let petFollower = null;
         let investing = Investing.initial();
         let learning = Learning.initial();
+        let homeLife = HomeLife.initial();
         let saveEnabled = true, lastCarSave = 0;
         const saveWarning = document.getElementById('save-warning');
 
         function saveProgress() {
-            if (!saveEnabled || !player.appearance) return;
+            if (!saveEnabled || !player.appearance || !homeLife.quadrant) return;
             const data = {
                 version: 1, worldScale: CityLayout.scale, transit: transitTrip, appearance: player.appearance, features: player.features, stars: progress.stars,
                 property: progress.property, owned: progress.owned, shirt: progress.shirt, sportsbook, casino, pets, investing, learning, minigames: progress.minigames,
-                parkedVehicles, settings:gameSettings, paints: progress.paints,
+                parkedVehicles, settings:gameSettings, paints: progress.paints, homeLife,
                 lastLocation: rememberLocation(),
                 vehicle: { id: progress.vehicle, owned: progress.ownedVehicles, quadrant: driving.quadrant, x: ownCar.x, y: ownCar.y, packed: ridePacked, heading: ownCar.heading || [1, 0] }
             };
@@ -749,7 +751,7 @@
 
         function updateProgressHud() {
             document.getElementById('stat-stars').textContent = progress.stars;
-            document.getElementById('stat-property').textContent = progress.property === 2 ? 'Tier 2 Navy Yard Loft' : 'Tier 1 Studio';
+            document.getElementById('stat-property').textContent = homeLife.quadrant ? `${homeLife.quadrant} Apartment` : 'Choose your home';
             document.getElementById('stat-car').textContent = vehicles[progress.vehicle].name;
         }
 
@@ -762,6 +764,7 @@
                 const headingLength = Array.isArray(ride?.heading) && ride.heading.length === 2 &&
                     ride.heading.every(Number.isFinite) ? Math.hypot(...ride.heading) : 0;
                 if (data.version !== 1 || !['boy', 'girl'].includes(data.appearance) ||
+                    (data.homeLife !== undefined && !HomeLife.valid(data.homeLife)) ||
                     (data.features !== undefined && !validFeatures(data.features)) ||
                     (data.worldScale !== undefined && data.worldScale !== CityLayout.scale) ||
                     (data.transit !== undefined && data.transit !== null && !CityTransit.valid(data.transit) && !RideHail.valid(data.transit)) ||
@@ -799,6 +802,9 @@
                     }
                     // Loaded rides are secured in real home parking after all stored rides are restored below.
                 }
+                homeLife = HomeLife.restore(data.homeLife);
+                if (!homeLife.quadrant || !homeResidence()) throw new Error('Saved home could not be found');
+                homeResidence().available = false;
                 player.appearance = data.appearance;
                 transitTrip = data.transit || null;
                 if (transitTrip) {
@@ -840,9 +846,9 @@
                         currentQuadrant=lastLocation.quadrant;
                         player.x=lastLocation.x;player.y=lastLocation.y;
                     }
-                    const home=quadrants.SE.buildings.find(b=>b.style==='apartment');
+                    const home=homeResidence();
                     const last=lastLocation&&CityLayout.targets(quadrants[lastLocation.quadrant]).find(b=>b.name===lastLocation.venue);
-                    if(gameSettings.respawn==='home')spawnAtLocation('SE',home);
+                    if(gameSettings.respawn==='home')spawnAtLocation(homeLife.quadrant,home);
                     else if(last)spawnAtLocation(lastLocation.quadrant,last);
                     document.getElementById('current-quadrant-badge').textContent=quadrants[currentQuadrant].name;
                 }
@@ -893,7 +899,7 @@
             creator.body.value = player.appearance || 'boy';
             const features = player.appearance ? player.features : defaultFeatures(creator.body.value);
             for (const key of ['hair', 'color', 'skin', 'facial', 'mood']) creator[key].value = features[key] || defaultFeatures(creator.body.value)[key];
-            document.getElementById('creator-confirm').textContent = editing ? 'Save changes' : 'Start game';
+            document.getElementById('creator-confirm').textContent = editing ? 'Save changes' : 'Next: choose your quadrant';
             document.getElementById('creator-cancel').classList.toggle('hidden', !editing);
             avatarSelection.classList.remove('hidden');
             for (const k in keys) keys[k] = false;
@@ -911,7 +917,7 @@
             avatarSelection.classList.add('hidden');
             for (const k in keys) keys[k] = false;
             if (editingAppearance) renderShirtShop(false);
-            else canvas.focus();
+            else { openHomeSelection(); return; }
             saveProgress();
         });
         document.getElementById('creator-cancel').addEventListener('click', () => {
@@ -944,16 +950,45 @@
         }
         function secureLogoutRides(notify=true){
             driving.active=false;
-            const home=quadrants.SE.buildings.find(b=>b.style==='apartment');
+            const home=homeResidence();
             if(RideBag.portable.includes(progress.vehicle))setRidePacked(true);
-            else{
-                moveCarToQuadrant('SE');
+            else if(home && HomeLife.hasParking(homeLife)){
+                moveCarToQuadrant(homeLife.quadrant);
                 parkRide(home,notify);
-            }
+            } else parkRide(null,notify);
             for(const[id,p]of Object.entries(parkedVehicles)){
-                p.quadrant='SE';
-                secureStoredRide(id,home);
+                if(home && HomeLife.hasParking(homeLife))p.quadrant=homeLife.quadrant;
+                secureStoredRide(id,HomeLife.hasParking(homeLife)?home:null);
             }
+        }
+
+        function homeResidence() {
+            if (!homeLife.quadrant) return null;
+            return CityLayout.targets(quadrants[homeLife.quadrant]).find(b => b.name === homeLife.residence && b.type === 'crib' && !b.garage) || null;
+        }
+        function openHomeSelection() {
+            modalEl.classList.remove('hidden');
+            modalContent.innerHTML = `<div class="sports-game"><h2>Choose your living quadrant</h2>
+                <p>Your first apartment is free. Start with a closet and My To-Do List; other home features require separate purchases.</p>
+                <div class="sports-controls">${Object.entries(quadrants).map(([id,q]) =>
+                    `<button type="button" data-home-quadrant="${id}">${id} - ${DMVMedia.escape(q.name)}</button>`).join('')}</div>
+                <p role="status" id="home-selection-status"></p></div>`;
+            modalContent.querySelectorAll('[data-home-quadrant]').forEach(button => button.addEventListener('click', () => {
+                const quadrant = button.dataset.homeQuadrant;
+                const residence = quadrant === 'SE' ? quadrants.SE.buildings.find(b => b.style === 'apartment') :
+                    quadrants[quadrant].neighborhood.buildings.find(b => b.kind === 'apartment');
+                if (!residence) {
+                    console.error('No starter apartment in quadrant', quadrant);
+                    document.getElementById('home-selection-status').textContent = 'No apartment found here. Please choose another quadrant.';
+                    return;
+                }
+                homeLife = HomeLife.initial(quadrant, residence.name);
+                residence.available = false;
+                spawnAtLocation(quadrant, residence);
+                setRidePacked(true); moveCarToQuadrant(quadrant);
+                document.getElementById('current-quadrant-badge').textContent = quadrants[quadrant].name;
+                updateProgressHud(); closeModal(); snapCamera(); saveProgress(); openBuildingModal('crib', residence);
+            }));
         }
 
         function showDrivingMessage(message) {
@@ -1006,7 +1041,7 @@
         }
 
         function switchQuadrant(quad) {
-            if (!player.appearance || !avatarSelection.classList.contains('hidden')) return;
+            if (!player.appearance || !homeLife.quadrant || !avatarSelection.classList.contains('hidden')) return;
             if (transitTrip) return;
             const station = nearbyTransit();
             if (!station || driving.active) {
@@ -1162,7 +1197,7 @@
         function modalOpen() { return !modalEl.classList.contains('hidden'); }
         function homeAccess(building) {
             if (building.type !== 'crib') return 'venue';
-            if (Object.values(quadrants).some(q => q.buildings.includes(building))) return 'owned';
+            if (building === homeResidence() || building.garage && homeLife.quadrant === 'SE') return 'owned';
             return ResidentialArt.listing(building) ? 'preview' : 'private';
         }
         function checkInteraction() {
@@ -1229,7 +1264,12 @@
         }
 
         function carBlocked(x, y, quadrant = currentQuadrant, heading = ownCar.heading || [1, 0], vehicle = ownCar, ignoreStoredId = null) {
-            return quadrants[quadrant].solids.some(s => carIntersectsRect(x, y, s, heading, vehicle)) ||
+            const lockedGarage = ['car','truck'].includes(vehicle.kind) && quadrants[quadrant].parkingAreas.some(area =>
+                area.kind === 'garage' && (!HomeLife.hasParking(homeLife) || quadrant !== homeLife.quadrant) &&
+                carIntersectsRect(x,y,CityLayout.footprint(area),heading,vehicle) &&
+                !(vehicle === ownCar && driving.active && quadrant === driving.quadrant &&
+                    carIntersectsRect(ownCar.x + ownCar.w / 2, ownCar.y + ownCar.d / 2, CityLayout.footprint(area), ownCar.heading, ownCar)));
+            return lockedGarage || quadrants[quadrant].solids.some(s => carIntersectsRect(x, y, s, heading, vehicle)) ||
                 parkedRideObjects(quadrant).filter(c => c.parkedRideId !== ignoreStoredId).some(c =>
                     carIntersectsRect(x,y,{corners:carCorners(c.x+c.w/2,c.y+c.d/2,c.heading,c)},heading,vehicle));
         }
@@ -1263,6 +1303,10 @@
                 Math.hypot(a.x + a.w / 2 - anchor.x, a.y + a.d / 2 - anchor.y) -
                 Math.hypot(b.x + b.w / 2 - anchor.x, b.y + b.d / 2 - anchor.y));
             return bays.find(bay => {
+                if (['car','truck'].includes(vehicle.kind) &&
+                    (bay.destination.type === 'crib' || bay.area.kind === 'garage') &&
+                    (!HomeLife.hasParking(homeLife) || bay.destination !== homeResidence() &&
+                        !(bay.destination.garage && homeLife.quadrant === 'SE'))) return false;
                 const cx = bay.x + bay.w / 2, cy = bay.y + bay.d / 2, heading = bay.heading;
                 if (!CityLayout.contains(bay, carCorners(cx, cy, heading, vehicle), 1) ||
                     carBlocked(cx, cy, quadrant, heading, vehicle, ignoreStoredId)) return false;
@@ -1477,12 +1521,17 @@
                 [[e0, s0], [e1, s0], [e1, s1], [e0, s1]].map(([e, s]) => P(...fromCompass(e, s))), fill, stroke);
             for (const district of q.districts)
                 compassRect(district.e, district.e + district.w, district.s, district.s + district.d, district.color);
+            for (const yard of q.houseYards || []) roadAligned(yard, () => {
+                groundRect(yard.x, yard.y, yard.w, yard.d, '#55754c');
+                for (let x = yard.x; x < yard.x + yard.w; x += 16)
+                    groundRect(x, yard.y, Math.min(8, yard.x + yard.w - x), yard.d, '#63845322');
+            });
             const streetRect = (r, half, color) => compassRect(
                 Math.min(r.a[0], r.b[0]) - half, Math.max(r.a[0], r.b[0]) + half,
                 Math.min(r.a[1], r.b[1]) - half, Math.max(r.a[1], r.b[1]) + half, color);
-            q.neighborhood.streets.forEach(r => streetRect(r, CityLayout.halfWidth, '#948f8c'));
-            compassRect(-120, 120, 0, 2 * WORLD, '#948f8c', '#aaa5a1');
-            compassRect(-WORLD, WORLD, WORLD - 165, WORLD + 165, '#948f8c', '#aaa5a1');
+            q.neighborhood.streets.forEach(r => streetRect(r, CityLayout.halfWidth, '#c3c6c5'));
+            compassRect(-120, 120, 0, 2 * WORLD, '#c3c6c5', '#a8acab');
+            compassRect(-WORLD, WORLD, WORLD - 165, WORLD + 165, '#c3c6c5', '#a8acab');
             q.neighborhood.streets.forEach(r => streetRect(r, 30, '#2e3340'));
             compassRect(-70, 70, 0, 2 * WORLD, '#2e3340');
             compassRect(-WORLD, WORLD, WORLD - 100, WORLD + 100, '#2e3340');
@@ -1540,10 +1589,27 @@
                 groundRect(x - 6, y - 1, 12, 2, '#8a6c5e');
                 groundRect(x - 1, y - 6, 2, 12, '#8a6c5e');
             });
+            ctx.save();
+            const leaveStreetGap = (e0, e1, s0, s1) => {
+                ctx.beginPath();
+                ctx.rect(-100000, -100000, 200000, 200000);
+                [[e0,s0],[e1,s0],[e1,s1],[e0,s1]].forEach(([e,s], i) => {
+                    const p = P(...fromCompass(e,s));
+                    if (i) ctx.lineTo(...p); else ctx.moveTo(...p);
+                });
+                ctx.closePath(); ctx.clip('evenodd');
+            };
+            leaveStreetGap(-124, 124, 0, 2 * WORLD);
+            leaveStreetGap(-WORLD, WORLD, WORLD - 169, WORLD + 169);
+            for (const r of q.neighborhood.streets) {
+                const half = CityLayout.halfWidth + 4;
+                leaveStreetGap(Math.min(r.a[0],r.b[0]) - half, Math.max(r.a[0],r.b[0]) + half,
+                    Math.min(r.a[1],r.b[1]) - half, Math.max(r.a[1],r.b[1]) + half);
+            }
             if (q.parkingLot) {
                 roadAligned(q.parkingLot,()=>{
                 const { x, y, w, d } = q.parkingLot;
-                groundRect(x, y, w, d, '#34343a');
+                groundRect(x, y, w, d, '#2e3340');
                 for (let row = 0; row < 7; row++) {
                     const py = y + 11 + row * 27;
                     poly([P(x + 46, py), P(x + 53, py + 3), P(x + 51, py + 9),
@@ -1566,7 +1632,7 @@
             }
             for (const area of q.parkingAreas.filter(a => ['lot', 'garage'].includes(a.kind) && !CityLayout.residentialPlan(a.destination))) {
                 roadAligned(area, () => {
-                    groundRect(area.x, area.y, area.w, area.d, '#414a50', '#a8a99a');
+                    groundRect(area.x, area.y, area.w, area.d, '#2e3340', '#a8a99a');
                     groundRect(area.x + 3, area.y + area.d - 18, area.w - 6, 2, '#c1c4ab');
                     for (let x = area.x + 8; x < area.x + area.w - 4; x += 16)
                         groundRect(x, area.y + 3, .7, area.d - 6, '#bac2b21c');
@@ -1575,11 +1641,9 @@
                         groundRect(area.x + area.w - 7.5, area.y + area.d - 8 + i, 4, .4, '#9ba79c');
                 });
             }
-            for (const approach of q.approaches) roadAligned(approach, () =>
-                groundRect(approach.x, approach.y, approach.w, approach.d, approach.pedestrian ? '#cabfa6' : '#6a6b63'));
             for (const bay of q.playerParking.filter(b => !CityLayout.residentialPlan(b.destination))) {
                 roadAligned(bay,()=>{
-                    groundRect(bay.x, bay.y, bay.w, bay.d, '#304754', '#c8dedb', 1.5);
+                    groundRect(bay.x, bay.y, bay.w, bay.d, '#2e3340', '#d6d5ca', 1.5);
                     groundRect(bay.x + 2, bay.y + 3, 2, bay.d - 6, '#d6d5bd');
                     const [sx, sy] = P(bay.x + bay.w / 2, bay.y + bay.d / 2);
                     const rx=P(bay.x+bay.w/2+1,bay.y+bay.d/2), down=P(bay.x+bay.w/2,bay.y+bay.d/2+1);
@@ -1588,6 +1652,7 @@
                     ctx.fillText('P', 0, 5); ctx.restore();
                 });
             }
+            ctx.restore();
         }
 
         function groundRect(x, y, w, d, fill, stroke, width = 1) {
@@ -2604,8 +2669,8 @@
             modalContent.innerHTML=`<div class="sports-game library-reader"><h2>Settings</h2>
                 <label>Respawn after logging in <select id="respawn-choice">
                 <option value="last" ${gameSettings.respawn==='last'?'selected':''}>Last location — front entrance</option>
-                <option value="home" ${gameSettings.respawn==='home'?'selected':''}>Home — The Crib</option></select></label>
-                <p>Cars return to your home parking in SE when you log off. Choosing Last Location changes where you spawn, not where your cars are returned.</p>
+                <option value="home" ${gameSettings.respawn==='home'?'selected':''}>Home - ${homeLife.quadrant} apartment</option></select></label>
+                <p>A valid parking pass returns cars to your home parking when you log off. Without a pass, cars are secured in public venue lots. Choosing Last Location changes only where you spawn.</p>
                 <p>Getting off does not move your ride. After 60 seconds unattended, it is secured near where you left it. Bikes and scooters travel in your Item Bag.</p>
                 <p id="settings-saved" role="status"></p></div>`;
             document.getElementById('respawn-choice').addEventListener('change',event=>{
@@ -3166,6 +3231,7 @@
         }
 
         function renderVehicleShop(shop) {
+            if (!shop && !HomeLife.hasParking(homeLife)) { renderHomePurchase('parking'); return; }
             const content = document.getElementById('modal-content');
             content.innerHTML = `
                 <div class="sports-game">
@@ -3305,18 +3371,8 @@
                     VenueInteriors.mount(content, type, modalEl, { preview: true });
                     return;
                 }
-                const c = 'bg-blue-950/80 hover:bg-blue-900 border border-blue-400';
-                content.innerHTML = `
-                    <h2 class="text-2xl font-black text-blue-300 mb-2">🏠 The Crib & Garage (Mystics/Capitals)</h2>
-                    <p class="text-gray-300 text-sm mb-4">Manage your apartment closet, choose a ride from your garage, and check on companion pets.</p>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button type="button" id="open-wardrobe" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">👕 Wardrobe Closet</button>
-                        <button type="button" id="open-vehicle-garage" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🚲 Vehicle Garage</button>
-                        <button type="button" id="open-personal-computer" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">💻 Personal Computer</button>
-                        <button type="button" id="open-home-tv" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">📺 Living Room TV</button>
-                        <button type="button" id="open-pet-profile" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🐕 Pet Companion — profile & care</button>
-                        ${btn('🏢 Upgrade Property Tier', 'Property upgraded to Tier 2 Navy Yard Loft!', c, 'upgrade')}
-                    </div>`;
+                renderHome();
+                return;
             } else if (type === 'casino') {
                 content.innerHTML = `<div class="sports-game sportsbook"><h2>Chocolate City Casino</h2>
                     <p>Free practice tables: 1,000 starting play credits. No real money, prizes or conversion to stars. The sports lab uses its own practice balance.</p>
@@ -3430,7 +3486,82 @@
             }
         }
 
+        function renderHome() {
+            const actions = {
+                '#open-wardrobe': { run: () => renderShirtShop(false) },
+                '#open-home-quests': { run: renderHomeQuests },
+                '#open-home-tv': { feature: 'tv', run: () => DMVMedia.renderTV(modalContent, () => openBuildingModal('crib')) },
+                '#open-personal-computer': { feature: 'computer', run: () => openComputer('crib') },
+                '#open-pet-profile': { feature: 'pets', run: () => Pets.render(modalContent, pets, () => progress.stars,
+                    next => { progress.stars = next; updateProgressHud(); }, saveProgress, () => openBuildingModal('crib')) },
+                '#open-vehicle-garage': { feature: 'parking', run: () => renderVehicleShop(false) }
+            };
+            const locked = {};
+            modalContent.innerHTML = `<h2>${DMVMedia.escape(homeLife.residence || 'Your apartment')}</h2>
+                <p>Your apartment is free. Closet and quests are included. Other home features must be purchased.
+                Bikes, scooters and electric bikes use the Item Bag without a parking pass.</p>
+                ${VenueInteriors.rooms.crib.items.map(spec => `<button type="button" id="${spec.selector.slice(1)}">${spec.label}</button>`).join('')}`;
+            for (const [selector, action] of Object.entries(actions)) {
+                const available = !action.feature || (action.feature === 'parking' ? HomeLife.hasParking(homeLife) : homeLife.unlocked.includes(action.feature));
+                if (!available) locked[selector] = action.feature === 'parking' ?
+                    'Purchase a parking pass before using the apartment garage. Coming soon - price not set.' :
+                    'Must be purchased before home use. Coming soon - price not set.';
+                modalContent.querySelector(selector).addEventListener('click', () => {
+                    if (action.feature === 'parking') { renderHomePurchase('parking'); return; }
+                    if (!available) { renderHomePurchase(action.feature); return; }
+                    action.run();
+                });
+            }
+            VenueInteriors.mount(modalContent, 'crib', modalEl, { locked });
+        }
+        function renderHomePurchase(feature) {
+            const parking = feature === 'parking';
+            const choices = parking ? ['week', 'month'] : [feature];
+            const name = parking ? 'Apartment parking pass' : HomeLife.features[feature].name;
+            modalContent.innerHTML = `<div class="sports-game"><h2>${name}</h2>
+                <p>${parking ? 'A valid pass unlocks your apartment garage for cars and trucks. Bikes, scooters and electric bikes do not need one. Passes use real elapsed time, including while offline.' :
+                    'Purchase this feature to use it from your home. The public library computer remains free.'}</p>
+                ${parking && HomeLife.hasParking(homeLife) ? `<p>Pass expires: ${DMVMedia.escape(new Date(homeLife.parkingUntil).toLocaleString())}</p>
+                    <button type="button" id="enter-paid-garage">Enter garage</button>` : ''}
+                <p>${parking ? 'One week: 7 days. One month: 30 days, priced 60% more than one week.' : ''}</p>
+                ${choices.map(id => {
+                    const price = parking ? HomeLife.passPrice(id) : HomeLife.features[id].price;
+                    return `<button type="button" data-home-purchase="${id}" ${price === null ? 'disabled' : ''}>
+                        ${parking ? id === 'week' ? '1 week' : '1 month' : name} - ${price === null ? 'Coming soon - price not set' : `${price} stars`}</button>`;
+                }).join('')}
+                <p role="status" id="home-purchase-status">Must be purchased before home use.</p>
+                <button type="button" id="home-purchase-back">Back home</button></div>`;
+            modalContent.querySelectorAll('[data-home-purchase]').forEach(button => button.addEventListener('click', () => {
+                try {
+                    progress.stars = HomeLife.purchase(homeLife, button.dataset.homePurchase, progress.stars);
+                    updateProgressHud(); saveProgress(); renderHomePurchase(feature);
+                    document.getElementById('home-purchase-status').textContent = 'Purchase saved.';
+                } catch (error) {
+                    console.error('Home purchase failed:', error);
+                    document.getElementById('home-purchase-status').textContent = error.message;
+                }
+            }));
+            modalContent.querySelector('#enter-paid-garage')?.addEventListener('click', () => renderVehicleShop(false));
+            modalContent.querySelector('#home-purchase-back').addEventListener('click', () => openBuildingModal('crib'));
+        }
+        function renderHomeQuests() {
+            const escape = DMVMedia.escape;
+            const groups = [['ongoing', 'On-going quests'], ['completed', 'Completed quests'], ['upcoming', 'Upcoming quests']];
+            modalContent.innerHTML = `<div class="home-todo"><h2>My To-Do List</h2><p class="home-todo-subtitle">Quest</p>
+                ${groups.map(([status, title]) => {
+                    const quests = HomeLife.quests.filter(q => HomeLife.questStatus(q, homeLife) === status);
+                    return `<section><h3>${title}</h3>${quests.length ? quests.map(quest => `<details ${status === 'ongoing' ? 'open' : ''}>
+                        <summary>${escape(quest.title)}</summary><ul>${quest.tasks.map(task => {
+                            const done = homeLife.completedTasks.includes(task.id);
+                            return `<li class="${done ? 'task-done' : ''}"><input type="checkbox" disabled ${done ? 'checked' : ''} aria-label="${escape(task.title)}">${escape(task.title)}</li>`;
+                        }).join('')}</ul></details>`).join('') : '<p>No quests yet.</p>'}</section>`;
+                }).join('')}<p>Tasks are checked off automatically when completed. Quests will appear here once they are added.</p>
+                <button type="button" id="home-quests-back">Back home</button></div>`;
+            modalContent.querySelector('#home-quests-back').addEventListener('click', () => openBuildingModal('crib'));
+        }
+
         function openComputer(location) {
+            if (location !== 'library' && !homeLife.unlocked.includes('computer')) { renderHomePurchase('computer'); return; }
             DMVMedia.stopAll();
             const content = document.getElementById('modal-content');
             content.innerHTML = `<div class="sports-game library-reader"><h2>${location === 'library' ? 'Library Public Computer' : 'Your Personal Computer'}</h2>
@@ -3450,15 +3581,11 @@
             const b = e.target.closest('.game-action');
             if (!b) return;
             toast(b.dataset.msg);
-            if (b.classList.contains('upgrade')) {
-                progress.property = 2;
-                updateProgressHud();
-                saveProgress();
-            }
         });
 
         function closeModal() {
             GoGoMusic.stop();
+            if (player.appearance && !homeLife.quadrant) { openHomeSelection(); return; }
             Minigames.stop();
             DMVMedia.stopAll();
             sportsGame = null;
