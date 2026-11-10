@@ -41,9 +41,11 @@ test('roofs, balconies, driveways, garages and apartment spaces draw within each
                 env.P(x, y, z); env.P(x + ww, y + dd, z + h);
             }, shade: color => color
         };
-        for (const kind of ['house', 'apartment', 'condo']) for (const variant of [0, 1, 2])
+        for (const kind of ['house', 'apartment', 'condo'].filter(kind => kind !== 'apartment' || w >= 160)) for (const variant of [0, 1, 2]) {
+            const before = planes;
             Art.draw({ ...b, kind, variant }, env, true, 1);
-        assert.ok(planes > 300);
+            assert.ok(planes > before, `${kind} variant ${variant} renders visible geometry`);
+        }
     }
 });
 

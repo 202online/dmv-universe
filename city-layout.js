@@ -136,6 +136,16 @@
         const design = designs[id];
         q.identity = design.identity;
         q.districts = design.districts;
+        const grounds = { basketball: [150, 140], tennis: [180, 170] };
+        for (const activity of q.activities) {
+            const size = grounds[activity.type];
+            if (size) {
+                const e = activity.x + activity.w / 2 - activity.y - activity.d / 2;
+                const s = activity.x + activity.w / 2 + activity.y + activity.d / 2;
+                [activity.w, activity.d] = size;
+                center(activity, e, s);
+            }
+        }
         const shops = q.neighborhood.buildings.filter(b => ['shop', 'restaurant'].includes(b.kind));
         q.neighborhood.buildings = design.homes.map(([e, s], i) => {
             const b = { name: `${id} ${design.kind === 'house' ? 'Rowhouse' : design.kind === 'condo' ? 'Waterfront Home' : 'Garden Apartment'} ${i + 1}`,

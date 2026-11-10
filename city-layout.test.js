@@ -7,7 +7,7 @@ const CityLayout = require('./city-layout.js');
 const ResidentialArt = require('./residential-art.js');
 const html = fs.readFileSync(`${__dirname}/index.html`, 'utf8');
 const source = html.split('// ---------- World data ----------')[1].split('// ---------- State & input ----------')[0];
-const context = { WORLD: 1000, CityLayout };
+const context = { WORLD: 1000, CityLayout, VehicleArt: require('./vehicle-art.js') };
 vm.runInNewContext(`${source}\nglobalThis.city = quadrants;`, context);
 const world = (e, s) => [(s + e) / 2, (s - e) / 2];
 const overlaps = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.d && a.y + a.d > b.y;
@@ -44,6 +44,19 @@ test('apartments and condos have broad, multi-family footprints proportional to 
         assert.ok(b.w * b.d >= house.w * house.d * 2.5, 'Multi-family lots are substantially larger than a house');
         assert.ok(b.w >= mainApartment.w * .8, 'Width is comparable to the existing main apartment');
         assert.ok(b.h / b.w <= 1.1, 'Residential blocks do not become thin towers');
+    }
+});
+test('outdoor activities use a consistent arcade size hierarchy and parked cars match the Bucket', () => {
+    const activities = Object.values(context.city).flatMap(q => q.activities);
+    const area = type => { const b = activities.find(a => a.type === type); return b.w * b.d; };
+    assert.ok(area('basketball') < area('tennis'));
+    assert.ok(area('tennis') < area('baseball'));
+    assert.ok(area('baseball') < area('soccer'));
+    assert.ok(area('basketball') < area('football'));
+    const car = context.VehicleArt.sizes.car;
+    for (const q of Object.values(context.city)) for (const parked of q.cars) {
+        assert.equal(parked.w, car.w);
+        assert.equal(parked.d, car.d);
     }
 });
 test('apartment garages attach flush to the rear wall, never a separate front or side outbuilding', () => {

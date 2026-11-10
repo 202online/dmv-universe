@@ -263,6 +263,7 @@
     <script src="learning-data.js"></script>
     <script src="learning.js"></script>
     <script src="city-layout.js"></script>
+    <script src="vehicle-art.js"></script>
     <script src="residential-art.js"></script>
     <script src="interiors.js"></script>
     <script src="mg-progression.js"></script>
@@ -536,8 +537,8 @@
                 a.y < b.y + b.d && a.y + a.d > b.y;
             const lot = q.parkingLot;
             q.cars = id === 'NW' ? [
-                { x: lot.x + 20, y: lot.y + 12, w: 90, d: 40, color: '#cbd5e1', trim: '#475569' },
-                { x: lot.x + 20, y: lot.y + 142, w: 90, d: 40, color: '#1e3a8a', trim: '#e2e8f0' }
+                { x: lot.x + 8, y: lot.y + 5, ...VehicleArt.sizes.car, color: '#cbd5e1', trim: '#475569' },
+                { x: lot.x + lot.w - 36, y: lot.y + 149, ...VehicleArt.sizes.car, color: '#1e3a8a', trim: '#e2e8f0' }
             ] : [];
             const near = (list, x, y, m) => list.some(b => x >= b.x - m && x <= b.x + b.w + m && y >= b.y - m && y <= b.y + b.d + m);
             const streetTrees = id === 'NW' ? [-900, -660, -420, 420, 660, 900].map(e => fromCompass(e, 90)) : [];
@@ -564,11 +565,11 @@
         const player = { x: 500, y: 500, speed: (3.6 / 5) * 1.2 * 1.2, r: 9, fx: 0, fy: 1, moving: false, appearance: null };
         const keys = { up: false, down: false, left: false, right: false };
         const vehicles = {
-            bike: { name: 'Bicycle', price: 0, speed: 1.2, w: 52, d: 16, color: '#38bdf8', trim: '#f8fafc', kind: 'bike' },
-            scooter: { name: 'Electric scooter', price: 60, speed: 1.4, w: 48, d: 16, color: '#a855f7', trim: '#e5e7eb', kind: 'scooter' },
-            ebike: { name: 'Electric bike', price: 180, speed: 1.6, w: 54, d: 18, color: '#10b981', trim: '#f8fafc', kind: 'ebike' },
-            impala: { name: 'the Bucket', price: 720, speed: 1.8, w: 96, d: 42, color: '#5A1414', trim: '#FFB612', kind: 'car' },
-            truck: { name: 'Pickup truck', price: 828, speed: 1.98, w: 108, d: 46, color: '#475569', trim: '#e2e8f0', kind: 'truck' }
+            bike: { name: 'Bicycle', price: 0, speed: 1.2, ...VehicleArt.sizes.bike, color: '#38bdf8', trim: '#f8fafc', kind: 'bike' },
+            scooter: { name: 'Electric scooter', price: 60, speed: 1.4, ...VehicleArt.sizes.scooter, color: '#a855f7', trim: '#e5e7eb', kind: 'scooter' },
+            ebike: { name: 'Electric bike', price: 180, speed: 1.6, ...VehicleArt.sizes.ebike, color: '#10b981', trim: '#f8fafc', kind: 'ebike' },
+            impala: { name: 'the Bucket', price: 720, speed: 1.8, ...VehicleArt.sizes.car, color: '#5A1414', trim: '#FFB612', kind: 'car' },
+            truck: { name: 'Pickup truck', price: 828, speed: 1.98, ...VehicleArt.sizes.truck, color: '#475569', trim: '#e2e8f0', kind: 'truck' }
         };
         const ownCar = { ...vehicles.bike, x: 535, y: 500, ownRide: true };
         quadrants.NW.cars.push(ownCar);
@@ -1164,11 +1165,9 @@
             if (q.parkingLot) {
                 const { x, y, w, d } = q.parkingLot;
                 groundRect(x, y, w, d, '#34343a');
-                for (let i = 0; i <= 3; i++) {
-                    groundRect(x + 5, y + i * d / 3 - 1, 110, 2, '#ddd2bd');
-                }
-                for (let i = 0; i < 3; i++) {
-                    groundRect(x + 8, y + i * d / 3 + 14, 3, 37, '#a99583');
+                for (const bx of [x + 5, x + w - 41]) {
+                    for (let i = 0; i <= 8; i++) groundRect(bx, y + i * 24, 36, 1, '#ddd2bd');
+                    for (let i = 0; i < 8; i++) groundRect(bx + 2, y + i * 24 + 4, 2, 16, '#a99583');
                 }
             }
         }
@@ -1584,20 +1583,7 @@
                 else drawTwoWheeler(c);
                 return;
             }
-            const { x, y, w, d } = c;
-            poly([P(x - 3, y - 2), P(x + w + 3, y - 2), P(x + w + 3, y + d + 3), P(x - 3, y + d + 3)], 'rgba(0,0,0,.4)');
-            box(x, y, 4, w, d, 12, c.color, 'rgba(0,0,0,.45)');
-            poly(faceL(x, y, w, d, 0.02, 0.98, 9, 10.5), c.trim);
-            const cx = x + w * 0.28, cw = w * 0.46, cy = y + 4, cd = d - 8;
-            box(cx, cy, 16, cw, cd, 12, c.color, 'rgba(0,0,0,.45)');
-            poly(faceL(cx, cy, cw, cd, 0.06, 0.94, 18, 26), '#0f172a');
-            poly(faceL(cx, cy, cw, cd, 0.48, 0.52, 18, 26), c.color);
-            poly(faceR(cx, cy, cw, cd, 0.08, 0.92, 18, 26), '#1e293b');
-            poly(faceR(x, y, w, d, 0.08, 0.28, 8, 12), '#fef9c3', 'rgba(0,0,0,.4)');
-            poly(faceR(x, y, w, d, 0.72, 0.92, 8, 12), '#fef9c3', 'rgba(0,0,0,.4)');
-            poly(faceR(x, y, w, d, 0.32, 0.68, 6, 10), '#111');
-            wheel(x + w * 0.2, y + d, 7, c.trim);
-            wheel(x + w * 0.8, y + d, 7, c.trim);
+            VehicleArt.draw(c, { ctx, P, poly, shade });
         }
 
         function drawTwoWheeler(c) {
@@ -1614,18 +1600,18 @@
             };
             const axle = c.w * .38;
             for (const f of [-axle, axle]) {
-                const [x, y] = point(f, 7);
-                ctx.fillStyle = '#111827'; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
+                const [x, y] = point(f, 5);
+                ctx.fillStyle = '#111827'; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fill();
             }
             if (c.kind === 'scooter') {
-                line([[-axle, 9], [axle, 9], [axle, 32], [axle - 6, 32]], c.color, 4);
+                line([[-axle, 6], [axle, 6], [axle, 23], [axle - 4, 23]], c.color, 3);
             } else {
-                line([[-axle, 7], [0, 7], [-6, 22], [-axle, 7]], c.color, 3);
-                line([[0, 7], [axle, 7], [10, 23], [-6, 22]], c.color, 3);
-                line([[10, 23], [12, 31], [6, 31]], '#e5e7eb', 3);
-                line([[-10, 24], [-3, 24]], '#111827', 3);
-                if (c.kind === 'ebike') line([[-3, 12], [5, 20]], '#fbbf24', 5);
+                line([[-axle, 5], [0, 5], [-3, 15], [-axle, 5]], c.color, 2);
+                line([[0, 5], [axle, 5], [5, 16], [-3, 15]], c.color, 2);
+                line([[5, 16], [6, 22], [3, 22]], '#e5e7eb', 2);
+                line([[-5, 17], [-1, 17]], '#111827', 2);
+                if (c.kind === 'ebike') line([[-2, 8], [3, 14]], '#fbbf24', 3);
             }
             if (driving.active && c === ownCar) {
                 const [x, y] = point(0, 15);
@@ -1634,42 +1620,7 @@
         }
 
         function drawOwnCar(c) {
-            const cx = c.x + c.w / 2, cy = c.y + c.d / 2;
-            const [fx, fy] = c.heading || [1, 0];
-            const sx = -fy, sy = fx;
-            const point = (forward, side, z = 0) =>
-                P(cx + forward * fx + side * sx, cy + forward * fy + side * sy, z);
-            const face = (points, color, stroke = 'rgba(0,0,0,.5)') =>
-                poly(points.map(([f, s, z]) => point(f, s, z)), color, stroke);
-            const prism = (f0, f1, s0, s1, z0, z1, color) => {
-                const sides = [
-                    { depth: (f0 * fx + (s0 + s1) / 2 * sx) + (f0 * fy + (s0 + s1) / 2 * sy), points: [[f0,s0,z0],[f0,s1,z0],[f0,s1,z1],[f0,s0,z1]], color: shade(color, .65) },
-                    { depth: (f1 * fx + (s0 + s1) / 2 * sx) + (f1 * fy + (s0 + s1) / 2 * sy), points: [[f1,s0,z0],[f1,s1,z0],[f1,s1,z1],[f1,s0,z1]], color: shade(color, .8) },
-                    { depth: ((f0 + f1) / 2 * fx + s0 * sx) + ((f0 + f1) / 2 * fy + s0 * sy), points: [[f0,s0,z0],[f1,s0,z0],[f1,s0,z1],[f0,s0,z1]], color: shade(color, .85) },
-                    { depth: ((f0 + f1) / 2 * fx + s1 * sx) + ((f0 + f1) / 2 * fy + s1 * sy), points: [[f0,s1,z0],[f1,s1,z0],[f1,s1,z1],[f0,s1,z1]], color: shade(color, .7) }
-                ];
-                sides.sort((a, b) => a.depth - b.depth).forEach(side => face(side.points, side.color));
-                face([[f0,s0,z1],[f1,s0,z1],[f1,s1,z1],[f0,s1,z1]], shade(color, 1.18));
-            };
-            const halfW = c.w / 2, halfD = c.d / 2;
-            face([[-halfW,-halfD,0],[halfW,-halfD,0],[halfW,halfD,0],[-halfW,halfD,0]], 'rgba(0,0,0,.4)', null);
-            prism(-halfW, halfW, -halfD, halfD, 4, 16, c.color);
-            prism(c.kind === 'truck' ? -c.w * .05 : -c.w * .22, c.w * .24, -halfD + 4, halfD - 4, 16, 28, c.color);
-            if (c.kind === 'truck') face([[-halfW*.9,-halfD*.7,17],[-c.w*.12,-halfD*.7,17],[-c.w*.12,halfD*.7,17],[-halfW*.9,halfD*.7,17]], '#1f2937');
-            for (const side of [-1, 1]) {
-                const s = side * (halfD - 3.9);
-                face([[-c.w*.19,s,18],[c.w*.21,s,18],[c.w*.21,s,25],[-c.w*.19,s,25]], '#17283e');
-                const outer = side * (halfD + .1);
-                face([[-halfW*.9,outer,9],[halfW*.9,outer,9],[halfW*.9,outer,10.5],[-halfW*.9,outer,10.5]], c.trim, null);
-                for (const f of [-c.w * .3, c.w * .3]) {
-                    const [wx, wy] = point(f, outer, 7);
-                    ctx.fillStyle = '#0a0a0a'; ctx.beginPath(); ctx.arc(wx, wy, 6, 0, Math.PI * 2); ctx.fill();
-                    ctx.fillStyle = '#d1d5db'; ctx.beginPath(); ctx.arc(wx, wy, 3, 0, Math.PI * 2); ctx.fill();
-                }
-            }
-            face([[halfW + .1,-halfD*.8,8],[halfW + .1,-halfD*.35,8],[halfW + .1,-halfD*.35,12],[halfW + .1,-halfD*.8,12]], '#fef9c3');
-            face([[halfW + .1,halfD*.35,8],[halfW + .1,halfD*.8,8],[halfW + .1,halfD*.8,12],[halfW + .1,halfD*.35,12]], '#fef9c3');
-            face([[-halfW-.1,-halfD*.8,8],[-halfW-.1,halfD*.8,8],[-halfW-.1,halfD*.8,11],[-halfW-.1,-halfD*.8,11]], '#ef4444');
+            VehicleArt.draw(c, { ctx, P, poly, shade });
         }
 
         function drawTree(t) {

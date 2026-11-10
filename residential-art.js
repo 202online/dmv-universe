@@ -1,6 +1,7 @@
 'use strict';
 
 const ResidentialArt = (() => {
+    const vehicles = typeof module !== 'undefined' && module.exports ? require('./vehicle-art.js') : VehicleArt;
     function plan(b) {
         const kind = b.kind || b.style;
         if (!['house', 'apartment', 'condo'].includes(kind)) throw new Error('Unknown residential kind');
@@ -53,18 +54,8 @@ const ResidentialArt = (() => {
                 if (i < count) box(x + slot * .20, lot.y + 1, .6, slot * .60, 1.5, 1, '#b8bcb6');
             }
             line([[lot.x, lot.y + lot.d * .92, .6], [lot.x + lot.w, lot.y + lot.d * .92, .6]], '#d7dfdc');
-            for (const [i, color] of [[0, '#63879a'], [2, '#923d4b'], [count - 1, '#c6b38d']]) {
-                const x = lot.x + slot * (i + .18), y = lot.y + lot.d * .08;
-                const w = Math.min(14, slot * .60), d = lot.d * .54;
-                box(x, y, 1, w, d, 4, color, outline);
-                box(x + w * .10, y + d * .26, 5, w * .80, d * .42, 3, color, outline);
-                plane(x + w * .12, y + d * .27, w * .76, d * .14, 8.1, '#b2d8de');
-                plane(x + w * .12, y + d * .54, w * .76, d * .13, 8.1, '#688b9b');
-                for (const dx of [0, w - 1.5]) for (const dy of [d * .12, d * .75])
-                    box(x + dx, y + dy, .5, 1.5, 2, 2, '#202a35');
-                for (const dx of [w * .12, w * .70])
-                    plane(x + dx, y + d * .88, w * .18, d * .10, 5.1, '#fff0b5');
-            }
+            for (const [i, color] of [[0, '#63879a'], [2, '#923d4b'], [count - 1, '#c6b38d']])
+                parkedCar(lot.x + slot * (i + .5), lot.y + vehicles.sizes.car.w / 2 + 1, color);
         } else {
             for (let i = 1; i < 5; i++)
                 line([[lot.x, lot.y + lot.d * i / 5, .6], [lot.x + lot.w, lot.y + lot.d * i / 5, .6]], '#827e70');
@@ -75,13 +66,13 @@ const ResidentialArt = (() => {
                 front(garage, .10, .90, 1, b.h * .20, '#56636c', trim);
                 for (let z = 4; z < b.h * .20; z += 5) front(garage, .10, .90, z, z + .7, '#c0c6c3');
             }
-            if (layout.variant > 0) {
-                const carX = lot.x + lot.w * .15, carY = lot.y + lot.d * .59;
-                box(carX, carY, 1, lot.w * .70, lot.d * .26, 4, layout.variant === 1 ? '#8b3344' : '#52778c', outline);
-                box(carX + lot.w * .08, carY + lot.d * .07, 5, lot.w * .54, lot.d * .11, 3, '#a8c6ce', outline);
-                for (const x of [carX + lot.w * .08, carX + lot.w * .58])
-                    box(x, carY + lot.d * .20, .5, Math.max(1, lot.w * .12), 2, 2, '#1e293b');
-            }
+            if (layout.variant === 1 || layout.kind === 'condo' && layout.variant === 2)
+                parkedCar(lot.x + lot.w / 2, lot.y + lot.d - vehicles.sizes.car.w / 2 - 1, '#8b3344');
+        }
+        function parkedCar(cx, cy, color) {
+            const size = vehicles.sizes.car;
+            vehicles.draw({ ...size, x: cx - size.w / 2, y: cy - size.d / 2, heading: [0, 1], kind: 'car', color, trim: '#d3d9d4' },
+                { ctx: c, P, poly, shade });
         }
         for (const p of layout.parts) {
             const color = b.color;

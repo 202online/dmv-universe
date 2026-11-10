@@ -120,6 +120,16 @@ the larger properties inside the map; local streets
 and interaction approaches are rebuilt around their collision footprints.
 All balconies, driveways and parking details stay within their property lots.
 
+The city uses consistent **compact arcade proportions**, not real-world map
+distances. All sedans, whether drivable, in a driveway or in a parking lot,
+share one 28×14 footprint, 18-unit roof height and the same detailed renderer.
+Pickups are only slightly larger at 32×16; two-wheelers are 23–25 units long.
+Parking bays, collision bounds and owned rides use that same scale.
+For-sale houses have empty driveways/garages; parked cars appear only at
+occupied houses. Basketball courts (150×140) are smaller than tennis courts
+(180×170), which are smaller than baseball diamonds and football/soccer
+grounds. Houses remain smaller than apartment blocks and major venues.
+
 The city map shows the local streets, tan home markers, blue neighborhood-shop
 markers and numbered venues, with descriptions of each district.
 Baseball has a standalone grass-and-dirt diamond in SW's open block south of
