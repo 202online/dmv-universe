@@ -137,6 +137,28 @@
         .trade-facts { padding-left: 22px; }
         @keyframes doc-float { from { transform: translateY(-4px) scale(1); } to { transform: translateY(4px) scale(1.06); } }
         @keyframes doc-pan { from { transform: translateX(-6%); } to { transform: translateX(6%); } }
+        #metro-gallery { position: absolute; inset: 0; z-index: 25; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 52px 12px 14px; box-sizing: border-box; pointer-events: none; overflow: hidden; }
+        #metro-gallery[hidden] { display: none; }
+        #metro-gallery[data-mode="train"] { background: radial-gradient(ellipse at center, #3a332d 0%, #0c0a09 78%); }
+        #metro-gallery[data-mode="train"]::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 150px, rgba(255, 214, 120, .16) 150px 158px); animation: metro-lights 1s linear infinite; }
+        #metro-gallery[data-mode="bus"] { background: rgba(9, 12, 20, .45); }
+        #metro-gallery.minimized { background: none; justify-content: flex-start; }
+        #metro-gallery.minimized::before, #metro-gallery.minimized .metro-frame, #metro-gallery.minimized .metro-caption { display: none; }
+        @keyframes metro-lights { to { background-position: 158px 0; } }
+        .metro-panel { position: relative; width: min(100%, 560px); box-sizing: border-box; pointer-events: auto; background: rgba(17, 24, 39, .94); border: 2px solid #c9a24b; border-radius: 14px; padding: 8px; color: #f8ead0; box-shadow: 0 18px 40px rgba(0, 0, 0, .55); }
+        #metro-gallery[data-mode="bus"] .metro-panel { border: 9px solid #d8d2c2; border-radius: 22px; }
+        .metro-frame { width: 100%; aspect-ratio: 16 / 9; max-height: 44vh; overflow: hidden; border-radius: 8px; background: #000; }
+        .metro-frame svg { display: block; width: 100%; height: 100%; }
+        .metro-frame.enter { animation: metro-card .6s ease-out; }
+        @keyframes metro-card { from { opacity: 0; transform: scale(1.04); } }
+        .metro-caption { padding: 8px 4px 2px; font-size: 13px; line-height: 1.4; }
+        .metro-caption strong { display: block; color: #ffd98a; font-size: 15px; }
+        .metro-caption p { margin: 3px 0; }
+        .metro-caption small { display: block; color: #b9c3cf; font-size: 10px; }
+        .metro-panel-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; color: #d6c7a6; }
+        .metro-panel-bar button { min-height: 36px; padding: 4px 10px; border: 1px solid #c9a24b; border-radius: 8px; background: #1f2937; color: #fff; font-weight: 700; }
+        @media (max-height: 520px) { .metro-frame { max-height: 34vh; } .metro-caption small { display: none; } }
+        @media (prefers-reduced-motion: reduce) { #metro-gallery::before, .metro-frame.enter { animation: none; } }
         @media (prefers-reduced-motion: reduce) { .doc-icon, .doc-screen::after { animation: none; } .doc-progress span { transition: none; } }
         .library-reader .library-paragraph { max-width: 65ch; margin: 18px auto; font-size: 17px; line-height: 1.85; color: #e2e8f0; }
         @media (max-width: 380px) {
@@ -187,6 +209,14 @@
 
     <main class="relative flex-1 flex justify-center items-center overflow-hidden">
         <canvas id="gameCanvas" tabindex="0" aria-label="Game world" class="w-full h-full cursor-pointer"></canvas>
+        <section id="metro-gallery" aria-label="Metro ride gallery" hidden>
+            <div class="metro-panel">
+                <div class="metro-panel-bar"><span id="metro-gallery-label">Now riding</span><button type="button" id="metro-gallery-toggle" aria-expanded="true" aria-controls="metro-card-art">Hide gallery</button></div>
+                <div id="metro-card-art" class="metro-frame"></div>
+                <div class="metro-caption" aria-live="polite"><strong id="metro-card-title"></strong><p id="metro-card-text"></p>
+                    <small>Original illustrations and stylized tributes, not photos or endorsements.</small></div>
+            </div>
+        </section>
         <div id="world-zoom" role="group" aria-label="World camera zoom" style="position:absolute;right:12px;bottom:24px;z-index:10;display:flex;align-items:center;gap:6px;background:#111827;padding:5px;border:1px solid #64748b;border-radius:8px">
             <button type="button" id="zoom-out" aria-label="Zoom out" style="min-width:40px;min-height:40px">−</button>
             <output id="zoom-value" aria-live="polite">150%</output>
@@ -260,6 +290,7 @@
     </footer>
 
     <script src="city-art.js"></script>
+    <script src="travel-art.js"></script>
     <script src="sportsbook.js"></script>
     <script src="casino-events.js"></script>
     <script src="casino.js"></script>
@@ -586,12 +617,26 @@
                 for (let e = -WORLD + 180; e < WORLD; e += 240)
                     if (Math.abs(e) > 160) { const [x, y] = fromCompass(e, WORLD + side * 145); q.lamps.push({ x, y }); }
             }
+            const billboardSpots = [];
+            for (const side of [1, -1]) {
+                for (let s = 330; s < 2 * WORLD; s += 240) billboardSpots.push(fromCompass(side * 160, s));
+                for (let e = -WORLD + 330; e < WORLD; e += 240) billboardSpots.push(fromCompass(e, WORLD + side * 200));
+            }
+            const clearSpots = billboardSpots.filter(([x, y]) => Math.abs(x - y) <= WORLD - 80 && x + y > 80 && x + y < 2 * WORLD - 80 &&
+                !near(q.activities, x, y, 45) && !near(q.buildings, x, y, 45) && !near(q.neighborhood.buildings, x, y, 45) &&
+                !near(lot ? [lot] : [], x, y, 30) && !near(q.playerParking, x, y, 30) && !CityLayout.nearRoad(q, x, y, 30) &&
+                ![...q.trees, ...q.lamps].some(t => Math.hypot(t.x - x, t.y - y) < 30));
+            q.billboards = TravelArt.billboards(id).map((card, i) => {
+                const spot = clearSpots[Math.floor((i + .5) * clearSpots.length / 3)];
+                return spot && { x: spot[0], y: spot[1], card: card.id };
+            }).filter(Boolean);
             q.neighborhoodSolids = q.neighborhood.buildings.map(CityLayout.footprint);
             q.solids = [
                 ...q.buildings.map(CityLayout.footprint),
                 ...q.activities.filter(a => a.type === 'boxing').map(CityLayout.footprint),
                 ...q.cars.map(CityLayout.footprint),
                 ...q.trees.map(t => ({ x0: t.x - 6, y0: t.y - 6, x1: t.x + 6, y1: t.y + 6 })),
+                ...q.billboards.map(b => ({ x0: b.x - 6, y0: b.y - 6, x1: b.x + 6, y1: b.y + 6 })),
                 ...q.neighborhoodSolids
             ];
         }
@@ -1244,8 +1289,34 @@
             update();
         }
 
+        let metroCardId = null, metroTripStarted = null, metroGalleryMinimized = false;
+        function updateMetroGallery() {
+            const el = document.getElementById('metro-gallery'), trip = transitTrip;
+            const show = !!trip && trip.mode !== 'taxi' && Date.now() - trip.started >= (trip.mode === 'train' ? 1000 : 5500);
+            if (!show) { if (!el.hidden) { el.hidden = true; metroCardId = null; } return; }
+            if (metroTripStarted !== trip.started) { metroTripStarted = trip.started; metroGalleryMinimized = false; }
+            el.hidden = false; el.dataset.mode = trip.mode;
+            el.classList.toggle('minimized', metroGalleryMinimized);
+            const toggle = document.getElementById('metro-gallery-toggle');
+            toggle.textContent = metroGalleryMinimized ? 'Show gallery' : 'Hide gallery';
+            toggle.setAttribute('aria-expanded', String(!metroGalleryMinimized));
+            document.getElementById('metro-gallery-label').textContent = trip.mode === 'train' ? `Underground to ${trip.destination}` : `Bus window to ${trip.destination}`;
+            const card = TravelArt.cardAt(trip, Date.now());
+            if (card.id === metroCardId) return;
+            metroCardId = card.id;
+            const frame = document.getElementById('metro-card-art');
+            frame.innerHTML = TravelArt.svg(card.id);
+            frame.classList.remove('enter'); void frame.offsetWidth; frame.classList.add('enter');
+            document.getElementById('metro-card-title').textContent = card.title;
+            document.getElementById('metro-card-text').textContent = card.caption;
+        }
+        document.getElementById('metro-gallery-toggle').addEventListener('click', () => {
+            metroGalleryMinimized = !metroGalleryMinimized; updateMetroGallery();
+        });
+
         function update() {
             updateTransit();
+            updateMetroGallery();
             for(const [id,p] of Object.entries(parkedVehicles)){
                 const distance=p.quadrant===currentQuadrant?
                     Math.hypot(player.x-p.x-vehicles[id].w/2,player.y-p.y-vehicles[id].d/2):Number.MAX_SAFE_INTEGER;
@@ -2137,6 +2208,7 @@
                 objs.push({ x0: x - 2, y0: y - 2, x1: x + 2, y1: y + 2, draw: () => drawEdgeSign(e, x, y) });
             });
             q.lamps.forEach(l => objs.push({ x0: l.x - 2, y0: l.y - 2, x1: l.x + 2, y1: l.y + 2, draw: () => drawLamp(l) }));
+            q.billboards.forEach(b => objs.push({ x0: b.x - 3, y0: b.y - 3, x1: b.x + 3, y1: b.y + 3, draw: () => TravelArt.drawBillboard(ctx, b.card, ...P(b.x, b.y)) }));
 
             const behind = (a, b) => a.x1 <= b.x0 || a.y1 <= b.y0;
             const key = o => o.x0 + o.x1 + o.y0 + o.y1;

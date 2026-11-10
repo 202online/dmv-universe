@@ -8,7 +8,7 @@ const ResidentialArt = require('./residential-art.js');
 const html = fs.readFileSync(`${__dirname}/index.html`, 'utf8');
 const source = html.split('// ---------- World data ----------')[1].split('// ---------- State & input ----------')[0];
 const WORLD = CityLayout.world;
-const context = { WORLD, CityLayout, VehicleArt: require('./vehicle-art.js') };
+const context = { WORLD, CityLayout, VehicleArt: require('./vehicle-art.js'), TravelArt: require('./travel-art.js') };
 vm.runInNewContext(`${source}\nglobalThis.city = quadrants;`, context);
 const world = (e, s) => [(s + e) / 2, (s - e) / 2];
 const overlaps = CityLayout.overlaps;

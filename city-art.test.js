@@ -39,7 +39,7 @@ test('art dependencies load before consumers and vehicle price/speed ratios are 
     for (const consumer of ['casino.js', 'interiors.js', 'mg-core.js'])
         assert.ok(html.indexOf('src="city-art.js"') < html.indexOf(`src="${consumer}"`));
     const source = html.slice(html.indexOf('const vehicles ='), html.indexOf('const ownCar ='));
-    const env = { VehicleArt: require('./vehicle-art.js') };
+    const env = { VehicleArt: require('./vehicle-art.js'), TravelArt: require('./travel-art.js') };
     vm.runInNewContext(`${source}\nglobalThis.rides = vehicles;`, env);
     assert.equal(env.rides.impala.name, 'the Bucket');
     assert.equal(env.rides.truck.price, Math.round(env.rides.impala.price * 1.15));

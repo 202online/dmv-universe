@@ -166,6 +166,16 @@ Trips lock movement and other travel until arrival at the destination station.
 Paid journeys persist, so reloading resumes/completes the journey without a
 second fare. These are local simulated services, not live transit schedules.
 
+**Metro ride gallery:** after boarding (once the bus pulls away or you reach the
+platform), a gallery of original illustrated cards rotates every 5 seconds. It
+features the Metro vaults, the National Mall, Chocolate City rowhouses, go-go,
+U Street, mambo sauce, the Anacostia, cherry blossoms, Howard University, the
+wider DMV, and stylized tributes to local athletes and culture makers. Train
+riders see it in an underground tunnel; bus riders see it through a bus window.
+**Hide gallery** shrinks it for the current trip. The sequence is deterministic
+per trip, so a reload resumes the same card. Moving lights are disabled under
+reduced-motion settings.
+
 Every public venue, game, field and currently accessible home has a dedicated
 **P** bay sized for the pickup, separate from decorative parking and clear of
 roads, trees and buildings. **Getting off does not move your ride.** It is
@@ -245,6 +255,9 @@ These are stylized original interpretations, not photographs, licensed likeness
 claims or endorsements. Building interiors also have original Chocolate City
 skyline/rowhouse murals and named tribute galleries; no external image service
 is used. `city-art.js` centralizes the palettes, portraits and venue themes.
+The same art also appears outdoors: each quadrant has three street
+billboards with different culture cards. `travel-art.js` defines those cards and
+the Metro gallery, reusing the `city-art.js` portraits.
 
 ## Casino and scheduled promos
 

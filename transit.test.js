@@ -7,7 +7,7 @@ const Transit = require('./transit.js');
 const html = fs.readFileSync(`${__dirname}/index.html`, 'utf8');
 
 test('bus is between walking and the scooter; train costs twice as much and travels twice as fast', () => {
-    const env = { VehicleArt: require('./vehicle-art.js') };
+    const env = { VehicleArt: require('./vehicle-art.js'), TravelArt: require('./travel-art.js') };
     vm.runInNewContext(html.slice(html.indexOf('const vehicles ='), html.indexOf('const ownCar =')) + ';globalThis.rides=vehicles;', env);
     assert.ok(Transit.services.bus.speed > 1);
     assert.ok(Transit.services.bus.speed < env.rides.scooter.speed);
