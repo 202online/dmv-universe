@@ -230,7 +230,8 @@ const Minigames = (() => {
         S = {
             name, host, api, canvas, ctx: canvas.getContext('2d'), k: 1, phase: 'intro', t: 0, last: 0,
             parts: [], texts: [], banners: [], shakeM: 0, shakeT: 0, flashC: null, flashT: 0,
-            pointers: new Map(), result: null, raf: 0, game: null, level
+            pointers: new Map(), result: null, raf: 0, game: null, level,
+            activeSeconds: 0, lastInput: -Infinity, rewardSettled: false
         };
         const env = { W, H, U, sfx, buzz, level, difficulty: U.challenge(level) / 4,
             time: () => S.t, fx, banner, end, phase: () => S.phase, running: () => S.phase === 'play' };
@@ -264,9 +265,9 @@ const Minigames = (() => {
 
     function updateCampaign() {
         const status = S.api.campaign.info(), level = S.level;
-        const reward = level > status.cleared ? `First win: ${status.reward} stars` : 'Cleared level: practice only (0 stars)';
+        const reward = level > status.cleared ? `First-clear bonus: up to ${status.reward} stars, based on active time` : 'Replays earn play time and win rewards';
         S.host.querySelector('#mg-campaign-info').textContent =
-            `${S.game.goal} · ${reward}. Stars are earned once per level. Losses: 0.`;
+            `${S.game.goal} · ${reward}. Active play: 2 stars/min; wins add 1.5/min; first clears add up to 0.5/min. Idle time does not pay.`;
         S.host.querySelector('#mg-current').textContent = `Latest unlocked: ${status.unlocked}`;
         S.host.querySelectorAll('[data-level]').forEach(button => {
             const n = Number(button.dataset.level);
@@ -277,6 +278,10 @@ const Minigames = (() => {
 
     function stop() {
         if (!S) return;
+        if (S.phase === 'play' && S.api.campaign && !S.rewardSettled) {
+            S.rewardSettled = true;
+            S.api.campaign.settle(S.level, false, S.activeSeconds);
+        }
         if (S.raf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(S.raf);
         if (typeof window !== 'undefined') window.removeEventListener('resize', fit);
         if (S.api.overlay) S.api.overlay.classList.remove('mg-mode');
@@ -295,6 +300,7 @@ const Minigames = (() => {
     // Exposed for tests: kind is down | move | up | cancel, time in seconds.
     function pointer(kind, id, x, y, time) {
         if (!S) return;
+        if (kind !== 'cancel') S.lastInput = S.t;
         let p = S.pointers.get(id);
         if (kind === 'down') {
             p = { id, x, y, sx: x, sy: y, t0: time, t: time, path: [{ x, y, t: time }], vx: 0, vy: 0, dx: 0, dy: 0, len: 0 };
@@ -332,10 +338,11 @@ const Minigames = (() => {
     }
 
     function end(result) {
-        if (!S || S.phase === 'over') return;
+        if (!S || S.phase !== 'play') return;
         S.phase = 'over';
         if (S.api.campaign) {
-            const payout = S.api.campaign.settle(S.level, result.win === true);
+            S.rewardSettled = true;
+            const payout = S.api.campaign.settle(S.level, result.win === true, S.activeSeconds);
             result = { ...result, stars: payout.stars, rewardMessage: payout.message };
             updateCampaign();
             const next = S.host.querySelector('#mg-next');
@@ -469,7 +476,11 @@ const Minigames = (() => {
         if (!S) return;
         S.t += dt;
         updateFx(dt);
-        if (S.phase === 'play') S.game.update(dt);
+        if (S.phase === 'play') {
+            const visible = typeof document === 'undefined' || (!document.hidden && document.hasFocus());
+            if (visible && S.t - S.lastInput <= 30) S.activeSeconds += Math.min(dt, .033);
+            if (visible) S.game.update(dt);
+        }
         else if (S.game.idle) S.game.idle(dt);
         if (S) draw();
     }

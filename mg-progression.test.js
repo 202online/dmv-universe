@@ -5,6 +5,40 @@ const test = require('node:test');
 const Campaign = require('./mg-progression.js');
 const TODAY = Date.parse('2026-11-09T12:00:00Z');
 
+test('time economy pays 120/hour participation, up to 90/hour wins and 30/hour first clears', () => {
+    const hourly = outcomes => {
+        const state = Campaign.initial();
+        return outcomes.reduce((total, win, i) =>
+            total + Campaign.settleRound(state, 'soccer', win ? state.cleared.soccer + 1 : 1, win, 60).stars, 0);
+    };
+    assert.equal(hourly(Array(60).fill(false)), 120);
+    assert.equal(hourly(Array(60).fill(true)), 240);
+    assert.equal(hourly(Array.from({ length: 60 }, (_, i) => i % 3 !== 0)), 200);
+    const state = Campaign.initial();
+    Campaign.settleRound(state, 'soccer', 1, true, 0);
+    let replay = 0;
+    for (let i = 0; i < 60; i++) replay += Campaign.settleRound(state, 'soccer', 1, true, 60).stars;
+    assert.equal(replay, 210, 'replays pay time and wins but no first-clear bonus');
+});
+
+test('fractional time earnings survive games/reloads and invalid input cannot change progress', () => {
+    let state = Campaign.initial(), total = 0;
+    for (let i = 0; i < 30; i++) {
+        total += Campaign.settleRound(state, i % 2 ? 'soccer' : 'tennis', 1, false, 1).stars;
+        state = Campaign.restore(JSON.parse(JSON.stringify(state)));
+    }
+    assert.equal(total, 1);
+    assert.equal(state.rewardRemainder, 0);
+    for (const seconds of [-1, NaN, Infinity, undefined, 86401]) {
+        const before = JSON.stringify(state);
+        assert.throws(() => Campaign.settleRound(state, 'soccer', 1, true, seconds), /active play time/);
+        assert.equal(JSON.stringify(state), before);
+    }
+    for (const rewardRemainder of [-1, .5, 120000, NaN]) assert.equal(Campaign.valid({ ...state, rewardRemainder }), false);
+    assert.equal(Campaign.settleRound(state, 'soccer', 1, true, 0).stars, 0);
+    assert.equal(Campaign.info(state, 'soccer').unlocked, 2);
+});
+
 test('all games begin at level one and locked levels cannot pay or unlock', () => {
     const state = Campaign.initial();
     assert.ok(Campaign.valid(state));
@@ -17,7 +51,7 @@ test('all games begin at level one and locked levels cannot pay or unlock', () =
     assert.deepEqual(state, Campaign.initial());
 });
 
-test('first clears pay exactly once, increase rewards and unlock only the next level', () => {
+test('first-clear bonus eligibility is consumed once and unlocks only the next level', () => {
     const state = Campaign.initial();
     for (let level = 1; level <= 100; level++) {
         const clear = Campaign.settle(state, 'soccer', level, true, TODAY);
@@ -31,7 +65,7 @@ test('first clears pay exactly once, increase rewards and unlock only the next l
     assert.ok(Campaign.valid(state));
 });
 
-test('losses and draws never earn currency or unlock levels', () => {
+test('losses and draws never earn first-clear bonuses or unlock levels', () => {
     const state = Campaign.initial();
     for (const name of Campaign.games) {
         assert.equal(Campaign.settle(state, name, 1, false, TODAY).stars, 0);
@@ -42,7 +76,7 @@ test('losses and draws never earn currency or unlock levels', () => {
     assert.equal(state.cleared.tennis, 1);
 });
 
-test('cleared levels never pay again, including after reloads or on later days', () => {
+test('cleared levels never grant another first-clear bonus after reloads or later days', () => {
     let state = Campaign.initial();
     for (const name of Campaign.games) Campaign.settle(state, name, 1, true, TODAY);
     const original = JSON.stringify(state);
@@ -70,7 +104,7 @@ test('legacy saves keep unlocks without requiring or using old replay counters',
     assert.deepEqual(loaded.replay, state.replay);
 });
 
-test('early levels pay 36 per game and later rewards stay capped at 12', () => {
+test('early first-clear bonus caps total 36 per game and later caps stay at 12', () => {
     const state = Campaign.initial();
     let total = 0;
     for (const name of Campaign.games) {
