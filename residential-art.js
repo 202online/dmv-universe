@@ -93,7 +93,7 @@ const ResidentialArt = (() => {
             c.restore();
         }
         const lot = layout.parking;
-        plane(lot.x, lot.y, lot.w, lot.d, .3, '#2e3340', '#aaa99b');
+        plane(lot.x, lot.y, lot.w, lot.d, .3, '#2e3340');
         for (let y = lot.y + 9; y < lot.y + lot.d - 2; y += 14)
             line([[lot.x + 1, y, .35], [lot.x + lot.w - 1, y, .35]], '#29313b25', .6);
         for (let x = lot.x + 12; x < lot.x + lot.w - 2; x += 22)

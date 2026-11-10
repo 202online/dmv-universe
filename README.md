@@ -222,6 +222,10 @@ Each lot, driveway and garage has a clear asphalt entrance reaching the actual
 street surface, not just its sidewalk. Entrances avoid neighboring properties,
 walls and water gardens, and are drawn over sidewalk bands so concrete never
 blocks the vehicle opening.
+Public venue lots measure 140 by 90 world units (about 70% more area than the
+previous 112 by 66 lots), with wider maneuvering space and separated parking
+bays. Continuous perimeter outlines and cross-lot border stripes are removed
+so the matching asphalt flows into the street without an entrance seam.
 
 The city uses consistent **compact arcade proportions**, not real-world map
 distances. All sedans, whether drivable, in a driveway or in a parking lot,

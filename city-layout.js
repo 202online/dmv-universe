@@ -354,14 +354,14 @@
                 const sideways = side === 'right' || side === 'left';
                 const along = sideways ? destination.y + destination.d / 2 : destination.x + destination.w / 2;
                 const local = sideways ?
-                    { x: side === 'right' ? destination.x + destination.w : destination.x - 66, y: along - 56 + shift, w: 66, d: 112 } :
-                    { x: along - 56 + shift, y: side === 'front' ? destination.y + destination.d : destination.y - 66, w: 112, d: 66 };
+                    { x: side === 'right' ? destination.x + destination.w : destination.x - 90, y: along - 70 + shift, w: 90, d: 140 } :
+                    { x: along - 70 + shift, y: side === 'front' ? destination.y + destination.d : destination.y - 90, w: 140, d: 90 };
                 const area = { ...region(destination, local), destination, kind: 'lot' };
                 if (!bounded(area) || objects.filter(b => b !== destination).some(b => overlaps(area, b)) ||
                     q.parkingAreas.some(b => overlaps(area, b))) continue;
                 if (!q.neighborhood.streets.some(r => intersects(r, area)) &&
                     !nearRoad(q, area.x + area.w / 2, area.y + area.d / 2)) continue;
-                const bays = [4, 68].map(offset => {
+                const bays = [4, 96].map(offset => {
                     let r;
                     if (side === 'front') r = { x: local.x + offset, y: local.y + 3, w: 40, d: 22, heading: [1, 0] };
                     if (side === 'rear') r = { x: local.x + offset, y: local.y + local.d - 25, w: 40, d: 22, heading: [1, 0] };

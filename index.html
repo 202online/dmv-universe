@@ -1664,8 +1664,7 @@
             }
             for (const area of q.parkingAreas.filter(a => ['lot', 'garage'].includes(a.kind) && !CityLayout.residentialPlan(a.destination))) {
                 roadAligned(area, () => {
-                    groundRect(area.x, area.y, area.w, area.d, '#2e3340', '#a8a99a');
-                    groundRect(area.x + 3, area.y + area.d - 18, area.w - 6, 2, '#c1c4ab');
+                    groundRect(area.x, area.y, area.w, area.d, '#2e3340');
                     for (let x = area.x + 8; x < area.x + area.w - 4; x += 16)
                         groundRect(x, area.y + 3, .7, area.d - 6, '#bac2b21c');
                     groundRect(area.x + area.w - 8, area.y + area.d - 8, 5, 5, '#26333b', '#82908b');

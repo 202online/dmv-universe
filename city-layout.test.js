@@ -165,8 +165,8 @@ test('every destination owns real parking containing sized, collision-free bays 
             if (residential || bay.destination.garage)
                 assert.ok(CityLayout.contains(bay.destination, CityLayout.footprint(bay).corners), 'Residential parking stays on its own plot');
             else {
-                assert.ok(bay.area.w * bay.area.d >= 7000, 'Public venues own a full lot with an aisle, not asphalt behind a bay');
-                assert.ok(Math.abs(CityLayout.distanceTo(bay.destination, ...CityLayout.point(bay.area, bay.area.x + bay.area.w / 2, bay.area.y + bay.area.d / 2)) - 33) < 1e-7, 'Lot attaches directly to its destination');
+                assert.equal(bay.area.w * bay.area.d, 12600, 'Public lots are 140 by 90, with a broader maneuvering aisle');
+                assert.ok(Math.abs(CityLayout.distanceTo(bay.destination, ...CityLayout.point(bay.area, bay.area.x + bay.area.w / 2, bay.area.y + bay.area.d / 2)) - 45) < 1e-7, 'Lot attaches directly to its destination');
                 assert.ok(q.neighborhood.streets.some(r => CityLayout.intersects(r, bay.area)), 'The lot connects directly to an approach');
             }
             for (const object of [...CityLayout.targets(q).filter(b => b !== bay.destination), ...q.playerParking.slice(i+1)])
