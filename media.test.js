@@ -37,31 +37,39 @@ test('Chocolate City aisle covers the requested subjects', () => {
 });
 
 test('generated books are deterministic per UTC week, readable in 2-4 minutes and change weekly', () => {
-    let changedChapters = 0;
     for (const shelf of Data.shelves) {
         const a = Media.shelfBooks(shelf.id, new Date('2026-11-09T00:00:00Z'));
         assert.deepEqual(Media.shelfBooks(shelf.id, new Date('2026-11-15T23:59:59Z')), a);
         for (const book of a) {
             assert.ok(book.minutes >= 2 && book.minutes <= 4, `${book.title}: ${book.words} words`);
+            const actualWords = Media.countWords(book.intro) + book.chapters.reduce((sum, c) =>
+                sum + Media.countWords(c.heading) + Media.countWords(c.text), 0) +
+                book.review.reduce((sum, p) => sum + Media.countWords(p), 0) + Media.countWords(book.closing);
+            assert.equal(book.words, actualWords);
+            assert.ok(actualWords >= 400 && actualWords <= 800, `${book.title}: actual reading length ${actualWords}`);
             assert.equal(new Set(book.chapters.map(c => c.heading)).size, book.chapters.length);
         }
         const later = Media.shelfBooks(shelf.id, new Date('2026-11-16T00:00:00Z'));
         assert.notDeepEqual(later, a);
-        if (JSON.stringify(later.map(b => b.chapters)) !== JSON.stringify(a.map(b => b.chapters))) changedChapters++;
+        const editions = Array.from({ length: 8 }, (_, week) => Media.shelfBooks(shelf.id,
+            new Date(Date.UTC(2026, 10, 9 + week * 7))));
+        assert.ok(new Set(editions.map(books => JSON.stringify(books.map(b => [b.chapters, b.review])))).size > 1,
+            `${shelf.id}: content and reflection prompts rotate within the finite catalog`);
     }
-    assert.equal(changedChapters, Data.shelves.length, 'every shelf reshuffles its chapters weekly');
     assert.throws(() => Media.shelfBooks('missing'), /Unknown shelf/);
 });
 
 test('short documentaries run 2-4 minutes and TV clips stay on channel', () => {
     for (const channel of Data.channels) {
         const doc = Media.documentary(channel.id, new Date('2026-03-02T12:00:00Z'));
-        assert.ok(doc.seconds >= 100 && doc.seconds <= 260, `${channel.id}: ${doc.seconds}s`);
+        assert.ok(doc.seconds >= 120 && doc.seconds <= 240, `${channel.id}: ${doc.seconds}s`);
         let i = 0;
         const seq = [0.01, 0.5, 0.99];
         for (let n = 0; n < 3; n++) {
             const clip = Media.tvClip(channel.id, () => seq[i++ % seq.length]);
             assert.ok(channel.categories.includes(clip.scene.category));
+            const next = Media.tvClip(channel.id, () => seq[i++ % seq.length], clip.scene.title);
+            assert.notEqual(next.scene.title, clip.scene.title, 'no immediate repeat on TV');
         }
     }
     for (const id of ['gogo-history', 'black-history', 'native-history', 'dc-black-history', 'dmv-history', 'dmv-sports'])
@@ -120,7 +128,10 @@ test('permit tests draw ten valid questions led by the chosen jurisdiction', () 
         const qs = Learning.permitTest(j, Math.random);
         assert.equal(qs.length, Learning.PERMIT_QUESTIONS);
         assert.equal(new Set(qs.map(q => q.id)).size, qs.length);
-        assert.ok(qs.filter(q => q.jurisdiction === j).length >= 7);
+        assert.equal(qs.filter(q => q.jurisdiction === j).length, 7);
+        assert.equal(qs.filter(q => q.jurisdiction === 'ALL').length, 3);
+        assert.ok(qs.every(q => q.jurisdiction === j || (q.jurisdiction === 'ALL' && q.general)),
+            'never teach another jurisdiction’s laws as part of this test');
         qs.forEach(q => { assert.equal(q.choices.length, 4); assert.ok(httpUrl(q.source)); });
     }
     const q = Learning.data.permitQuestions[0];
@@ -146,8 +157,94 @@ test('learning save data validates and records best scores and permits', () => {
     assert.equal(s.permits.DC, '2026-02-03');
     assert.ok(Learning.valid(JSON.parse(JSON.stringify(s))));
     for (const bad of [null, [], { quizBest: {}, permits: { NY: '2026-01-01' } }, { quizBest: { [id]: 101 }, permits: {} },
-        { quizBest: { nope: 5 }, permits: {} }, { quizBest: {}, permits: {}, extra: 1 }, { quizBest: {}, permits: { DC: 5 } }])
+        { quizBest: { nope: 5 }, permits: {} }, { quizBest: {}, permits: {}, extra: 1 }, { quizBest: {}, permits: { DC: 5 } },
+        { quizBest: {}, permits: { DC: '2026-02-30' } }, { quizBest: {}, permits: { MD: '2025-02-29' } },
+        { quizBest: {}, permits: { VA: '2026-13-01' } }])
         assert.equal(Learning.valid(bad), false, JSON.stringify(bad));
+    assert.ok(Learning.valid({ quizBest: {}, permits: { DC: '2024-02-29' } }));
+    assert.throws(() => Learning.recordQuiz(s, 'not-a-trade', 100), /Invalid quiz/);
+    assert.throws(() => Learning.recordQuiz(s, id, 1000), /Invalid quiz/);
+    assert.throws(() => Learning.recordPermit(s, 'NY'), /Invalid practice permit/);
+    assert.throws(() => Learning.recordPermit(s, 'DC', new Date('bad')), /Invalid practice permit/);
+    assert.throws(() => Learning.recordPermit(s, 'DC', new Date('+010000-01-01T00:00:00Z')), /Invalid practice permit/);
+});
+
+test('driving questions use precise age and alcohol wording without guessing DC turn-on-red policy', () => {
+    const find = id => Learning.data.permitQuestions.find(q => q.id === id);
+    const age = find('va-3'), zero = find('dc-3'), turn = find('dc-8');
+    assert.equal(age.choices[age.answer], '15 years and 6 months');
+    assert.equal(zero.choices[zero.answer], 'Any measurable amount of alcohol');
+    assert.match(turn.question, /NO TURN ON RED/);
+    assert.doesNotMatch(turn.explanation, /generally allowed/);
+    for (const id of ['dc-2', 'md-6', 'va-5']) assert.match(find(id).explanation, /below/);
+    const ids = new Set();
+    for (const q of Learning.data.permitQuestions) {
+        assert.ok(!ids.has(q.id), `duplicate ${q.id}`); ids.add(q.id);
+        assert.equal(new Set(q.choices).size, 4, `${q.id}: distinct choices`);
+        assert.ok(Number.isInteger(q.answer) && q.answer >= 0 && q.answer < 4, q.id);
+        assert.ok(q.explanation && httpUrl(q.source), q.id);
+    }
+});
+
+test('career guides remove unsupported salary figures and explain hazardous-work limits', () => {
+    for (const trade of Learning.data.trades)
+        assert.doesNotMatch(trade.facts.map(f => f.text).join(' '), /\$\d/, `${trade.id}: no unverified pay claims`);
+    const facts = id => Learning.data.trades.find(t => t.id === id).facts.map(f => f.text).join(' ');
+    assert.match(facts('electrician'), /non-contact voltage tester alone must not/);
+    assert.match(facts('hvac'), /do not vent refrigerant or open a pressurized line/);
+    assert.match(facts('nursing-assistant'), /body mechanics alone do not/);
+    assert.match(facts('culinary'), /1 hour.*90°F/);
+});
+
+test('reading and documentary lengths meet actual thresholds across a full year of editions', () => {
+    for (let week = 0; week < 52; week++) {
+        const date = new Date(Date.UTC(2026, 0, 5 + week * 7));
+        for (const shelf of Data.shelves)
+            for (const book of Media.shelfBooks(shelf.id, date))
+                assert.ok(book.words >= 400 && book.words <= 800, `${shelf.id}, week ${week}: ${book.words}`);
+        for (const channel of Data.channels) {
+            const doc = Media.documentary(channel.id, date);
+            assert.ok(doc.seconds >= 120 && doc.seconds <= 240, `${channel.id}, week ${week}: ${doc.seconds}`);
+        }
+    }
+});
+
+test('chronological scenes recognize month names, eras and pre-colonial history', () => {
+    const film = Media.features.find(f => f.channel === 'chocolate-city');
+    const position = title => film.scenes.findIndex(s => s.title === title);
+    assert.ok(position('The crack cocaine era begins') < position('The homicide peak'));
+    const rewind = Media.features.find(f => f.channel === 'news-2000s');
+    assert.ok(rewind.scenes.findIndex(s => s.title === 'Attack on the Pentagon') <
+        rewind.scenes.findIndex(s => s.title === 'Red Line collision'));
+    const freedom = Media.features.find(f => f.channel === 'freedom');
+    assert.equal(freedom.scenes[0].title, 'First peoples');
+});
+
+test('showtime boundaries and schedules preserve millisecond precision', () => {
+    const epoch = Date.UTC(2026, 0, 5), first = Media.features[0];
+    for (const ms of [0, 1, 999, first.seconds * 1000 - 1]) {
+        const show = Media.nowShowing(new Date(epoch + ms));
+        assert.equal(show.startedAt, epoch);
+        assert.equal(Media.schedule(new Date(epoch + ms), 1)[0].at.getTime(), epoch + (first.seconds + 60) * 1000);
+    }
+    const intermission = Media.nowShowing(new Date(epoch + first.seconds * 1000));
+    assert.ok(intermission.intermission);
+    assert.equal(intermission.nextIn, 60);
+    const nextAt = epoch + (first.seconds + 60) * 1000;
+    assert.equal(Media.schedule(new Date(nextAt - 1), 1)[0].at.getTime(), nextAt);
+    assert.equal(Media.nowShowing(new Date(nextAt)).film.id, Media.features[1].id);
+    assert.equal(Media.nowShowing(new Date(epoch - 1)).next.id, first.id);
+    assert.throws(() => Media.nowShowing(new Date('invalid')), /Invalid media date/);
+});
+
+test('sensitive topics carry notes on bookshelves and individual media scenes', () => {
+    for (const category of ['crime', 'news2000s', 'blackhistory', 'native', 'dcblack', 'dmvsports'])
+        assert.ok(Media.contentNote([category]), category);
+    for (const feature of Media.features)
+        for (const scene of feature.scenes)
+            assert.equal(scene.content, Media.contentNote([scene.category]));
+    assert.doesNotMatch(Media.shelfBooks('gogo')[0].intro, /checked|verified/);
+    assert.match(Media.CONTENT_NOTICE, /not had a complete independent fact-check/);
 });
 
 test('theater (NW) and DMV (SW) are clear of roads and objects, solid and reachable', () => {

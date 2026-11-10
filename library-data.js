@@ -13,7 +13,7 @@ const LibraryData = (() => {
             'That nonstop groove became the sound of the city, and Brown became known as the Godfather of Go-Go.', W('Chuck_Brown')),
         c('gogo-bustin', 'gogo', '1979', '“Bustin’ Loose” hits number one',
             'Chuck Brown & the Soul Searchers released “Bustin’ Loose,” which reached number one on the Billboard R&B singles chart in 1979.',
-            'It carried a homegrown Washington sound to national radio. Decades later, the Washington Nationals used it as a home-run song.', W('Bustin%27_Loose')),
+            'It carried a homegrown Washington sound to national radio. Decades later, the Washington Nationals used it as a home-run song.', W('Bustin%27_Loose_(song)')),
         c('gogo-pocket', 'gogo', '1970s–90s', 'Congas, cowbells and call-and-response',
             'Go-go is built on a steady percussion groove called the pocket. Congas, timbales, cowbells and a full drum kit lock in under horns and keyboards. Lead talkers call out to the crowd, and the crowd answers.',
             'Bands often shout out neighborhoods, schools and crews, which makes every show feel local and personal.', W('Go-go')),
@@ -119,11 +119,11 @@ const LibraryData = (() => {
 
         // ---------- Black politics ----------
         c('pol-homerule', 'politics', '1973–1975', 'Home Rule',
-            'Congress passed the District of Columbia Home Rule Act in 1973, allowing residents to elect a mayor and council. Walter Washington became the first elected mayor in 1975.',
+            'Congress passed the District of Columbia Home Rule Act in 1973, allowing residents to elect a mayor and council. Walter Washington won the first mayoral election under Home Rule in 1974 and took office in January 1975.',
             'Congress still kept the power to review DC laws and budgets, and that limit remains part of the statehood debate.', W('District_of_Columbia_Home_Rule_Act')),
         c('pol-walter', 'politics', '1967–1979', 'Walter Washington',
-            'President Lyndon Johnson appointed Walter Washington as the city’s chief executive in 1967. He led DC through the 1968 unrest and was elected mayor in 1975.',
-            'He was the first Black mayor of a major American city in the modern era, and he helped set up DC’s new local government.', W('Walter_Washington')),
+            'President Lyndon Johnson appointed Walter Washington as the city’s chief executive in 1967. He led DC through the 1968 unrest and was elected mayor in 1974.',
+            'He served as DC’s first mayor under the new Home Rule government, helping establish its elected local institutions.', W('Walter_Washington')),
         c('pol-barry1', 'politics', '1960–1991', 'Marion Barry rises',
             'Marion Barry came out of the civil rights movement as the first chairman of SNCC, the Student Nonviolent Coordinating Committee. He was elected DC mayor in 1978 and served from 1979 to 1991.',
             'His summer jobs program for young people became one of his best-known legacies.', W('Marion_Barry')),
@@ -134,7 +134,7 @@ const LibraryData = (() => {
             'Sharon Pratt Kelly (then Sharon Pratt Dixon) was elected mayor in 1990. She became the first Black woman to lead a major American city.',
             'She campaigned on cleaning up city government, with a shovel as her symbol.', W('Sharon_Pratt')),
         c('pol-norton', 'politics', '1991–today', 'Eleanor Holmes Norton',
-            'Eleanor Holmes Norton, a civil rights lawyer and DC native, has represented the District as its non-voting delegate in the U.S. House since 1991.',
+            'Eleanor Holmes Norton, a civil rights lawyer and DC native, began serving as the District’s non-voting delegate in the U.S. House in 1991.',
             'She has long pushed for DC statehood and full voting representation.', W('Eleanor_Holmes_Norton')),
         c('pol-control', 'politics', '1995–2001', 'The Control Board years',
             'During a severe budget crisis, Congress created a financial control board in 1995 that took over much of the city government’s authority.',
@@ -297,8 +297,8 @@ const LibraryData = (() => {
             'The Indian Removal Act of 1830 led to the forced relocation of Cherokee, Muscogee (Creek), Seminole, Chickasaw, Choctaw and other nations west of the Mississippi.',
             'Thousands died during removals, including the Cherokee journey known as the Trail of Tears.', W('Indian_removal')),
         c('na-schools', 'native', '1879–1900s', 'Boarding schools',
-            'Starting with Carlisle Indian Industrial School in 1879, the U.S. government ran or supported boarding schools that separated Native children from their families and tried to erase their languages and cultures.',
-            'The Interior Department has documented this history and its lasting harm.', W('American_Indian_boarding_schools')),
+            'The U.S. government ran or supported boarding schools that separated Native children from their families and tried to erase their languages and cultures. Carlisle Indian Industrial School opened in 1879; earlier boarding schools already existed.',
+            'The Interior Department has documented this system and its lasting harm.', W('American_Indian_boarding_schools')),
         c('na-citizenship', 'native', '1924–1975', 'Citizenship and self-determination',
             'The Indian Citizenship Act of 1924 made Native people born in the U.S. citizens. In 1975, the Indian Self-Determination and Education Assistance Act gave tribes more control over programs serving their communities.',
             'Tribal nations continue to strengthen their sovereignty today.', W('Indian_Self-Determination_and_Education_Assistance_Act_of_1975')),
@@ -340,7 +340,7 @@ const LibraryData = (() => {
 
         // ---------- DMV regional history ----------
         c('dmv-residence', 'dmvhistory', '1790', 'Choosing the capital',
-            'The Residence Act of 1790 placed the national capital on the Potomac River, on land taken from Maryland and Virginia.',
+            'The Residence Act of 1790 placed the national capital on the Potomac River. Maryland and Virginia ceded land for the new federal district.',
             'The district was originally a 10-mile square.', W('Residence_Act')),
         c('dmv-1814', 'dmvhistory', '1814', 'Washington burns, Baltimore holds',
             'In August 1814, British troops burned the Capitol and White House. Weeks later, Fort McHenry in Baltimore withstood a British bombardment.',
@@ -399,7 +399,7 @@ const LibraryData = (() => {
             titles: ['DC, Maryland and Virginia', 'Three Places, One Region', 'The DMV Story'], intro: 'DC, Maryland and Virginia share one history, and this book connects the pieces.' },
         { id: 'dmv-sports', section: 'sports', name: 'DMV Sports Legends', blurb: 'Len Bias, the Terps, Ravens, Orioles, Durant, Leonard and Ledecky.', categories: ['dmvsports'],
             titles: ['Legends of the DMV', 'Beltway Ballers', 'From the Blacktop Up'], intro: 'The DMV is one of America’s great sports regions.' },
-        { id: 'dc-sports-all', section: 'sports', name: 'DC Championship Shelf', blurb: 'Every major Washington title in one place.', categories: ['dcsports'],
+        { id: 'dc-sports-all', section: 'sports', name: 'DC Championship Shelf', blurb: 'Selected championship moments from Washington teams.', categories: ['dcsports'],
             titles: ['Banner Season', 'Parade Route'], intro: 'From the Hoyas to the Nationals, these are the championships Washington celebrated.' }
     ];
     const channels = [
@@ -422,11 +422,19 @@ const LibraryData = (() => {
         { title: 'The Nine Lives of Marion Barry', year: 2009, category: 'Political documentary', description: 'An HBO documentary following Marion Barry’s career and comebacks.', whyDC: 'Covers DC politics from Home Rule to Ward 8.', source: W('Marion_Barry') },
         { title: 'Remember the Titans', year: 2000, category: 'Sports drama', description: 'A dramatized story of a newly integrated high school football team.', whyDC: 'Based on T.C. Williams High School in Alexandria, Virginia.', source: W('Remember_the_Titans') },
         { title: 'Selma', year: 2014, category: 'Historical drama', description: 'A film about the 1965 voting rights marches in Alabama.', whyDC: 'Its story leads to the Voting Rights Act signed in Washington.', source: W('Selma_(film)') },
-        { title: 'Hidden Figures', year: 2016, category: 'Historical drama', description: 'The story of Black women mathematicians at NASA.', whyDC: 'Set at Langley in Hampton, Virginia, part of the wider DMV story.', source: W('Hidden_Figures') },
+        { title: 'Hidden Figures', year: 2016, category: 'Historical drama', description: 'A dramatization of Black women mathematicians’ work at NASA.', whyDC: 'Set in Hampton, Virginia, outside the DC metro area; included in the wider Virginia history collection.', source: W('Hidden_Figures') },
         { title: 'Harriet', year: 2019, category: 'Historical drama', description: 'A biographical film about Harriet Tubman’s escape and her missions on the Underground Railroad.', whyDC: 'Tubman was born on Maryland’s Eastern Shore.', source: W('Harriet_(film)') },
         { title: 'The Wire', year: 2002, category: 'TV drama', description: 'An HBO series about institutions in Baltimore.', whyDC: 'Set in Baltimore and featuring DC go-go star Anwan “Big G” Glover.', source: W('The_Wire') }
     ];
-    return { capsules, sections, shelves, channels, films };
+    const contentNotes = {
+        crime: 'Content note: drug use, violence and loss. Victims and affected communities are treated with respect.',
+        news2000s: 'Content note: terrorism, disasters and loss of life.',
+        blackhistory: 'Content note: slavery, racism and discrimination.',
+        native: 'Content note: forced removal, boarding schools and harm to Native communities.',
+        dcblack: 'Content note: slavery, segregation and civil unrest.',
+        dmvsports: 'Content note: includes Len Bias’s death from cocaine intoxication.'
+    };
+    return { capsules, sections, shelves, channels, films, contentNotes };
 })();
 
 if (typeof module !== 'undefined') module.exports = LibraryData;

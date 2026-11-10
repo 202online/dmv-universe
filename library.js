@@ -112,7 +112,8 @@ const CommunityLibrary = (() => {
         const M = media(), sections = M.data.sections;
         function home() {
             content.innerHTML = `<div class="sports-game sportsbook library-reader"><h2>📚 Library Bookshelves</h2>
-                <p>Pick an aisle. Nonfiction books are assembled every Monday (UTC) from checked, cited fact cards, so each week brings new editions without inventing history.</p>
+                <p>Pick an aisle. Nonfiction books are assembled every Monday (UTC) from a finite collection of cited fact cards, with reading questions to help you remember. Topics may repeat across editions.</p>
+                <p class="book-muted">${escape(M.CONTENT_NOTICE)}</p>
                 ${sections.map(sec => `<article class="book-card"><h3>${sec.icon} ${escape(sec.name)}</h3><p>${escape(sec.blurb)}</p>
                 <button type="button" data-section="${sec.id}">Browse ${M.data.shelves.filter(sh => sh.section === sec.id).length} shelves</button></article>`).join('')}
                 <button type="button" id="shelves-back">Back to library</button></div>`;
@@ -139,10 +140,12 @@ const CommunityLibrary = (() => {
             const sh = M.data.shelves.find(x => x.id === bk.shelf);
             content.innerHTML = `<article class="sports-game sportsbook library-reader"><h2 id="book-title" tabindex="-1">${escape(bk.title)}</h2>
                 <p class="book-muted">${escape(sh.name)} · Nonfiction built from cited fact cards · ${bk.minutes} min · ${bk.words} words</p>
-                ${sh.content ? `<p class="book-warning">${escape(sh.content)}</p>` : ''}
+                ${M.contentNote(sh.categories) ? `<p class="book-warning">${escape(M.contentNote(sh.categories))}</p>` : ''}
                 <p class="library-paragraph">${escape(bk.intro)}</p>
                 ${bk.chapters.map((c, n) => `<h3>${n + 1}. ${escape(c.heading)}</h3><p class="library-paragraph">${escape(c.text)}</p>`).join('')}
+                <h3>Remember &amp; reflect</h3>${bk.review.map(p => `<p class="library-paragraph">${escape(p)}</p>`).join('')}
                 <p class="library-paragraph">${escape(bk.closing)}</p>
+                <p class="book-muted">${escape(M.CONTENT_NOTICE)}</p>
                 <h3>Sources</h3><ol class="book-muted book-sources">${[...new Set(bk.chapters.map(c => c.source))].map(u => `<li><a href="${escape(u)}" target="_blank" rel="noopener noreferrer">${escape(u)}</a></li>`).join('')}</ol>
                 <button type="button" id="book-back">Back to shelf</button></article>`;
             content.querySelector('#book-back').addEventListener('click', done);

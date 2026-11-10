@@ -108,6 +108,11 @@ link. Generated content only selects and orders those cards; it never writes new
 historical claims. To add content, add a cited card and reuse an existing
 category.
 
+Source links are further reading, not independent verification. This collection
+still needs a complete editorial fact-check; its in-game notice says so. Study
+current agency manuals for driving, licensing and safety rules. Historical
+summaries are not current news, professional training or legal advice.
+
 - **Bookshelves** (SE Library) have four aisles:
   - **Chocolate City Collection**: go-go; art, style and scenes; the hard years,
     with a content note; sports; entertainment; Black politics.
@@ -117,31 +122,48 @@ category.
     DC through Black Americans and DMV regional history.
   - **Sports**.
 
-  Each shelf generates new 2–4 minute editions every Monday at 00:00 UTC by
-  reshuffling cards. Each edition is deterministic for that week and lists its
-  sources.
+  Each shelf rotates deterministic editions every Monday at 00:00 UTC. Books
+  contain 400–800 words (2–4 minutes at 200 words/minute), including active-recall
+  and source-evaluation prompts, and list their sources. This is a finite
+  catalog: chapters can repeat between editions.
 - **Movie room** (SE Library): nine original 2–4 minute documentaries are rebuilt
   weekly as narrated scene slides, with optional browser text-to-speech. A
-  real-film guide offers original summaries only; nothing is streamed.
+  real-film guide offers original summaries and source links; nothing is streamed.
+  Playback supports pause, back, next and replay. Reading players pause when
+  the tab is hidden; narration resumes when playback does, and unavailable
+  browser speech is reported on screen.
 - **📺 Living Room TV** (Crib menu): nine channels play random clips from each
-  channel's categories, with channel up and down controls.
+  channel's categories, with channel up and down controls. Clips do not repeat
+  immediately; Back revisits the recent clip history.
 - **U Street Picture House** (NW): five longer feature documentaries run on one
-  shared UTC clock, so every player sees the same scene at the same time.
+  shared UTC schedule calculated from the device clock. Devices with accurate
+  clocks see the same scene; this is not a network synchronization service.
   Features are separated by 60-second intermissions, and the theater shows an
-  upcoming schedule. Audience chat currently mixes the player's own local
-  messages with scripted NPC reactions. Real multiplayer chat needs a backend,
-  such as Firebase or Supabase, and is planned for later.
+  upcoming schedule in local time. Pause to read freezes only your screen;
+  Rejoin returns to the current shared scene. Optional browser narration is
+  available. Audience messages are explicitly labeled NPC or You. Chat is
+  local to the current visit, capped at 140 characters per message and 30
+  messages, and never sent to other players. No chat server is used.
 - **🧰 Trades & careers shelf** (`learning-data.js`): 12 plain-language study
   guides for plumbing, electrical, construction, HVAC, IT support,
   cybersecurity, welding, auto, CDL, CNA, culinary, barbering and cosmetology.
-  Each has a memory trick, safety basics, the path in, and BLS pay with the year
-  noted. The **Skills Quiz Center** on any home or library computer gives
-  five-question quizzes and saves the best scores.
+  Each has a memory trick, safety awareness, the path in, and links to BLS for
+  dated pay and outlook figures rather than unverified salary claims. Hazardous
+  tasks require approved training and supervision. The **Skills Quiz Center**
+  on any home or library computer gives five-question quizzes, saves best
+  scores and lets you review all answers after finishing.
 - **DMV Service Center** (SW): learner-permit practice tests for DC, MD and VA.
-  Each test has 10 original questions, at least 7 from the chosen jurisdiction,
-  with answer choices shuffled. Each question has an explanation and an official
-  source link. Scoring 80% or higher records an in-game practice permit. This is
-  study practice, not the official exam; formats and laws change.
+  Each test has 10 original questions: seven from the chosen jurisdiction and
+  three jurisdiction-neutral traffic-sign/signal questions. Other states'
+  laws are never mixed in. Choices are shuffled. A study-first screen and
+  post-test answer review include explanations and official study links.
+  Scoring 80% records an in-game practice permit, not a real permit. The short
+  quizzes do not replicate official exam lengths, sections or pass requirements.
+
+Sensitive topics carry content notes in books and media, not just on the
+crime shelf. Learning screens reset scroll and keyboard focus on navigation;
+Tab stays within the activity dialog. Media timers and narration are stopped
+when the player leaves or closes the activity.
 
 Saves add an optional, validated `learning` section: `{ quizBest, permits }`.
 Old saves still load unchanged. None of these features award stars.

@@ -1,7 +1,7 @@
 'use strict';
 
-// Trades/career guides and original DC/MD/VA permit-practice questions written from official manuals and agency sources.
-// Facts are simplified for learners; rules change, so the UI always points players to the official source.
+// Original educational summaries with agency study links, not an official exam bank or certification.
+// A complete independent source check is still pending; the UI directs learners to current official guidance.
 const LearningData = {
  "trades": [
   {
@@ -16,34 +16,34 @@ const LearningData = {
     },
     {
      "text": "A P-trap holds a small amount of water to block sewer gases from entering a building through drains.",
-     "source": "https://www.osha.gov/plumbing"
+     "source": "https://codes.iccsafe.org/content/IPC2024P1/chapter-10-traps-interceptors-and-separators"
     },
     {
      "text": "Proper drain venting lets air into the pipe system so wastewater flows smoothly and traps don't get siphoned dry.",
-     "source": "https://www.osha.gov/plumbing"
+     "source": "https://codes.iccsafe.org/content/IPC2024P1/chapter-9-vents"
     },
     {
      "text": "Most plumbers learn through a registered apprenticeship combining paid on-the-job training with classroom instruction.",
-     "source": "https://www.apprenticeship.gov/apprenticeship-job-finder/explore-careers/plumber"
+     "source": "https://www.apprenticeship.gov/career-seekers"
     },
     {
      "text": "Licensing requirements vary by state/locality — DC, Maryland, and Virginia each set their own plumber licensing rules.",
-     "source": "https://www.apprenticeship.gov/apprenticeship-job-finder/explore-careers/plumber"
+     "source": "https://www.apprenticeship.gov/career-seekers"
     },
     {
-     "text": "The median annual wage for plumbers, pipefitters, and steamfitters was about $61,550 in May 2023, per BLS data.",
+     "text": "For current national median pay and the data year, consult the BLS Occupational Outlook Handbook. National medians are not local starting wages.",
      "source": "https://www.bls.gov/ooh/construction-and-extraction/plumbers-pipefitters-and-steamfitters.htm"
     },
     {
-     "text": "Job outlook for plumbers is projected to grow, often cited as faster than average, due to ongoing construction and maintenance needs.",
+     "text": "Plumbers work in construction and maintenance. Consult the dated BLS employment projection rather than assuming a job is guaranteed.",
      "source": "https://www.bls.gov/ooh/construction-and-extraction/plumbers-pipefitters-and-steamfitters.htm"
     },
     {
      "text": "Always shut off the water supply before working on a fixture, and wear eye protection when cutting or soldering pipe.",
-     "source": "https://www.osha.gov/plumbing"
+     "source": "https://www.osha.gov/personal-protective-equipment"
     }
    ],
-   "mnemonic": "\"No trap, no job\" — every drain needs a P-trap to keep sewer gas out.",
+   "mnemonic": "\"Water seal, sewer shield\" — a sink's P-trap retains water to block sewer gas.",
    "quiz": [
     {
      "question": "What is the main purpose of a P-trap under a sink?",
@@ -117,27 +117,27 @@ const LearningData = {
      "source": "https://www.nist.gov/pml/owm/si-units-electric-current"
     },
     {
-     "text": "Always de-energize and lock out/tag out a circuit before working on it to prevent electric shock.",
+     "text": "Qualified workers isolate electrical energy, follow required lockout/tagout procedures, and verify absence of voltage with appropriate test equipment before work. Turning off a switch alone is not proof of safety.",
      "source": "https://www.osha.gov/control-hazardous-energy"
     },
     {
      "text": "Electricians typically train through a registered apprenticeship lasting several years combining classroom and on-the-job hours.",
-     "source": "https://www.apprenticeship.gov/apprenticeship-job-finder/explore-careers/electrician"
+     "source": "https://www.apprenticeship.gov/career-seekers"
     },
     {
      "text": "Most states, including DC, Maryland, and Virginia, require electricians to be licensed, though specific rules differ by jurisdiction.",
-     "source": "https://www.apprenticeship.gov/apprenticeship-job-finder/explore-careers/electrician"
+     "source": "https://www.apprenticeship.gov/career-seekers"
     },
     {
-     "text": "The median annual wage for electricians was about $61,590 in May 2023, per BLS data.",
+     "text": "Check the BLS Occupational Outlook Handbook for dated national median pay. Apprentices' pay and local starting wages differ from the occupation's median.",
      "source": "https://www.bls.gov/ooh/construction-and-extraction/electricians.htm"
     },
     {
-     "text": "Electrician employment is projected to grow faster than the average for all occupations.",
+     "text": "Construction and maintenance create electrical work. Check BLS for its current projection period and outlook; demand varies by location.",
      "source": "https://www.bls.gov/ooh/construction-and-extraction/electricians.htm"
     },
     {
-     "text": "Rubber-insulated gloves and non-contact voltage testers are basic safety tools used to avoid shock hazards.",
+     "text": "Electrical PPE must be properly rated and used by trained workers. A non-contact voltage tester alone must not be used to prove a circuit is safe to touch.",
      "source": "https://www.osha.gov/electrical"
     }
    ],
@@ -185,7 +185,7 @@ const LearningData = {
       "A paintbrush"
      ],
      "answer": 1,
-     "explanation": "Non-contact voltage testers detect live wires without requiring direct contact."
+     "explanation": "A non-contact voltage tester can indicate an electric field, but a negative reading alone does not prove a circuit is de-energized. Only qualified workers should verify electrical safety using approved procedures and appropriate equipment."
     },
     {
      "question": "True or false: electrician licensing rules are exactly the same in DC, Maryland, and Virginia.",
@@ -212,11 +212,11 @@ const LearningData = {
     },
     {
      "text": "\"Measure twice, cut once\" reflects the importance of precise measurement to avoid wasting materials.",
-     "source": "https://www.apprenticeship.gov/apprenticeship-job-finder/explore-careers/carpenter"
+     "source": "https://www.apprenticeship.gov/career-seekers"
     },
     {
      "text": "Wall studs in residential framing are commonly spaced 16 inches on center (or sometimes 24 inches) for structural consistency.",
-     "source": "https://www.apprenticeship.gov/apprenticeship-job-finder/explore-careers/carpenter"
+     "source": "https://www.apprenticeship.gov/career-seekers"
     },
     {
      "text": "Fall protection (guardrails, harnesses) is required on many construction sites where workers are exposed to falls of 6 feet or more.",
@@ -224,14 +224,14 @@ const LearningData = {
     },
     {
      "text": "Carpenters often train through registered apprenticeships combining paid work with technical instruction.",
-     "source": "https://www.apprenticeship.gov/apprenticeship-job-finder/explore-careers/carpenter"
+     "source": "https://www.apprenticeship.gov/career-seekers"
     },
     {
-     "text": "The median annual wage for carpenters was about $56,350 in May 2023, per BLS data.",
+     "text": "Check BLS for current national median carpenter pay and its data year. A median is not a guaranteed wage or an apprentice's starting rate.",
      "source": "https://www.bls.gov/ooh/construction-and-extraction/carpenters.htm"
     },
     {
-     "text": "Carpentry employment is projected to grow about as fast as average, per BLS outlook data.",
+     "text": "Carpenters work on building and renovation projects. Local construction activity affects demand; read the dated BLS outlook for national projections.",
      "source": "https://www.bls.gov/ooh/construction-and-extraction/carpenters.htm"
     },
     {
@@ -318,23 +318,23 @@ const LearningData = {
     },
     {
      "text": "HVAC training commonly combines trade school or community college coursework with a registered apprenticeship.",
-     "source": "https://www.apprenticeship.gov/apprenticeship-job-finder/explore-careers/hvac-technician"
+     "source": "https://www.apprenticeship.gov/career-seekers"
     },
     {
      "text": "Licensing for HVAC technicians varies by state/locality; DC, Maryland, and Virginia each have their own rules.",
-     "source": "https://www.apprenticeship.gov/apprenticeship-job-finder/explore-careers/hvac-technician"
+     "source": "https://www.apprenticeship.gov/career-seekers"
     },
     {
-     "text": "The median annual wage for HVAC mechanics and installers was about $57,300 in May 2023, per BLS data.",
+     "text": "The BLS Occupational Outlook Handbook lists national median pay with a data year. Local HVAC wages vary with experience, certification and employer.",
      "source": "https://www.bls.gov/ooh/installation-maintenance-and-repair/heating-air-conditioning-and-refrigeration-mechanics-and-installers.htm"
     },
     {
-     "text": "Employment for HVAC technicians is projected to grow faster than average, per BLS outlook data.",
+     "text": "HVAC work includes installation and ongoing maintenance. Check BLS for dated national employment projections and local employers for actual openings.",
      "source": "https://www.bls.gov/ooh/installation-maintenance-and-repair/heating-air-conditioning-and-refrigeration-mechanics-and-installers.htm"
     },
     {
-     "text": "Always de-energize electrical components and relieve pressure in refrigerant lines before servicing equipment.",
-     "source": "https://www.osha.gov/control-hazardous-energy"
+     "text": "Only trained, appropriately certified workers should service refrigerant systems. Follow energy-isolation and refrigerant-recovery procedures; do not vent refrigerant or open a pressurized line.",
+     "source": "https://www.epa.gov/section608"
     }
    ],
    "mnemonic": "\"Cool heads, sealed refrigerant\" — always get Section 608 certified before handling refrigerants.",
@@ -387,12 +387,12 @@ const LearningData = {
      "question": "Before servicing HVAC equipment, a technician should:",
      "choices": [
       "Leave electrical power on for convenience",
-      "De-energize electrical components and relieve line pressure as appropriate",
+      "Follow approved energy-isolation and refrigerant-recovery procedures with the required training",
       "Ignore lockout procedures",
       "Work only at night"
      ],
      "answer": 1,
-     "explanation": "De-energizing equipment and relieving pressure reduces the risk of shock or injury during servicing."
+     "explanation": "HVAC servicing requires trained workers, approved energy-isolation procedures and proper refrigerant recovery. Never vent refrigerant or open a pressurized line as a shortcut."
     }
    ]
   },
@@ -423,11 +423,11 @@ const LearningData = {
      "source": "https://www.comptia.org/certifications/a"
     },
     {
-     "text": "The median annual wage for computer support specialists was about $59,660 in May 2023, per BLS data.",
+     "text": "BLS reports pay separately for computer user support and network support specialists. Compare the correct occupation and data year rather than treating all support roles as one salary.",
      "source": "https://www.bls.gov/ooh/computer-and-information-technology/computer-support-specialists.htm"
     },
     {
-     "text": "Employment for computer support specialists is projected to grow about as fast as average, per BLS outlook data.",
+     "text": "User support and network support have different job outlooks. Check the current dated BLS projections for the role you are considering.",
      "source": "https://www.bls.gov/ooh/computer-and-information-technology/computer-support-specialists.htm"
     },
     {
@@ -521,11 +521,11 @@ const LearningData = {
      "source": "https://www.comptia.org/certifications/security"
     },
     {
-     "text": "The median annual wage for information security analysts was about $120,360 in May 2023, per BLS data.",
+     "text": "Check BLS for information security analysts' current national median pay and data year. This occupation-wide figure is not a promise of entry-level pay.",
      "source": "https://www.bls.gov/ooh/computer-and-information-technology/information-security-analysts.htm"
     },
     {
-     "text": "Employment for information security analysts is projected to grow much faster than average, per BLS outlook data.",
+     "text": "Security analysts may need related IT experience as well as training. Use the dated BLS outlook to understand national demand, not as a job guarantee.",
      "source": "https://www.bls.gov/ooh/computer-and-information-technology/information-security-analysts.htm"
     },
     {
@@ -612,18 +612,18 @@ const LearningData = {
     },
     {
      "text": "Welders often train through vocational programs or registered apprenticeships that include hands-on practice.",
-     "source": "https://www.apprenticeship.gov/apprenticeship-job-finder/explore-careers/welder"
+     "source": "https://www.apprenticeship.gov/career-seekers"
     },
     {
      "text": "Certification (e.g., through AWS - American Welding Society) can be required for certain structural or pipeline welding jobs.",
      "source": "https://www.bls.gov/ooh/production/welders-cutters-solderers-and-brazers.htm"
     },
     {
-     "text": "The median annual wage for welders, cutters, solderers, and brazers was about $48,940 in May 2023, per BLS data.",
+     "text": "BLS lists dated national median pay for welders, cutters, solderers and brazers. Pay depends on specialization, certification, location and employer.",
      "source": "https://www.bls.gov/ooh/production/welders-cutters-solderers-and-brazers.htm"
     },
     {
-     "text": "Employment for welders is projected to grow about as fast as average, per BLS outlook data.",
+     "text": "Manufacturing, repair and construction use welding skills. Consult current BLS projections; demand differs by industry and region.",
      "source": "https://www.bls.gov/ooh/production/welders-cutters-solderers-and-brazers.htm"
     },
     {
@@ -710,23 +710,23 @@ const LearningData = {
     },
     {
      "text": "Technicians train through vocational/technical programs and on-the-job experience, sometimes via registered apprenticeships.",
-     "source": "https://www.apprenticeship.gov/apprenticeship-job-finder/explore-careers/automotive-service-technician"
+     "source": "https://www.apprenticeship.gov/career-seekers"
     },
     {
      "text": "Modern vehicles rely heavily on onboard computers, so diagnostic scan tools are a standard part of troubleshooting.",
      "source": "https://www.bls.gov/ooh/installation-maintenance-and-repair/automotive-service-technicians-and-mechanics.htm"
     },
     {
-     "text": "The median annual wage for automotive service technicians and mechanics was about $47,770 in May 2023, per BLS data.",
+     "text": "Check BLS for dated national median automotive technician pay. Experience, specialty, employer and compensation arrangements can change actual earnings.",
      "source": "https://www.bls.gov/ooh/installation-maintenance-and-repair/automotive-service-technicians-and-mechanics.htm"
     },
     {
-     "text": "Employment for automotive technicians is projected to grow about as fast as average, per BLS outlook data.",
+     "text": "Automotive technology changes as vehicles evolve. Read the current BLS outlook and local training requirements rather than assuming past projections still apply.",
      "source": "https://www.bls.gov/ooh/installation-maintenance-and-repair/automotive-service-technicians-and-mechanics.htm"
     },
     {
      "text": "Always use proper jack stands (not just a jack) to support a vehicle before working underneath it.",
-     "source": "https://www.osha.gov/vehicle-maintenance"
+     "source": "https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.244"
     }
    ],
    "mnemonic": "\"Jack it, then stand it\" — never trust a jack alone; always use jack stands before going underneath a car.",
@@ -811,15 +811,15 @@ const LearningData = {
      "source": "https://www.fmcsa.dot.gov/registration/commercial-drivers-license"
     },
     {
-     "text": "CDL holders are subject to a lower legal BAC limit (0.04) than non-commercial drivers (0.08) when operating a commercial vehicle.",
+     "text": "Operating a commercial motor vehicle with a BAC of 0.04% or higher can disqualify a CDL holder. Lower readings and other alcohol violations can also carry consequences; never treat a threshold as a safe amount to drink.",
      "source": "https://www.fmcsa.dot.gov/regulations/drug-alcohol-testing"
     },
     {
-     "text": "The median annual wage for heavy and tractor-trailer truck drivers was about $54,320 in May 2023, per BLS data.",
+     "text": "BLS reports dated median pay for heavy and tractor-trailer truck drivers. This figure is not the same as bus-driver pay or an owner-operator's business revenue.",
      "source": "https://www.bls.gov/ooh/transportation-and-material-moving/heavy-and-tractor-trailer-truck-drivers.htm"
     },
     {
-     "text": "Employment for heavy truck drivers is projected to grow about as fast as average, per BLS outlook data.",
+     "text": "Freight demand affects truck-driving jobs. Check current BLS projections and local employers, and compare schedules as well as compensation.",
      "source": "https://www.bls.gov/ooh/transportation-and-material-moving/heavy-and-tractor-trailer-truck-drivers.htm"
     },
     {
@@ -841,7 +841,7 @@ const LearningData = {
      "explanation": "FMCSA sets national safety rules for commercial drivers, including hours-of-service limits."
     },
     {
-     "question": "What is the legal BAC limit for a CDL holder operating a commercial vehicle?",
+     "question": "At what BAC can operating a commercial motor vehicle trigger alcohol-related CDL disqualification?",
      "choices": [
       "0.08",
       "0.04",
@@ -849,7 +849,7 @@ const LearningData = {
       "There is no limit"
      ],
      "answer": 1,
-     "explanation": "Commercial drivers face a stricter 0.04 BAC limit compared to the standard 0.08 for non-commercial drivers."
+     "explanation": "A BAC of 0.04% or higher while operating a commercial motor vehicle can trigger CDL disqualification. Other alcohol rules also apply at lower levels; no threshold is a safe drinking allowance."
     },
     {
      "question": "Why are hours-of-service rules important for truck drivers?",
@@ -898,7 +898,7 @@ const LearningData = {
     },
     {
      "text": "Hand hygiene (proper handwashing or sanitizing) is one of the most important ways to prevent spreading infections in healthcare settings.",
-     "source": "https://www.cdc.gov/handhygiene/providers/index.html"
+     "source": "https://www.cdc.gov/clean-hands/"
     },
     {
      "text": "CNAs typically complete a state-approved training program and pass a competency exam to become certified.",
@@ -917,12 +917,12 @@ const LearningData = {
      "source": "https://www.bls.gov/ooh/healthcare/nursing-assistants-and-orderlies.htm"
     },
     {
-     "text": "Employment for nursing assistants is projected to grow about as fast as average, per BLS outlook data.",
+     "text": "Nursing assistants work in settings such as nursing facilities and hospitals. Consult the dated BLS outlook and your local nurse aide registry for current requirements.",
      "source": "https://www.bls.gov/ooh/healthcare/nursing-assistants-and-orderlies.htm"
     },
     {
-     "text": "Proper body mechanics (like bending knees, not the back) help prevent injury when lifting or repositioning patients.",
-     "source": "https://www.osha.gov/healthcare"
+     "text": "Follow a patient's handling plan, training and employer procedures. Use appropriate lifting equipment and assistance; body mechanics alone do not make manual patient lifting safe.",
+     "source": "https://www.osha.gov/healthcare/safe-patient-handling"
     }
    ],
    "mnemonic": "\"Wash, watch vitals, lift with your legs\" — the CNA basics for safe, clean patient care.",
@@ -964,12 +964,12 @@ const LearningData = {
      "question": "What is the safe way to lift or reposition a patient?",
      "choices": [
       "Bend at the back, not the knees",
-      "Use proper body mechanics: bend at the knees, keep back straight",
+      "Follow the patient's handling plan and use the trained assistance and lifting equipment required",
       "Lift as quickly as possible regardless of form",
       "Avoid ever assisting patients"
      ],
      "answer": 1,
-     "explanation": "Bending at the knees and keeping the back straight reduces the risk of back injury when lifting patients."
+     "explanation": "Use the patient's handling plan and approved equipment with trained assistance. Body mechanics alone do not eliminate the injury risks of manually lifting a patient."
     },
     {
      "question": "Does CNA certification work the same way in every state?",
@@ -1003,19 +1003,19 @@ const LearningData = {
      "source": "https://www.fda.gov/food/retail-food-protection/fda-food-code"
     },
     {
-     "text": "USDA food-safety guidance calls 40°F–140°F the 'Danger Zone,' where bacteria grow fastest. Don't leave food out in that range for more than 2 hours.",
+     "text": "USDA consumer guidance calls 40°F–140°F the 'Danger Zone.' Refrigerate perishable food within 2 hours, or within 1 hour when the surrounding temperature is above 90°F. Commercial kitchens must follow their adopted food code.",
      "source": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/danger-zone-40f-140f"
     },
     {
      "text": "Culinary training ranges from on-the-job kitchen experience to culinary school programs and apprenticeships.",
-     "source": "https://www.apprenticeship.gov/apprenticeship-job-finder/explore-careers/cook"
+     "source": "https://www.apprenticeship.gov/career-seekers"
     },
     {
-     "text": "The median annual wage for chefs and head cooks was about $58,920 in May 2023, per BLS data.",
+     "text": "BLS lists dated median pay for chefs and head cooks separately from cooks and other kitchen roles. Use the right occupation when comparing earnings.",
      "source": "https://www.bls.gov/ooh/food-preparation-and-serving/chefs-and-head-cooks.htm"
     },
     {
-     "text": "Employment for chefs and head cooks is projected to grow faster than average, per BLS outlook data.",
+     "text": "Restaurant and institutional kitchen jobs differ in hours and responsibilities. Consult current BLS projections for the specific culinary occupation you want.",
      "source": "https://www.bls.gov/ooh/food-preparation-and-serving/chefs-and-head-cooks.htm"
     },
     {
@@ -1034,10 +1034,10 @@ const LearningData = {
       "200°F"
      ],
      "answer": 2,
-     "explanation": "The FDA Food Code recommends cooking poultry to an internal temperature of at least 165°F."
+     "explanation": "USDA consumer guidance calls for poultry to reach 165°F, measured with a food thermometer. Color alone is not a reliable check."
     },
     {
-     "question": "What is the food 'danger zone' temperature range where bacteria grow quickly?",
+     "question": "In USDA consumer food-safety guidance, what is the 'danger zone' temperature range?",
      "choices": [
       "0°F to 32°F",
       "40°F to 140°F",
@@ -1045,7 +1045,7 @@ const LearningData = {
       "There is no danger zone"
      ],
      "answer": 1,
-     "explanation": "Bacteria multiply rapidly in food held between 40°F and 140°F, so food shouldn't sit in that range too long."
+     "explanation": "USDA consumer guidance uses 40°F–140°F. Refrigerate perishables within 2 hours, or 1 hour above 90°F ambient temperature. Commercial food codes use their own holding rules and temperatures."
     },
     {
      "question": "Why should raw meat and ready-to-eat food use separate cutting boards?",
@@ -1102,7 +1102,7 @@ const LearningData = {
     },
     {
      "text": "Training is typically completed at a licensed cosmetology or barber school, often followed by a state licensing exam.",
-     "source": "https://www.apprenticeship.gov/apprenticeship-job-finder/explore-careers/barber"
+     "source": "https://www.apprenticeship.gov/career-seekers"
     },
     {
      "text": "DC, Maryland, and Virginia each maintain their own cosmetology/barbering licensing boards with specific hour and exam requirements.",
@@ -1113,7 +1113,7 @@ const LearningData = {
      "source": "https://www.bls.gov/ooh/personal-care-and-service/barbers-hairstylists-and-cosmetologists.htm"
     },
     {
-     "text": "Employment in this field is projected to grow about as fast as average, per BLS outlook data.",
+     "text": "Barbering and cosmetology jobs differ by specialty and location. Consult current BLS projections and your licensing board before choosing a training program.",
      "source": "https://www.bls.gov/ooh/personal-care-and-service/barbers-hairstylists-and-cosmetologists.htm"
     },
     {
@@ -1186,7 +1186,7 @@ const LearningData = {
    "id": "dc-1",
    "jurisdiction": "DC",
    "topic": "Cell phone law",
-   "question": "Under DC law, which of the following is prohibited while driving (except hands-free use)?",
+   "question": "Which distracting phone action is prohibited for ordinary driving in DC?",
    "choices": [
     "Holding and using a cell phone to talk or text",
     "Listening to the radio",
@@ -1194,7 +1194,7 @@ const LearningData = {
     "Talking to a passenger"
    ],
    "answer": 0,
-   "explanation": "DC prohibits drivers from holding a handheld phone to talk or text while driving; hands-free devices are allowed.",
+   "explanation": "Do not hold a phone to talk or text while driving. Hands-free exceptions do not remove distraction, and drivers under learner or provisional restrictions may face stricter rules. Check DC's current guidance.",
    "source": "https://dmv.dc.gov/page/driving-and-cell-phones",
    "general": false
   },
@@ -1202,7 +1202,7 @@ const LearningData = {
    "id": "dc-2",
    "jurisdiction": "DC",
    "topic": "BAC limit - adult",
-   "question": "What is the legal blood alcohol concentration (BAC) limit for drivers 21 and older in DC?",
+   "question": "For a non-commercial DC driver age 21 or older, which BAC meets the per-se DUI threshold?",
    "choices": [
     ".05",
     ".08",
@@ -1210,8 +1210,8 @@ const LearningData = {
     ".02"
    ],
    "answer": 1,
-   "explanation": "DC's legal BAC limit for drivers 21+ is .08, consistent with national standards.",
-   "source": "https://dmv.dc.gov/page/dc-driver-manual",
+   "explanation": "A BAC of 0.08% meets the per-se DUI threshold for an adult non-commercial driver. Impairment can lead to consequences below that level. Do not drink and drive; 0.08% is not a safe allowance.",
+   "source": "https://dmv.dc.gov/page/dmv-automobile-driver-manual",
    "general": false
   },
   {
@@ -1222,12 +1222,12 @@ const LearningData = {
    "choices": [
     ".08",
     ".10",
-    "Any detectable amount/very low threshold (e.g., .02)",
+    "Any measurable amount of alcohol",
     "There is no special rule for under-21 drivers"
    ],
    "answer": 2,
-   "explanation": "Zero tolerance laws set a much lower BAC threshold for drivers under 21 than the standard .08 adult limit.",
-   "source": "https://dmv.dc.gov/page/dc-driver-manual",
+   "explanation": "DC has zero tolerance for drivers under 21: any measurable alcohol can lead to penalties. Do not confuse DC's rule with another state's numeric threshold.",
+   "source": "https://dmv.dc.gov/page/dmv-automobile-driver-manual",
    "general": false
   },
   {
@@ -1243,7 +1243,7 @@ const LearningData = {
    ],
    "answer": 2,
    "explanation": "DC law requires the driver and all passengers to wear seat belts.",
-   "source": "https://dmv.dc.gov/page/dc-driver-manual",
+   "source": "https://dmv.dc.gov/page/dmv-automobile-driver-manual",
    "general": false
   },
   {
@@ -1258,8 +1258,8 @@ const LearningData = {
     "Speed up to clear the area quickly"
    ],
    "answer": 1,
-   "explanation": "DC school zones have reduced posted speed limits in effect during school hours/when children are present.",
-   "source": "https://dmv.dc.gov/page/dc-driver-manual",
+   "explanation": "Obey the posted school-zone limit and its hours or activation signs, and watch carefully for children. Do not assume the regular limit applies just because you cannot see a child.",
+   "source": "https://dmv.dc.gov/page/dmv-automobile-driver-manual",
    "general": false
   },
   {
@@ -1275,14 +1275,14 @@ const LearningData = {
    ],
    "answer": 1,
    "explanation": "Drivers in DC must yield to pedestrians who are in a crosswalk, marked or unmarked.",
-   "source": "https://dmv.dc.gov/page/dc-driver-manual",
+   "source": "https://dmv.dc.gov/page/dmv-automobile-driver-manual",
    "general": false
   },
   {
    "id": "dc-7",
    "jurisdiction": "DC",
    "topic": "Automated enforcement",
-   "question": "DC uses automated traffic enforcement cameras primarily to detect which violations?",
+   "question": "Which pair of violations can DC automated traffic enforcement cameras detect?",
    "choices": [
     "Expired registration only",
     "Speeding and red-light violations",
@@ -1297,17 +1297,17 @@ const LearningData = {
   {
    "id": "dc-8",
    "jurisdiction": "DC",
-   "topic": "Right turn on red",
-   "question": "In DC, a driver may turn right on a red light:",
+   "topic": "No turn on red signs",
+   "question": "At a DC intersection with a NO TURN ON RED sign, what should you do?",
    "choices": [
-    "Always, without stopping",
-    "After coming to a complete stop, unless a sign prohibits it",
-    "Only between 9am-5pm",
-    "Never, under any circumstance"
+    "Turn after stopping even while the light is red",
+    "Wait for a signal that permits the turn, then yield to pedestrians and other traffic",
+    "Turn on red if no pedestrians are visible",
+    "Turn on red if the driver behind you honks"
    ],
    "answer": 1,
-   "explanation": "Right turn on red is generally allowed in DC after a full stop, except where signage specifically prohibits it (common in DC for pedestrian safety).",
-   "source": "https://dmv.dc.gov/page/dc-driver-manual",
+   "explanation": "A NO TURN ON RED sign prohibits the turn while the signal is red. Wait for a permitted signal and yield before turning. This question does not assume a citywide right-turn-on-red rule; check current DC guidance.",
+   "source": "https://dmv.dc.gov/page/dmv-automobile-driver-manual",
    "general": false
   },
   {
@@ -1339,7 +1339,7 @@ const LearningData = {
    ],
    "answer": 1,
    "explanation": "A 3-second following distance is a widely taught minimum safety buffer in normal conditions, increasing in poor weather.",
-   "source": "https://dmv.dc.gov/page/dc-driver-manual",
+   "source": "https://dmv.dc.gov/page/dmv-automobile-driver-manual",
    "general": true
   },
   {
@@ -1355,7 +1355,7 @@ const LearningData = {
    ],
    "answer": 1,
    "explanation": "Work zones require reduced speed and close attention to flaggers and temporary signage.",
-   "source": "https://dmv.dc.gov/page/dc-driver-manual",
+   "source": "https://dmv.dc.gov/page/dmv-automobile-driver-manual",
    "general": true
   },
   {
@@ -1370,8 +1370,8 @@ const LearningData = {
     "Ignore it unless it is directly behind"
    ],
    "answer": 1,
-   "explanation": "Drivers must yield right-of-way to emergency vehicles by pulling to the right and stopping until it passes.",
-   "source": "https://dmv.dc.gov/page/dc-driver-manual",
+   "explanation": "Yield to the emergency vehicle. When safe, clear the intersection, move to the right edge and stop without blocking its path. Follow any instructions from police.",
+   "source": "https://dmv.dc.gov/page/dmv-automobile-driver-manual",
    "general": true
   },
   {
@@ -1387,7 +1387,7 @@ const LearningData = {
    ],
    "answer": 1,
    "explanation": "Yellow means the signal is about to turn red; drivers should stop if they can do so safely.",
-   "source": "https://dmv.dc.gov/page/dc-driver-manual",
+   "source": "https://dmv.dc.gov/page/dmv-automobile-driver-manual",
    "general": true
   },
   {
@@ -1403,7 +1403,7 @@ const LearningData = {
    ],
    "answer": 0,
    "explanation": "Drivers are required to signal their intent to turn or change lanes well before executing the maneuver.",
-   "source": "https://dmv.dc.gov/page/dc-driver-manual",
+   "source": "https://dmv.dc.gov/page/dmv-automobile-driver-manual",
    "general": true
   },
   {
@@ -1419,7 +1419,7 @@ const LearningData = {
    ],
    "answer": 1,
    "explanation": "Any activity that takes attention, hands, or eyes off driving (eating, grooming, reaching) is considered distracted driving.",
-   "source": "https://dmv.dc.gov/page/dc-driver-manual",
+   "source": "https://dmv.dc.gov/page/dmv-automobile-driver-manual",
    "general": true
   },
   {
@@ -1435,7 +1435,7 @@ const LearningData = {
    ],
    "answer": 0,
    "explanation": "At a four-way stop, when vehicles arrive simultaneously, the vehicle to the right generally has the right-of-way.",
-   "source": "https://dmv.dc.gov/page/dc-driver-manual",
+   "source": "https://dmv.dc.gov/page/dmv-automobile-driver-manual",
    "general": true
   },
   {
@@ -1451,7 +1451,7 @@ const LearningData = {
    ],
    "answer": 1,
    "explanation": "Implied consent laws mean refusing a chemical test can trigger administrative license suspension, separate from any DUI charge.",
-   "source": "https://dmv.dc.gov/page/dc-driver-manual",
+   "source": "https://dmv.dc.gov/page/dmv-automobile-driver-manual",
    "general": false
   },
   {
@@ -1467,7 +1467,7 @@ const LearningData = {
    ],
    "answer": 0,
    "explanation": "Entering traffic must yield to vehicles already circulating in the roundabout.",
-   "source": "https://dmv.dc.gov/page/dc-driver-manual",
+   "source": "https://dmv.dc.gov/page/dmv-automobile-driver-manual",
    "general": true
   },
   {
@@ -1490,7 +1490,7 @@ const LearningData = {
    "id": "md-1",
    "jurisdiction": "MD",
    "topic": "Move Over law",
-   "question": "Maryland's 'Move Over' law requires drivers approaching a stopped emergency, tow, or highway maintenance vehicle with lights activated to:",
+   "question": "In Maryland, when approaching a stopped vehicle displaying hazard lights or other warning signals, you should:",
    "choices": [
     "Ignore it if in a different lane",
     "Move over a lane if possible, or slow down if they cannot move over",
@@ -1498,8 +1498,8 @@ const LearningData = {
     "Flash their headlights and continue at normal speed"
    ],
    "answer": 1,
-   "explanation": "Maryland's Move Over law requires drivers to change lanes away from the stopped vehicle when safe, or reduce speed if a lane change isn't possible.",
-   "source": "https://mva.maryland.gov/drivers/Pages/driver-manual.aspx",
+   "explanation": "Maryland expanded its Move Over protection to stopped vehicles displaying warning signals, not just emergency vehicles. Move over when safe; otherwise slow to a safe speed and use caution.",
+   "source": "https://mva.maryland.gov/Documents/DL-002.pdf",
    "general": false
   },
   {
@@ -1509,13 +1509,13 @@ const LearningData = {
    "question": "A Maryland learner's permit holder must be accompanied by:",
    "choices": [
     "No one; they may drive alone",
-    "A licensed driver at least 21 years old (or qualifying supervisor) seated beside them",
+    "A licensed driver at least 21 with at least 3 years of driving experience, seated beside them",
     "Any passenger, regardless of age or license status",
     "A police escort vehicle"
    ],
    "answer": 1,
-   "explanation": "Maryland requires learner's permit holders to be supervised by a qualified licensed driver, typically at least 21, seated in the front passenger seat.",
-   "source": "https://mva.maryland.gov/drivers/Pages/driver-manual.aspx",
+   "explanation": "A Maryland supervising driver must be at least 21, have at least 3 years of driving experience and sit in the front passenger seat. Study the current MVA rules for your permit and vehicle class.",
+   "source": "https://mva.maryland.gov/Documents/DL-002.pdf",
    "general": false
   },
   {
@@ -1531,7 +1531,7 @@ const LearningData = {
    ],
    "answer": 1,
    "explanation": "Maryland uses a graduated driver licensing system: learner's permit, then provisional license with restrictions, then full license.",
-   "source": "https://mva.maryland.gov/drivers/Pages/driver-manual.aspx",
+   "source": "https://mva.maryland.gov/Documents/DL-002.pdf",
    "general": false
   },
   {
@@ -1547,7 +1547,7 @@ const LearningData = {
    ],
    "answer": 1,
    "explanation": "Maryland requires learner permit holders to complete a minimum number of logged supervised driving hours, including some nighttime hours, before advancing stages.",
-   "source": "https://mva.maryland.gov/drivers/Pages/driver-manual.aspx",
+   "source": "https://mva.maryland.gov/Documents/DL-002.pdf",
    "general": false
   },
   {
@@ -1563,14 +1563,14 @@ const LearningData = {
    ],
    "answer": 1,
    "explanation": "Maryland law requires seat belt use for the driver and passengers per state seat belt statutes.",
-   "source": "https://mva.maryland.gov/drivers/Pages/driver-manual.aspx",
+   "source": "https://mva.maryland.gov/Documents/DL-002.pdf",
    "general": false
   },
   {
    "id": "md-6",
    "jurisdiction": "MD",
    "topic": "BAC limit",
-   "question": "The legal BAC limit for drivers 21 and older in Maryland is:",
+   "question": "For an adult non-commercial Maryland driver, which BAC meets the per-se DUI threshold?",
    "choices": [
     ".05",
     ".08",
@@ -1578,24 +1578,24 @@ const LearningData = {
     ".12"
    ],
    "answer": 1,
-   "explanation": "Maryland's legal limit for drivers 21+ is .08 BAC, consistent with national standards.",
-   "source": "https://mva.maryland.gov/drivers/Pages/driver-manual.aspx",
+   "explanation": "A BAC of 0.08% meets Maryland's per-se DUI threshold for an adult non-commercial driver. Impairment can be penalized below that value. Do not treat it as permission to drink and drive.",
+   "source": "https://mva.maryland.gov/Documents/DL-002.pdf",
    "general": false
   },
   {
    "id": "md-7",
    "jurisdiction": "MD",
    "topic": "Work zones",
-   "question": "Fines for traffic violations in a Maryland work zone compared to normal roads are typically:",
+   "question": "How should you respond to a flagger and reduced-speed signs in a Maryland work zone?",
    "choices": [
-    "Lower",
-    "The same",
-    "Higher/doubled in many cases",
-    "Not enforced in work zones"
+    "Ignore temporary signs",
+    "Keep the normal highway speed",
+    "Obey the flagger and posted work-zone speed",
+    "Follow the vehicle ahead without checking signs"
    ],
    "answer": 2,
-   "explanation": "Maryland, like many states, increases penalties for violations committed in active work zones to improve worker safety.",
-   "source": "https://mva.maryland.gov/drivers/Pages/driver-manual.aspx",
+   "explanation": "Follow flagger directions and temporary traffic controls. Reduce speed as posted, leave room and watch for workers. This question does not guess the current fine schedule.",
+   "source": "https://mva.maryland.gov/Documents/DL-002.pdf",
    "general": true
   },
   {
@@ -1611,7 +1611,7 @@ const LearningData = {
    ],
    "answer": 0,
    "explanation": "Standard right-of-way rules give priority to the vehicle on the right when arrival is simultaneous.",
-   "source": "https://mva.maryland.gov/drivers/Pages/driver-manual.aspx",
+   "source": "https://mva.maryland.gov/Documents/DL-002.pdf",
    "general": true
   },
   {
@@ -1627,7 +1627,7 @@ const LearningData = {
    ],
    "answer": 0,
    "explanation": "Maryland restricts handheld phone use while driving, encouraging hands-free alternatives to reduce distracted driving.",
-   "source": "https://mva.maryland.gov/drivers/Pages/driver-manual.aspx",
+   "source": "https://mva.maryland.gov/Documents/DL-002.pdf",
    "general": true
   },
   {
@@ -1643,7 +1643,7 @@ const LearningData = {
    ],
    "answer": 1,
    "explanation": "Traffic in both directions on an undivided road must stop for a school bus with flashing red lights and extended stop arm.",
-   "source": "https://mva.maryland.gov/drivers/Pages/driver-manual.aspx",
+   "source": "https://mva.maryland.gov/Documents/DL-002.pdf",
    "general": true
   },
   {
@@ -1659,7 +1659,7 @@ const LearningData = {
    ],
    "answer": 0,
    "explanation": "Implied consent laws mean driving on public roads implies agreement to chemical testing when lawfully arrested for suspected DUI/DWI.",
-   "source": "https://mva.maryland.gov/drivers/Pages/driver-manual.aspx",
+   "source": "https://mva.maryland.gov/Documents/DL-002.pdf",
    "general": false
   },
   {
@@ -1682,16 +1682,16 @@ const LearningData = {
    "id": "va-3",
    "jurisdiction": "VA",
    "topic": "Learner's permit age",
-   "question": "In Virginia, the minimum age to apply for a learner's permit is generally:",
+   "question": "What is Virginia's minimum age to apply for a learner's permit?",
    "choices": [
     "13",
-    "15 (commonly cited as 15 years and 6 months for the classroom/driving sequence)",
+    "15 years and 6 months",
     "18",
     "21"
    ],
    "answer": 1,
-   "explanation": "Virginia allows teens to begin the learner's permit process around age 15½ as part of its graduated licensing system.",
-   "source": "https://www.dmv.virginia.gov/drivers/learners-permit",
+   "explanation": "Virginia's minimum learner's permit age is 15 years and 6 months, not the 15th birthday. Other identity, testing and licensing requirements also apply.",
+   "source": "https://www.dmv.virginia.gov/licenses-ids/learners-permit",
    "general": false
   },
   {
@@ -1707,14 +1707,14 @@ const LearningData = {
    ],
    "answer": 1,
    "explanation": "Virginia requires a minimum number of supervised driving hours, including nighttime hours, logged before a young driver can obtain a license.",
-   "source": "https://www.dmv.virginia.gov/drivers/learners-permit",
+   "source": "https://www.dmv.virginia.gov/licenses-ids/learners-permit",
    "general": false
   },
   {
    "id": "va-5",
    "jurisdiction": "VA",
    "topic": "BAC limit",
-   "question": "Virginia's legal BAC limit for drivers 21 and older is:",
+   "question": "For an adult non-commercial Virginia driver, which BAC meets the per-se DUI threshold?",
    "choices": [
     ".05",
     ".08",
@@ -1722,8 +1722,8 @@ const LearningData = {
     ".12"
    ],
    "answer": 1,
-   "explanation": "Virginia's legal limit for drivers 21+ is .08, matching the national standard.",
-   "source": "https://www.dmv.virginia.gov/drivers/driver-manual",
+   "explanation": "A BAC of 0.08% meets Virginia's per-se DUI threshold for an adult non-commercial driver. Impairment can bring consequences below that level; no threshold is a safe drinking allowance.",
+   "source": "https://www.dmv.virginia.gov/sites/default/files/forms/dmv39.pdf",
    "general": false
   },
   {
@@ -1733,13 +1733,13 @@ const LearningData = {
    "question": "Virginia's zero-tolerance law for drivers under 21 sets the illegal BAC threshold at:",
    "choices": [
     ".08",
-    "A much lower level (e.g., .02), far below the adult limit",
+    "0.02% or higher",
     "Same as the adult limit",
     "There is no special rule"
    ],
    "answer": 1,
-   "explanation": "Zero-tolerance laws for underage drivers set a much lower BAC threshold than the standard adult limit.",
-   "source": "https://www.dmv.virginia.gov/drivers/driver-manual",
+   "explanation": "Virginia's under-21 alcohol-driving law applies at a BAC of 0.02% or higher. Other alcohol and impaired-driving laws also apply. The safe choice is never to drink and drive.",
+   "source": "https://www.dmv.virginia.gov/sites/default/files/forms/dmv39.pdf",
    "general": false
   },
   {
@@ -1755,14 +1755,14 @@ const LearningData = {
    ],
    "answer": 1,
    "explanation": "Virginia law requires seat belt use for drivers and passengers, with specific child safety seat rules for younger children.",
-   "source": "https://www.dmv.virginia.gov/drivers/driver-manual",
+   "source": "https://www.dmv.virginia.gov/sites/default/files/forms/dmv39.pdf",
    "general": false
   },
   {
    "id": "va-8",
    "jurisdiction": "VA",
    "topic": "Move Over law",
-   "question": "Virginia's Move Over law requires drivers approaching a stopped law-enforcement, emergency, or highway worker vehicle with activated lights to:",
+   "question": "In Virginia, when approaching a stationary vehicle displaying hazard lights, flares or other warning signals, you should:",
    "choices": [
     "Flash headlights and keep the same speed",
     "Move to a non-adjacent lane if possible, or slow down if they cannot change lanes",
@@ -1770,8 +1770,8 @@ const LearningData = {
     "Pass as quickly as possible"
    ],
    "answer": 1,
-   "explanation": "Move Over laws require drivers to change lanes away from the stopped vehicle when safe, or reduce speed when a lane change isn't possible.",
-   "source": "https://www.dmv.virginia.gov/drivers/driver-manual",
+   "explanation": "Virginia's protection includes stationary vehicles displaying warning signals, not just emergency vehicles. On a multi-lane highway, move away a lane when safe; otherwise slow down and proceed cautiously.",
+   "source": "https://www.dmv.virginia.gov/sites/default/files/forms/dmv39.pdf",
    "general": false
   },
   {
@@ -1787,7 +1787,7 @@ const LearningData = {
    ],
    "answer": 1,
    "explanation": "On undivided roads, Virginia law requires traffic from both directions to stop for a school bus with activated red lights/stop arm.",
-   "source": "https://www.dmv.virginia.gov/drivers/driver-manual",
+   "source": "https://www.dmv.virginia.gov/sites/default/files/forms/dmv39.pdf",
    "general": true
   },
   {
@@ -1803,28 +1803,28 @@ const LearningData = {
    ],
    "answer": 0,
    "explanation": "Standard right-of-way convention gives priority to the vehicle approaching from the right at uncontrolled intersections.",
-   "source": "https://www.dmv.virginia.gov/drivers/driver-manual",
+   "source": "https://www.dmv.virginia.gov/sites/default/files/forms/dmv39.pdf",
    "general": true
   },
   {
    "id": "va-11",
    "jurisdiction": "VA",
    "topic": "Work zones",
-   "question": "Virginia law treats traffic violations committed in highway work zones as:",
+   "question": "When entering a Virginia highway work zone, what should you do?",
    "choices": [
-    "Less serious than elsewhere",
-    "Often subject to increased fines/penalties to protect workers",
-    "Not enforced at all",
-    "Only enforced on weekends"
+    "Ignore temporary speed signs",
+    "Obey temporary signs and flaggers, reduce speed as posted, and watch for workers",
+    "Speed up if workers are not visible",
+    "Follow the normal lane layout even when cones redirect traffic"
    ],
    "answer": 1,
-   "explanation": "Virginia increases penalties for certain violations in active work zones to protect highway workers.",
-   "source": "https://www.dmv.virginia.gov/drivers/driver-manual",
+   "explanation": "Temporary signs, flaggers and lane controls guide safe travel through a work zone. Follow posted limits and leave room. Fine amounts and enforcement rules must be checked in current official guidance.",
+   "source": "https://www.dmv.virginia.gov/sites/default/files/forms/dmv39.pdf",
    "general": true
   },
   {
    "id": "gen-1",
-   "jurisdiction": "DC",
+   "jurisdiction": "ALL",
    "topic": "Signs",
    "question": "An eight-sided (octagon) red sign always means:",
    "choices": [
@@ -1840,7 +1840,7 @@ const LearningData = {
   },
   {
    "id": "gen-2",
-   "jurisdiction": "MD",
+   "jurisdiction": "ALL",
    "topic": "Signs",
    "question": "A downward-pointing triangle sign with a red border means:",
    "choices": [
@@ -1856,7 +1856,7 @@ const LearningData = {
   },
   {
    "id": "gen-3",
-   "jurisdiction": "VA",
+   "jurisdiction": "ALL",
    "topic": "Signs",
    "question": "Yellow diamond-shaped signs are generally used for:",
    "choices": [
@@ -1872,7 +1872,7 @@ const LearningData = {
   },
   {
    "id": "gen-4",
-   "jurisdiction": "VA",
+   "jurisdiction": "ALL",
    "topic": "Signals",
    "question": "A flashing red traffic light means you must:",
    "choices": [
@@ -1888,7 +1888,7 @@ const LearningData = {
   },
   {
    "id": "gen-5",
-   "jurisdiction": "MD",
+   "jurisdiction": "ALL",
    "topic": "Signs",
    "question": "A round yellow sign with a black X and two R letters warns of:",
    "choices": [
@@ -1910,7 +1910,7 @@ const LearningData = {
   },
   "MD": {
    "summary": "The Maryland MVA knowledge test is multiple choice on Maryland traffic laws, signs and safe driving, and is required for a learner’s permit. Confirm the current format with the MVA.",
-   "source": "https://mva.maryland.gov/drivers/Pages/driver-manual.aspx"
+   "source": "https://mva.maryland.gov/Documents/DL-002.pdf"
   },
   "VA": {
    "summary": "The Virginia DMV knowledge exam covers traffic signs and general driving knowledge, and is based on the Virginia Driver’s Manual. Confirm the current sections and pass rules with the DMV.",

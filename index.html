@@ -115,6 +115,7 @@
         .doc-progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #34d399, #a78bfa); transition: width .25s linear; }
         .doc-controls, .tv-flip, .tv-guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 10px 0; }
         .tv-guide button { text-align: left; }
+        .tv-guide small { display: block; margin-top: 6px; color: #fde68a; font-weight: normal; }
         .tv-frame .doc-screen { border: 6px solid #0f172a; box-shadow: 0 0 0 2px #64748b, 0 0 24px rgba(125,211,252,.25); }
         .theater-chat { margin-top: 14px; padding: 10px; background: #0f172a; border: 1px solid #475569; border-radius: 10px; }
         .theater-chat ol { max-height: 160px; overflow-y: auto; margin: 6px 0; padding: 0; list-style: none; font-size: 14px; }
@@ -124,11 +125,16 @@
         .theater-send input { flex: 1; min-width: 0; min-height: 44px; padding: 8px; font-size: 16px; color: white; background: #111827; border: 1px solid #94a3b8; border-radius: 6px; }
         .quiz-right { border-color: #34d399 !important; background: #064e3b !important; }
         .quiz-wrong { border-color: #f87171 !important; background: #7f1d1d !important; }
-        .book-sources a, .doc-narration + p a { color: #93c5fd; overflow-wrap: anywhere; }
+        .library-reader a { color: #93c5fd; overflow-wrap: anywhere; }
+        .library-reader h2 { padding-right: 22px; }
+        .library-reader h2:focus { outline: none; }
+        .library-reader details > summary { cursor: pointer; min-height: 44px; }
+        .library-reader .doc-controls button:disabled { opacity: .6; }
+        .library-reader .quiz-right:disabled, .library-reader .quiz-wrong:disabled { opacity: 1; }
         .trade-facts { padding-left: 22px; }
         @keyframes doc-float { from { transform: translateY(-4px) scale(1); } to { transform: translateY(4px) scale(1.06); } }
         @keyframes doc-pan { from { transform: translateX(-6%); } to { transform: translateX(6%); } }
-        @media (prefers-reduced-motion: reduce) { .doc-icon, .doc-screen::after { animation: none; } }
+        @media (prefers-reduced-motion: reduce) { .doc-icon, .doc-screen::after { animation: none; } .doc-progress span { transition: none; } }
         .library-reader .library-paragraph { max-width: 65ch; margin: 18px auto; font-size: 17px; line-height: 1.85; color: #e2e8f0; }
         @media (max-width: 380px) {
             #modal-overlay:has(.sportsbook) { padding: 8px; }
@@ -189,7 +195,7 @@
             <button id="interaction-btn" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold rounded-lg shadow">Enter Venue</button>
         </div>
 
-        <div id="modal-overlay" class="absolute inset-0 bg-black/85 backdrop-blur-md hidden z-30 flex justify-center items-center p-4">
+        <div id="modal-overlay" role="dialog" aria-modal="true" aria-label="City activity" class="absolute inset-0 bg-black/85 backdrop-blur-md hidden z-30 flex justify-center items-center p-4">
             <div class="bg-gray-900 border border-purple-500/60 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 relative shadow-2xl">
                 <button onclick="closeModal()" aria-label="Close" class="modal-close absolute top-4 right-4 text-gray-400 hover:text-white text-xl font-bold">✕</button>
                 <div id="modal-content"></div>
@@ -855,6 +861,36 @@
         let mapQuadrant = null;
         const modalEl = document.getElementById('modal-overlay');
         const bannerEl = document.getElementById('interaction-banner');
+        let learningReturnFocus = null;
+        const modalContent = document.getElementById('modal-content');
+        new MutationObserver(records => {
+            if (!records.some(r => r.target === modalContent) || !modalOpen()) return;
+            if (!modalContent.querySelector('.library-reader')) {
+                modalEl.removeAttribute('aria-labelledby');
+                return;
+            }
+            if (!learningReturnFocus) learningReturnFocus = document.activeElement;
+            const heading = modalContent.querySelector('h2');
+            if (heading) {
+                heading.tabIndex = -1;
+                heading.id ||= 'learning-dialog-title';
+                modalEl.setAttribute('aria-labelledby', heading.id);
+                heading.focus({ preventScroll: true });
+            }
+            modalContent.parentElement.scrollTop = 0;
+        }).observe(modalContent, { childList: true });
+        modalEl.addEventListener('keydown', e => {
+            if (e.key !== 'Tab' || !modalContent.querySelector('.library-reader')) return;
+            const controls = [...modalEl.querySelectorAll('button:not(:disabled), input:not(:disabled), summary, a[href]')]
+                .filter(el => el.getClientRects().length > 0);
+            const first = controls[0], last = controls[controls.length - 1];
+            if (!first) return;
+            if (e.shiftKey && (document.activeElement === first || document.activeElement.tagName === 'H2')) {
+                e.preventDefault(); last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault(); first.focus();
+            }
+        });
         function modalOpen() { return !modalEl.classList.contains('hidden'); }
         function checkInteraction() {
             if (!player.appearance || modalOpen()) return;
@@ -2493,6 +2529,8 @@
 
         function openBuildingModal(type) {
             const content = document.getElementById('modal-content');
+            if (!modalOpen()) learningReturnFocus = document.activeElement;
+            modalEl.removeAttribute('aria-labelledby');
             DMVMedia.stopAll();
             toast('');
             modalEl.classList.remove('hidden');
@@ -2534,7 +2572,7 @@
             } else if (type === 'lemonade') {
                 openLemonadeGame();
             } else if (type === 'library') {
-                content.innerHTML = `<div class="sports-game"><h2>SE Public Library</h2>
+                content.innerHTML = `<div class="sports-game library-reader"><h2>SE Public Library</h2>
                     <p>Bookshelves, a movie room, career study guides and free public computers. Your investing portfolio and quiz scores are shared with your computer at home.</p>
                     <div class="sports-controls library-menu"><button type="button" id="open-library-shelves">📚 Bookshelves — Chocolate City, history & news</button>
                     <button type="button" id="open-library-docs">🎞️ Movie room — short documentaries</button>
@@ -2601,8 +2639,9 @@
         }
 
         function openComputer(location) {
+            DMVMedia.stopAll();
             const content = document.getElementById('modal-content');
-            content.innerHTML = `<div class="sports-game"><h2>${location === 'library' ? 'Library Public Computer' : 'Your Personal Computer'}</h2>
+            content.innerHTML = `<div class="sports-game library-reader"><h2>${location === 'library' ? 'Library Public Computer' : 'Your Personal Computer'}</h2>
                 <p>Choose an app. Learning labs use separate practice balances, never your city stars.</p>
                 <div class="sports-controls"><button type="button" id="open-investing-lab">Investing Practice Lab — stocks, funds, bonds & options</button>
                 <button type="button" id="open-quiz-center">Skills Quiz Center — trades & careers tests</button>
@@ -2634,6 +2673,9 @@
             mapQuadrant = null;
             for (const k in keys) keys[k] = false;
             modalEl.classList.add('hidden');
+            modalEl.removeAttribute('aria-labelledby');
+            if (learningReturnFocus?.isConnected) learningReturnFocus.focus({ preventScroll: true });
+            learningReturnFocus = null;
         }
     </script>
 </body>
