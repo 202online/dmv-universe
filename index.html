@@ -105,6 +105,30 @@
         .invest-input[aria-invalid="true"] { border-color: #fbbf24; }
         .invest-chart { display: block; width: 100%; height: auto; max-height: 180px; background: #0f172a; border-radius: 8px; }
         .library-reader { user-select: text; -webkit-user-select: text; }
+        .doc-screen { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 190px; padding: 18px; text-align: center; border-radius: 12px; border: 2px solid #475569; background: radial-gradient(circle at 30% 20%, #4c1d95 0%, #111827 55%, #020617 100%); overflow: hidden; }
+        .doc-screen::after { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 60%, rgba(0,0,0,.45)); pointer-events: none; animation: doc-pan 9s ease-in-out infinite alternate; }
+        .doc-screen strong { font-size: 20px; line-height: 1.25; color: #fef3c7; z-index: 1; }
+        .doc-icon { font-size: 46px; z-index: 1; animation: doc-float 4s ease-in-out infinite alternate; }
+        .doc-era { padding: 2px 10px; border-radius: 999px; background: rgba(15,23,42,.8); color: #a7f3d0; font-size: 12px; font-weight: 800; z-index: 1; }
+        .doc-narration { max-width: 65ch; margin: 12px auto; font-size: 16px; line-height: 1.7; color: #e2e8f0; }
+        .doc-progress { height: 6px; margin: 8px 0; background: #1e293b; border-radius: 999px; overflow: hidden; }
+        .doc-progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #34d399, #a78bfa); transition: width .25s linear; }
+        .doc-controls, .tv-flip, .tv-guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 10px 0; }
+        .tv-guide button { text-align: left; }
+        .tv-frame .doc-screen { border: 6px solid #0f172a; box-shadow: 0 0 0 2px #64748b, 0 0 24px rgba(125,211,252,.25); }
+        .theater-chat { margin-top: 14px; padding: 10px; background: #0f172a; border: 1px solid #475569; border-radius: 10px; }
+        .theater-chat ol { max-height: 160px; overflow-y: auto; margin: 6px 0; padding: 0; list-style: none; font-size: 14px; }
+        .theater-chat li { padding: 3px 0; }
+        .theater-chat li.you strong { color: #fde68a; }
+        .theater-send { display: flex; gap: 6px; margin-top: 6px; }
+        .theater-send input { flex: 1; min-width: 0; min-height: 44px; padding: 8px; font-size: 16px; color: white; background: #111827; border: 1px solid #94a3b8; border-radius: 6px; }
+        .quiz-right { border-color: #34d399 !important; background: #064e3b !important; }
+        .quiz-wrong { border-color: #f87171 !important; background: #7f1d1d !important; }
+        .book-sources a, .doc-narration + p a { color: #93c5fd; overflow-wrap: anywhere; }
+        .trade-facts { padding-left: 22px; }
+        @keyframes doc-float { from { transform: translateY(-4px) scale(1); } to { transform: translateY(4px) scale(1.06); } }
+        @keyframes doc-pan { from { transform: translateX(-6%); } to { transform: translateX(6%); } }
+        @media (prefers-reduced-motion: reduce) { .doc-icon, .doc-screen::after { animation: none; } }
         .library-reader .library-paragraph { max-width: 65ch; margin: 18px auto; font-size: 17px; line-height: 1.85; color: #e2e8f0; }
         @media (max-width: 380px) {
             #modal-overlay:has(.sportsbook) { padding: 8px; }
@@ -217,6 +241,10 @@
     <script src="sportsbook.js"></script>
     <script src="investing.js"></script>
     <script src="library.js"></script>
+    <script src="library-data.js"></script>
+    <script src="media.js"></script>
+    <script src="learning-data.js"></script>
+    <script src="learning.js"></script>
     <script src="mg-progression.js"></script>
     <script src="mg-core.js"></script>
     <script src="mg-basketball.js"></script>
@@ -422,11 +450,11 @@
             o.x = Math.round(cx - o.w / 2); o.y = Math.round(cy - o.d / 2);
         };
         const centralLayouts = {
-            NW: { buildings: [[540, 1450], [560, 640]], activities: [[-560, 1420], [-560, 590]], boutique: [300, 1750] },
+            NW: { buildings: [[540, 1450], [560, 640]], activities: [[-560, 1420], [-560, 590]], boutique: [300, 1750], theater: [-700, 1720] },
             NE: { buildings: [[-600, 1450], [-300, 1750], [-330, 1320], [-200, 1460]],
                   activities: [[520, 1420], [-560, 590]], shops: [[520, 640], [260, 560], [820, 1750]] },
             SE: { buildings: [[600, 1780]], library: [-560, 1450], activities: [[-560, 620], [560, 590]], shops: [[-300, 300]] },
-            SW: { buildings: [[560, 560], [300, 300]], activities: [[-560, 590]], shops: [[-800, 1300]] }
+            SW: { buildings: [[560, 560], [300, 300]], activities: [[-560, 590]], shops: [[-800, 1300]], dmv: [-480, 1500] }
         };
         const outerHomes = {
             NW: [[-840, 100], [-620, 105], [-400, 100], [450, 100]],
@@ -465,6 +493,16 @@
                 q.buildings.push({ name: 'Uptown Fashion Boutique', w: 100, d: 90, h: 105,
                     color: '#76536e', trim: '#e5c4a4', neon: '#f5b5d5', style: 'subshop', type: 'fashion' });
                 placeCenter(q.buildings[2], ...layout.boutique);
+                const theater = { name: 'U Street Picture House', w: 170, d: 120, h: 130,
+                    color: '#5b2a3c', trim: '#f5d08a', neon: '#fb7185', style: 'theater', type: 'theater' };
+                placeCenter(theater, ...layout.theater);
+                q.buildings.push(theater);
+            }
+            if (id === 'SW') {
+                const dmv = { name: 'DMV Service Center', w: 170, d: 120, h: 95,
+                    color: '#6b7a8f', trim: '#e2e8f0', neon: '#60a5fa', style: 'dmv', type: 'dmv' };
+                placeCenter(dmv, ...layout.dmv);
+                q.buildings.push(dmv);
             }
             q.neighborhood.buildings.filter(b => !['shop', 'restaurant'].includes(b.kind)).forEach((b, i) => {
                 placeCenter(b, ...outerHomes[id][i]);
@@ -530,6 +568,7 @@
         const progress = { stars: 12, property: 1, owned: ['basic'], shirt: 'basic', ownedVehicles: ['bike'], vehicle: 'bike', minigames: MinigameProgression.initial() };
         let sportsbook = Sportsbook.initial();
         let investing = Investing.initial();
+        let learning = Learning.initial();
         let saveEnabled = true, lastCarSave = 0;
         const saveWarning = document.getElementById('save-warning');
 
@@ -537,7 +576,7 @@
             if (!saveEnabled || !player.appearance) return;
             const data = {
                 version: 1, appearance: player.appearance, features: player.features, stars: progress.stars,
-                property: progress.property, owned: progress.owned, shirt: progress.shirt, sportsbook, investing, minigames: progress.minigames,
+                property: progress.property, owned: progress.owned, shirt: progress.shirt, sportsbook, investing, learning, minigames: progress.minigames,
                 vehicle: { id: progress.vehicle, owned: progress.ownedVehicles, quadrant: driving.quadrant, x: ownCar.x, y: ownCar.y, heading: ownCar.heading || [1, 0] }
             };
             try {
@@ -567,6 +606,7 @@
                     (data.features !== undefined && !validFeatures(data.features)) ||
                     (data.sportsbook !== undefined && !Sportsbook.valid(data.sportsbook)) ||
                     (data.investing !== undefined && !Investing.valid(data.investing)) ||
+                    (data.learning !== undefined && !Learning.valid(data.learning)) ||
                     (data.minigames !== undefined && !MinigameProgression.valid(data.minigames)) ||
                     !Number.isSafeInteger(data.stars) || data.stars < 0 ||
                     ![1, 2].includes(data.property) || !Array.isArray(data.owned) ||
@@ -603,6 +643,7 @@
                 player.appearance = data.appearance;
                 if (data.sportsbook !== undefined) sportsbook = data.sportsbook;
                 if (data.investing !== undefined) investing = data.investing;
+                if (data.learning !== undefined) learning = data.learning;
                 player.features = data.features === undefined ? defaultFeatures(data.appearance) : { ...data.features };
                 progress.stars = data.stars;
                 if (data.minigames !== undefined) progress.minigames = data.minigames;
@@ -1256,6 +1297,22 @@
                         poly(faceR(x, y, w, d, u, u + 0.08, 48, 66), i % 2 ? '#f0b879' : '#d87a59');
                     }
                 }
+            } else if (b.style === 'theater') {
+                poly(faceR(x, y, w, d, .1, .9, 70, 104), '#1f1020', b.trim);
+                for (let i = 0; i < 12; i++) {
+                    const u = .13 + i * .062;
+                    poly(faceR(x, y, w, d, u, u + .03, 98, 102), i % 2 ? '#fde68a' : '#fb7185');
+                }
+                poly(faceR(x, y, w, d, .3, .7, 8, 50), '#3b0d1c', b.trim);
+                poly(faceR(x, y, w, d, .18, .26, 14, 52), '#fef3c7');
+                poly(faceR(x, y, w, d, .74, .82, 14, 52), '#fef3c7');
+            } else if (b.style === 'dmv') {
+                for (let i = 0; i < 6; i++) {
+                    const u = .1 + i * .135;
+                    poly(faceR(x, y, w, d, u, u + .09, 40, 70), '#bfdbfe', b.trim);
+                }
+                poly(faceR(x, y, w, d, .38, .62, 76, 88), '#1d4ed8', '#e2e8f0');
+                poly(faceR(x, y, w, d, .42, .58, 6, 34), '#334155', b.trim);
             } else if (b.style === 'library') {
                 poly(faceR(x, y, w, d, .08, .92, 45, 99), '#263c4b', b.trim);
                 for (let row = 0; row < 2; row++) {
@@ -2436,6 +2493,7 @@
 
         function openBuildingModal(type) {
             const content = document.getElementById('modal-content');
+            DMVMedia.stopAll();
             toast('');
             modalEl.classList.remove('hidden');
             for (const k in keys) keys[k] = false;
@@ -2477,9 +2535,18 @@
                 openLemonadeGame();
             } else if (type === 'library') {
                 content.innerHTML = `<div class="sports-game"><h2>SE Public Library</h2>
-                    <p>Free public computers, original 2–4 minute stories, and a weekly rotating reading shelf. Your investing portfolio is shared with your computer at home.</p>
-                    <div class="sports-controls"><button type="button" id="open-library-reads">Browse this week’s short reads</button>
-                    <button type="button" id="open-personal-computer">Use a public computer</button></div></div>`;
+                    <p>Bookshelves, a movie room, career study guides and free public computers. Your investing portfolio and quiz scores are shared with your computer at home.</p>
+                    <div class="sports-controls library-menu"><button type="button" id="open-library-shelves">📚 Bookshelves — Chocolate City, history & news</button>
+                    <button type="button" id="open-library-docs">🎞️ Movie room — short documentaries</button>
+                    <button type="button" id="open-library-careers">🧰 Trades & careers shelf</button>
+                    <button type="button" id="open-library-reads">📖 Short stories (original fiction)</button>
+                    <button type="button" id="open-personal-computer">💻 Use a public computer</button></div></div>`;
+            } else if (type === 'theater') {
+                DMVMedia.renderTheater(content, closeModal);
+                return;
+            } else if (type === 'dmv') {
+                Learning.renderDMV(content, () => learning, next => { learning = next; saveProgress(); }, closeModal);
+                return;
             } else if (type === 'crib') {
                 const c = 'bg-blue-950/80 hover:bg-blue-900 border border-blue-400';
                 content.innerHTML = `
@@ -2489,6 +2556,7 @@
                         <button type="button" id="open-wardrobe" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">👕 Wardrobe Closet</button>
                         <button type="button" id="open-vehicle-garage" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🚲 Vehicle Garage</button>
                         <button type="button" id="open-personal-computer" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">💻 Personal Computer</button>
+                        <button type="button" id="open-home-tv" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">📺 Living Room TV</button>
                         ${btn('🐕 Pet Companion', 'Pet Companion interaction!', c)}
                         ${btn('🏢 Upgrade Property Tier', 'Property upgraded to Tier 2 Navy Yard Loft!', c, 'upgrade')}
                     </div>`;
@@ -2510,6 +2578,15 @@
             });
             const computerButton = document.getElementById('open-personal-computer');
             if (computerButton) computerButton.addEventListener('click', () => openComputer(type));
+            const libraryBack = () => openBuildingModal('library');
+            const shelvesButton = document.getElementById('open-library-shelves');
+            if (shelvesButton) shelvesButton.addEventListener('click', () => CommunityLibrary.renderShelves(content, libraryBack));
+            const docsButton = document.getElementById('open-library-docs');
+            if (docsButton) docsButton.addEventListener('click', () => DMVMedia.renderDocumentaries(content, libraryBack));
+            const careersButton = document.getElementById('open-library-careers');
+            if (careersButton) careersButton.addEventListener('click', () => Learning.renderCareerShelf(content, libraryBack));
+            const tvButton = document.getElementById('open-home-tv');
+            if (tvButton) tvButton.addEventListener('click', () => DMVMedia.renderTV(content, () => openBuildingModal('crib')));
             const readingButton = document.getElementById('open-library-reads');
             if (readingButton) readingButton.addEventListener('click', () =>
                 CommunityLibrary.render(content, () => openBuildingModal('library')));
@@ -2528,9 +2605,12 @@
             content.innerHTML = `<div class="sports-game"><h2>${location === 'library' ? 'Library Public Computer' : 'Your Personal Computer'}</h2>
                 <p>Choose an app. Learning labs use separate practice balances, never your city stars.</p>
                 <div class="sports-controls"><button type="button" id="open-investing-lab">Investing Practice Lab — stocks, funds, bonds & options</button>
+                <button type="button" id="open-quiz-center">Skills Quiz Center — trades & careers tests</button>
                 <button type="button" id="computer-back">Back to ${location === 'library' ? 'library' : 'home'}</button></div></div>`;
             document.getElementById('open-investing-lab').addEventListener('click', () =>
                 Investing.render(content, investing, saveProgress, () => openComputer(location)));
+            document.getElementById('open-quiz-center').addEventListener('click', () =>
+                Learning.renderQuizCenter(content, () => learning, next => { learning = next; saveProgress(); }, () => openComputer(location)));
             document.getElementById('computer-back').addEventListener('click', () => openBuildingModal(location));
         }
 
@@ -2548,6 +2628,7 @@
 
         function closeModal() {
             Minigames.stop();
+            DMVMedia.stopAll();
             sportsGame = null;
             lemonadeGame = null;
             mapQuadrant = null;

@@ -106,7 +106,51 @@ const CommunityLibrary = (() => {
         }
         catalog();
     }
-    return { stories, words, minutes, shelf, render };
+    const media = () => (typeof DMVMedia !== 'undefined' ? DMVMedia : require('./media.js'));
+    // Categorized bookshelves. Nonfiction books are regenerated weekly from cited fact cards.
+    function renderShelves(content, back, sectionId) {
+        const M = media(), sections = M.data.sections;
+        function home() {
+            content.innerHTML = `<div class="sports-game sportsbook library-reader"><h2>📚 Library Bookshelves</h2>
+                <p>Pick an aisle. Nonfiction books are assembled every Monday (UTC) from checked, cited fact cards, so each week brings new editions without inventing history.</p>
+                ${sections.map(sec => `<article class="book-card"><h3>${sec.icon} ${escape(sec.name)}</h3><p>${escape(sec.blurb)}</p>
+                <button type="button" data-section="${sec.id}">Browse ${M.data.shelves.filter(sh => sh.section === sec.id).length} shelves</button></article>`).join('')}
+                <button type="button" id="shelves-back">Back to library</button></div>`;
+            content.querySelectorAll('[data-section]').forEach(btn => btn.addEventListener('click', () => section(btn.dataset.section)));
+            content.querySelector('#shelves-back').addEventListener('click', back);
+        }
+        function section(id) {
+            const sec = sections.find(x => x.id === id), week = M.weekOf();
+            const shelves = M.data.shelves.filter(sh => sh.section === id);
+            content.innerHTML = `<div class="sports-game sportsbook library-reader"><h2>${sec.icon} ${escape(sec.name)}</h2>
+                <p class="book-muted">This week's editions · ${week.date}</p>
+                ${shelves.map(sh => `<details class="book-card"><summary><strong>${escape(sh.name)}</strong> — ${escape(sh.blurb)}</summary>
+                ${M.shelfBooks(sh.id).map((bk, i) => `<article class="book-card"><h3>${escape(bk.title)}</h3><p>${bk.chapters.length} chapters · about ${bk.minutes} min</p>
+                <button type="button" data-book="${sh.id}:${i}">Read</button></article>`).join('')}</details>`).join('')}
+                ${sec.note ? `<p class="book-warning">${escape(sec.note)}</p>` : ''}
+                <button type="button" id="section-back">All aisles</button></div>`;
+            content.querySelectorAll('[data-book]').forEach(btn => btn.addEventListener('click', () => {
+                const [shelfId, i] = btn.dataset.book.split(':');
+                read(M.shelfBooks(shelfId)[Number(i)], () => section(id));
+            }));
+            content.querySelector('#section-back').addEventListener('click', home);
+        }
+        function read(bk, done) {
+            const sh = M.data.shelves.find(x => x.id === bk.shelf);
+            content.innerHTML = `<article class="sports-game sportsbook library-reader"><h2 id="book-title" tabindex="-1">${escape(bk.title)}</h2>
+                <p class="book-muted">${escape(sh.name)} · Nonfiction built from cited fact cards · ${bk.minutes} min · ${bk.words} words</p>
+                ${sh.content ? `<p class="book-warning">${escape(sh.content)}</p>` : ''}
+                <p class="library-paragraph">${escape(bk.intro)}</p>
+                ${bk.chapters.map((c, n) => `<h3>${n + 1}. ${escape(c.heading)}</h3><p class="library-paragraph">${escape(c.text)}</p>`).join('')}
+                <p class="library-paragraph">${escape(bk.closing)}</p>
+                <h3>Sources</h3><ol class="book-muted book-sources">${[...new Set(bk.chapters.map(c => c.source))].map(u => `<li><a href="${escape(u)}" target="_blank" rel="noopener noreferrer">${escape(u)}</a></li>`).join('')}</ol>
+                <button type="button" id="book-back">Back to shelf</button></article>`;
+            content.querySelector('#book-back').addEventListener('click', done);
+            content.querySelector('#book-title').focus();
+        }
+        if (sectionId) section(sectionId); else home();
+    }
+    return { stories, words, minutes, shelf, render, renderShelves };
 })();
 
 if (typeof module !== 'undefined') module.exports = CommunityLibrary;

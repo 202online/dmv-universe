@@ -101,6 +101,51 @@ claiming to generate new writing automatically. Reading and practice trading
 never award stars. Old saves initialize the investing lab without altering
 existing balances, purchases or minigame clears.
 
+## Library shelves, documentaries, TV, theater and the DMV
+
+`library-data.js` holds about 100 short, neutral **fact cards**, each with a source
+link. Generated content only selects and orders those cards; it never writes new
+historical claims. To add content, add a cited card and reuse an existing
+category.
+
+- **Bookshelves** (SE Library) have four aisles:
+  - **Chocolate City Collection**: go-go; art, style and scenes; the hard years,
+    with a content note; sports; entertainment; Black politics.
+  - **Early-2000s DC News Archive**: headlines and entertainment, presented as
+    history rather than live news.
+  - **History & Education**: African American history, Native American history,
+    DC through Black Americans and DMV regional history.
+  - **Sports**.
+
+  Each shelf generates new 2–4 minute editions every Monday at 00:00 UTC by
+  reshuffling cards. Each edition is deterministic for that week and lists its
+  sources.
+- **Movie room** (SE Library): nine original 2–4 minute documentaries are rebuilt
+  weekly as narrated scene slides, with optional browser text-to-speech. A
+  real-film guide offers original summaries only; nothing is streamed.
+- **📺 Living Room TV** (Crib menu): nine channels play random clips from each
+  channel's categories, with channel up and down controls.
+- **U Street Picture House** (NW): five longer feature documentaries run on one
+  shared UTC clock, so every player sees the same scene at the same time.
+  Features are separated by 60-second intermissions, and the theater shows an
+  upcoming schedule. Audience chat currently mixes the player's own local
+  messages with scripted NPC reactions. Real multiplayer chat needs a backend,
+  such as Firebase or Supabase, and is planned for later.
+- **🧰 Trades & careers shelf** (`learning-data.js`): 12 plain-language study
+  guides for plumbing, electrical, construction, HVAC, IT support,
+  cybersecurity, welding, auto, CDL, CNA, culinary, barbering and cosmetology.
+  Each has a memory trick, safety basics, the path in, and BLS pay with the year
+  noted. The **Skills Quiz Center** on any home or library computer gives
+  five-question quizzes and saves the best scores.
+- **DMV Service Center** (SW): learner-permit practice tests for DC, MD and VA.
+  Each test has 10 original questions, at least 7 from the chosen jurisdiction,
+  with answer choices shuffled. Each question has an explanation and an official
+  source link. Scoring 80% or higher records an in-game practice permit. This is
+  study practice, not the official exam; formats and laws change.
+
+Saves add an optional, validated `learning` section: `{ quizBest, permits }`.
+Old saves still load unchanged. None of these features award stars.
+
 ## Local development
 
 Serve this directory with `python3 -m http.server 8766 --bind 127.0.0.1`.
