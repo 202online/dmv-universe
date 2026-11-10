@@ -2,10 +2,16 @@
 
 const ResidentialArt = (() => {
     const vehicles = typeof module !== 'undefined' && module.exports ? require('./vehicle-art.js') : VehicleArt;
+    function listing(b) {
+        const kind = b.kind || b.style, variant = b.variant ?? (b.kind ? 0 : 1);
+        if (b.garage || !['house', 'apartment', 'condo'].includes(kind)) return null;
+        if (kind === 'house') return variant !== 1 ? 'FOR SALE' : null;
+        return (b.available ?? variant === 0) ? 'AVAILABLE' : null;
+    }
     function plan(b) {
         const kind = b.kind || b.style;
         if (!['house', 'apartment', 'condo'].includes(kind)) throw new Error('Unknown residential kind');
-        const variant = b.variant ?? 0;
+        const variant = b.variant ?? (b.kind ? 0 : 1);
         if (![0, 1, 2].includes(variant)) throw new Error('Unknown residential variant');
         let pieces;
         if (kind === 'house') pieces = [
@@ -28,12 +34,44 @@ const ResidentialArt = (() => {
         const parts = pieces.map(([x, y, w, d, z, h, roof]) => ({
             x: b.x + x * b.w, y: b.y + y * b.d, w: w * b.w, d: d * b.d, z: z * b.h, h: h * b.h, roof
         }));
-        return { kind, variant, terrace, parts, available: b.available ?? variant === 0, garden: kind === 'apartment' ?
-            { x: b.x + b.w * .04, y: b.y + b.d * .56, w: b.w * .16, d: b.d * .34 } : null,
-            parking: kind === 'apartment' ?
-            { x: b.x + b.w * .24, y: b.y + b.d * .56, w: b.w * .72, d: b.d * .40, spaces: [6, 4, 5][variant] } :
-            terrace ? { x: b.x + b.w * .04, y: b.y + b.d * .66, w: b.w * .92, d: b.d * .30, spaces: 4 } :
-            { x: b.x + b.w * .78, y: b.y + b.d * .04, w: b.w * .18, d: b.d * .92 } };
+        if (kind === 'house') for (const p of parts) {
+            p.x = b.x + (p.x - b.x) * .88; p.w *= .88;
+        }
+        if (kind === 'apartment') for (const p of parts) {
+            p.y = b.y + (p.y - b.y) * .84; p.d *= .84;
+        }
+        const garden = kind === 'apartment' ?
+            { x: b.x + b.w * .04, y: b.y + b.d * .56, w: b.w * .14, d: b.d * .34 } : null;
+        const parking = kind === 'apartment' ?
+            { x: b.x + b.w * .40, y: b.y + b.d * .48, w: b.w * .56, d: b.d * .50, spaces: 4 } :
+            terrace ? { x: b.x + b.w * .30, y: b.y + b.d * .66, w: b.w * .66, d: b.d * .32, spaces: 2 } :
+            { x: b.x + b.w * (kind === 'house' ? .70 : .78), y: b.y + b.d * .04,
+                w: b.w * (kind === 'house' ? .28 : .20), d: b.d * .94, spaces: 1 };
+        const entrancePart = parts.filter(p => !p.z).sort((a, c) => c.y + c.d - a.y - a.d)[0];
+        const doorX = kind === 'apartment' ? b.x + b.w * .30 :
+            terrace ? b.x + b.w * .16 : entrancePart.x + entrancePart.w * .5;
+        const door = { x: doorX, y: entrancePart.y + entrancePart.d, w: Math.min(16, entrancePart.w * .4), h: 28 };
+        const path = { x: door.x - 10, y: door.y, w: 20, d: b.y + b.d - door.y };
+        const bays = [];
+        if (kind === 'apartment') {
+            const slot = parking.w / parking.spaces;
+            for (let i = 0; i < parking.spaces; i++)
+                bays.push({ x: parking.x + slot * i + (slot - 20) / 2, y: parking.y + 2, w: 20, d: 36, heading: [0, 1] });
+        } else if (terrace) {
+            for (let i = 0; i < parking.spaces; i++)
+                bays.push({ x: parking.x + parking.w / parking.spaces * i + 2, y: parking.y + 2, w: 40, d: 22, heading: [1, 0] });
+        } else {
+            const width = Math.min(20, parking.w);
+            bays.push({ x: parking.x + (parking.w - width) / 2, y: parking.y + parking.d - 38, w: width, d: 36, heading: [0, 1] });
+        }
+        // Reserve the entrance-side spaces for real player vehicles.
+        const decorativeCars = kind === 'apartment' ? bays.slice(2).map((bay, i) => ({
+            ...vehicles.sizes.car, x: bay.x + bay.w / 2 - vehicles.sizes.car.w / 2,
+            y: bay.y + bay.d / 2 - vehicles.sizes.car.d / 2, heading: bay.heading, color: ['#63879a', '#923d4b'][i]
+        })) : [];
+        const available = b.available ?? variant === 0;
+        return { kind, variant, terrace, parts, door, path, bays, decorativeCars,
+            available, listed: listing(b) !== null, garden, parking };
     }
     function draw(b, { ctx: c, P, poly, box, shade }, active = false, time = 0) {
         const layout = plan(b), trim = b.trim, outline = '#17232899';
@@ -49,42 +87,14 @@ const ResidentialArt = (() => {
         plane(b.x, b.y, b.w, b.d, 0, layout.kind === 'apartment' ? '#6d7768' : '#55754c', '#9c9b7a');
         const lot = layout.parking;
         plane(lot.x, lot.y, lot.w, lot.d, .3, layout.kind === 'apartment' ? '#48515b' : '#a9a28d', '#d2c8a9');
-        const parkedCars = [];
-        if (layout.kind === 'apartment') {
-            const count = lot.spaces, slot = lot.w / count;
-            for (let i = 0; i <= count; i++) {
-                const x = lot.x + slot * i;
-                line([[x, lot.y, .6], [x, lot.y + lot.d * .66, .6]], '#efe1ad', 1.2);
-                if (i < count) box(x + slot * .20, lot.y + 1, .6, slot * .60, 1.5, 1, '#b8bcb6');
+        plane(layout.path.x, layout.path.y, layout.path.w, layout.path.d, .5, '#cabfa6');
+        for (const [i, bay] of layout.bays.entries()) {
+            plane(bay.x, bay.y, bay.w, bay.d, .6, null, '#efe1ad', 1.2);
+            if (i < (layout.kind === 'apartment' ? 2 : layout.bays.length)) {
+                const [sx, sy] = P(bay.x + bay.w / 2, bay.y + bay.d / 2, .7);
+                c.save(); c.font = 'bold 10px system-ui'; c.fillStyle = '#e2e8d8'; c.textAlign = 'center';
+                c.fillText('P', sx, sy); c.restore();
             }
-            line([[lot.x, lot.y + lot.d * .92, .6], [lot.x + lot.w, lot.y + lot.d * .92, .6]], '#d7dfdc');
-            for (const [i, color] of [[0, '#63879a'], [2, '#923d4b'], [count - 1, '#c6b38d']])
-                parkedCars.push([lot.x + slot * (i + .5), lot.y + vehicles.sizes.car.w / 2 + 1, color]);
-        } else {
-            if (layout.terrace) box(lot.x, lot.y - 3, 0, lot.w, 2, 1, '#d0c8b3');
-            else box(lot.x - 3, lot.y, 0, 2, lot.d, 1, '#d0c8b3');
-            if (layout.terrace) {
-                const slot = lot.w / lot.spaces;
-                for (let i = 0; i <= lot.spaces; i++)
-                    line([[lot.x + slot * i, lot.y, .6], [lot.x + slot * i, lot.y + lot.d, .6]], '#efe1ad', 1.2);
-                for (let i = 0; i < lot.spaces; i++)
-                    box(lot.x + slot * (i + .2), lot.y + 1, .6, slot * .6, 1.5, 1, '#b8bcb6');
-            } else for (let i = 1; i < 5; i++)
-                line([[lot.x, lot.y + lot.d * i / 5, .6], [lot.x + lot.w, lot.y + lot.d * i / 5, .6]], '#827e70');
-            if (layout.variant === 1 && !layout.terrace) {
-                const gx = lot.x, gy = lot.y;
-                box(gx, gy, 0, lot.w, lot.d * .31, b.h * .24, b.color, outline);
-                const garage = { x: gx, y: gy, w: lot.w, d: lot.d * .31 };
-                front(garage, .10, .90, 1, b.h * .20, '#56636c', trim);
-                for (let z = 4; z < b.h * .20; z += 5) front(garage, .10, .90, z, z + .7, '#c0c6c3');
-            }
-            if (layout.variant === 1 || layout.kind === 'condo' && layout.variant === 2)
-                parkedCars.push([lot.x + lot.w * (layout.terrace ? .625 : .5), lot.y + lot.d - vehicles.sizes.car.w / 2 - 1, '#8b3344']);
-        }
-        function parkedCar(cx, cy, color) {
-            const size = vehicles.sizes.car;
-            vehicles.draw({ ...size, x: cx - size.w / 2, y: cy - size.d / 2, heading: [0, 1], kind: 'car', color, trim: '#d3d9d4' },
-                { ctx: c, P, poly, shade });
         }
         for (const p of layout.parts) {
             const color = b.color;
@@ -99,7 +109,10 @@ const ResidentialArt = (() => {
                         P(p.x + p.w, p.y + p.d * (u + .20), z + height), P(p.x + p.w, p.y + p.d * u, z + height)], '#7099a4', trim);
                 }
             }
-            if (!p.z) front(p, .12, .30, 0, Math.min(28, p.h - 3), '#343d42', trim, 1.5);
+            if (p === layout.parts.find(part => !part.z && Math.abs(part.y + part.d - layout.door.y) < 1e-7)) {
+                const door = layout.door;
+                front(p, (door.x - door.w / 2 - p.x) / p.w, (door.x + door.w / 2 - p.x) / p.w, 0, door.h, '#343d42', trim, 1.5);
+            }
             const top = p.z + p.h;
             if (p.roof === 'gable') {
                 const ridge1 = P(p.x + p.w / 2, p.y, top + 16), ridge2 = P(p.x + p.w / 2, p.y + p.d, top + 16);
@@ -123,7 +136,7 @@ const ResidentialArt = (() => {
                 }
             }
             if (layout.kind !== 'house' || layout.variant === 2) {
-                const depth = Math.min(b.d * .10, (layout.terrace ? lot.y - 2 : b.y + b.d * .98) - p.y - p.d);
+                const depth = Math.min(b.d * .10, (layout.kind === 'apartment' || layout.terrace ? lot.y - 2 : b.y + b.d * .98) - p.y - p.d);
                 if (depth > 0) for (let level = 1; level < levels; level++) {
                     const z = p.z + level * p.h / levels, left = p.x + p.w * .1, right = p.x + p.w * .9, y = p.y + p.d + depth;
                     plane(left, p.y + p.d, right - left, depth, z, '#b9a58a', '#d7ccaf');
@@ -163,18 +176,19 @@ const ResidentialArt = (() => {
             plane(p.x + p.w * .1, p.y + p.d, p.w * .8, b.d * .14, z, '#9d8260', trim);
             for (const u of [.12, .88]) box(p.x + p.w * u, p.y + p.d + b.d * .1, 0, 2, 2, z, '#d6c6a3');
         }
-        for (const car of parkedCars) parkedCar(...car);
-        if (layout.kind === 'house' && layout.variant !== 1) {
-            const x = b.x + b.w * .06, y = b.y + b.d * .91, w = b.w * .50;
+        for (const car of layout.decorativeCars)
+            vehicles.draw({ ...car, kind: 'car', trim: '#d3d9d4' }, { ctx: c, P, poly, shade });
+        if (layout.kind === 'house' && layout.listed) {
+            const x = b.x + b.w * .04, y = b.y + b.d * .94, w = b.w * .16;
             box(x, y, 0, 2, 2, 43, '#f0e5cf', outline);
             box(x, y, 41, w + 4, 2, 2, '#f0e5cf', outline);
             for (const u of [.22, .83])
                 line([[x + w * u, y + 1, 41], [x + w * u, y + 1, 37]], '#687076', 1.2);
             sign(x + 4, y, 17, w, 20, 'FOR SALE', 'CHOCOLATE CITY', '#8e3442', { ctx: c, P, box }, true);
-        } else if (layout.kind !== 'house' && layout.available) {
+        } else if (layout.kind !== 'house' && layout.listed) {
             const apartment = layout.kind === 'apartment';
-            const x = b.x + b.w * (apartment ? .24 : .05), y = b.y + b.d * (apartment ? .54 : layout.terrace ? .60 : .94);
-            const w = b.w * (apartment ? .68 : .62);
+            const x = b.x + b.w * (apartment || layout.terrace ? .40 : .38), y = b.y + b.d * (apartment ? .46 : layout.terrace ? .60 : .94);
+            const w = b.w * (apartment || layout.terrace ? .55 : .30);
             for (const u of [.08, .92]) {
                 box(x + w * u, y, 0, 2, 2, 46, '#c6b89d', outline);
                 box(x + w * u - .5, y - .5, 46, 3, 3, 1, '#e3d4b8', outline);
@@ -207,15 +221,17 @@ const ResidentialArt = (() => {
     }
     function drawGarage(b, env, active = false, time = 0) {
         const { P, poly, box } = env;
-        box(b.x, b.y, 0, b.w, b.d, b.h, b.color, '#34434b');
+        box(b.x, b.y, 0, b.w - 48, b.d, b.h, b.color, '#34434b');
+        box(b.x + b.w - 48, b.y, 0, 48, 2, b.h, b.color, '#34434b');
+        box(b.x + b.w - 48, b.y + b.d - 2, 0, 48, 2, b.h, b.color, '#34434b');
         poly([P(b.x, b.y, b.h), P(b.x + b.w, b.y, b.h),
             P(b.x + b.w, b.y + b.d, b.h), P(b.x, b.y + b.d, b.h)], '#718184', b.trim, 2);
         const side = (u0, u1, z0, z1, color) =>
             poly([P(b.x + b.w, b.y + b.d * u0, z0), P(b.x + b.w, b.y + b.d * u1, z0),
                 P(b.x + b.w, b.y + b.d * u1, z1), P(b.x + b.w, b.y + b.d * u0, z1)], color, b.trim);
         for (const u of [.08, .39, .70]) {
-            side(u, u + .23, 0, b.h * .52, '#425965');
-            for (let z = 4; z < b.h * .52; z += 5) side(u, u + .23, z, z + .6, '#a7b5b4');
+            side(u, u + .23, b.h * .60, b.h * .85, '#425965');
+            for (let z = b.h * .60 + 2; z < b.h * .85; z += 5) side(u, u + .23, z, z + .6, '#a7b5b4');
         }
         sign(b.x + b.w, b.y + b.d * .10, b.h * .62, b.d * .80, 18,
             'PARK HERE', 'GARAGE', '#215657', env, false, true);
@@ -224,7 +240,7 @@ const ResidentialArt = (() => {
             poly([[sx - 7, sy - 10], [sx + 7, sy - 10], [sx, sy]], '#34d399', '#15392d');
         }
     }
-    return { plan, draw, drawGarage };
+    return { plan, listing, draw, drawGarage };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = ResidentialArt;

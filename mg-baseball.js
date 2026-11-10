@@ -3,12 +3,14 @@
 Minigames.register('baseball', env => {
     const { U, sfx, buzz, fx, end } = env;
     const rank = U.challenge(env.level), pitches = 10;
-    const target = 4 + Math.floor(rank / 3), flight = 1.65 - rank * .05;
-    const window = .20 - rank * .01;
+    const pressure = U.pressure(env.level), target = 4 + Math.floor(rank / 3);
+    const baseFlight = 1.65 - pressure * .72, window = .20 - pressure * .115;
+    let flight;
     let pitch, hits, homers, clock, phase, pause, message, hitQuality, swingTime, finished;
 
     function nextPitch() {
         pitch++; clock = -.8; phase = 'pitch'; message = 'Watch the ball approach home plate';
+        flight = baseFlight * (1 + pressure * [0, -.16, .12, -.08, .18][(pitch - 1) % 5]);
         hitQuality = 0; swingTime = 0;
     }
     function start() {

@@ -419,10 +419,17 @@ test('soccer level five requires five goals, not the beginner three', () => {
     }
 });
 
-test('tennis level five still moves and returns automatically through a full match', () => {
+test('tennis manual positioning lets nearby balls return automatically through a full match', () => {
     const h = harness('tennis', 23, 5);
     let returned = false, previousLast = null;
+    const pointer = { id: 1, x: 180, y: 480 };
+    h.game.down(pointer);
     for (let frame = 0; frame < 60 * 600 && !h.result; frame++) {
+        const before = h.game._state();
+        if (before.ball && before.ball.last === 'o') {
+            pointer.x = 180 + U.clamp(before.ball.u + before.ball.vu * .12, -1.15, 1.15) * 146.9;
+            h.game.move(pointer);
+        }
         h.step();
         const s = h.game._state();
         if (previousLast === 'o' && s.ball && s.ball.last === 'p' && s.rally > 0) returned = true;
@@ -433,26 +440,121 @@ test('tennis level five still moves and returns automatically through a full mat
 });
 
 for (const dt of [1 / 60, .033]) {
-    test(`tennis moves, serves, returns and completes without input at dt=${dt}`, () => {
+    test(`tennis never chases the ball without movement input at dt=${dt}`, () => {
         for (const seed of [1, 23, 99]) {
             const h = harness('tennis', seed);
-            let moved = false, returned = false, previousLast = null;
+            let moved = false;
             for (let frame = 0; frame < 600 / dt && !h.result; frame++) {
                 h.step(dt);
                 const s = h.game._state();
                 if (Math.abs(s.pu) > .05) moved = true;
-                if (previousLast === 'o' && s.ball && s.ball.last === 'p' && s.rally > 0) returned = true;
-                previousLast = s.ball && s.ball.last;
             }
-            assert.ok(moved, 'player follows incoming balls');
-            assert.ok(returned, 'player returns CPU shots');
-            assert.ok(h.result, 'hands-free match finishes');
+            assert.equal(moved, false, 'player must position themselves');
+            assert.ok(h.result, 'misses still finish the match without input');
             const s = h.game._state();
             assert.equal(Math.max(s.me, s.cpu), 5);
             assert.equal(h.awards, 1);
         }
     });
 }
+
+    test('tennis taps/drags choose position; cancel stops movement and auto hits require reach', () => {
+        const h = harness('tennis');
+        const p = { id: 1, x: 310, y: 480 };
+        h.game.down(p);
+        for (let i = 0; i < 10; i++) h.step();
+        assert.ok(h.game._state().pu > .3);
+        h.game.up({ ...p, cancelled: true });
+        const stopped = h.game._state().pu;
+        for (let i = 0; i < 50; i++) h.step();
+        assert.equal(h.game._state().pu, stopped);
+        const ball = h.game._state().ball;
+        Object.assign(ball, { u: -.8, v: .32, h: .15, vu: 0, vv: -.5, vh: .2, last: 'o', bounces: 1 });
+        h.step();
+        assert.equal(ball.last, 'o', 'distant balls cannot auto hit');
+        h.game._set({ pu: -.8 });
+        h.step();
+        assert.equal(ball.last, 'p', 'correct positioning triggers assisted hit');
+    });
+
+    test('tennis CPU pace, corner placement, reaction and footwork scale through levels 1-50', () => {
+        let prev;
+        for (const level of [1, 5, 10, 25, 50, 1000000]) {
+            const h = harness('tennis', 23, level), d = h.game._state().difficulty;
+            if (prev) {
+                assert.ok(d.returnTime < prev.returnTime);
+                assert.ok(d.placement > prev.placement);
+                assert.ok(d.cpuSpeed > prev.cpuSpeed);
+                assert.ok(d.reactionTime < prev.reactionTime);
+                assert.ok(d.errorChance < prev.errorChance);
+            }
+            assert.ok(d.returnTime >= .72 && d.playerSpeed === 2.6);
+            prev = d;
+        }
+        const easy = harness('tennis', 23, 1), hard = harness('tennis', 23, 50);
+        for (const h of [easy, hard]) {
+            for (let i = 0; i < 26; i++) h.step();
+            Object.assign(h.game._state().ball, { u: 0, v: .85, h: .2, vu: 0, vv: .5, vh: .1, last: 'p', bounces: 1 });
+            h.game._set({ pu: .7 });
+            for (let i = 0; i < 30 && h.game._state().ball.last === 'p'; i++) h.step();
+            assert.equal(h.game._state().ball.last, 'o');
+            assert.ok(h.game._state().ball.vu < 0, 'CPU attacks open side');
+        }
+        assert.ok(Math.abs(hard.game._state().ball.vu) > Math.abs(easy.game._state().ball.vu));
+    });
+
+    test('soccer deadlines shrink, keepers patrol faster and timed-out kicks cannot be recovered', () => {
+        let previous;
+        for (const level of [1, 5, 10, 25, 50, 1000000]) {
+            const h = harness('soccer', 1, level), s = h.game._state(), d = s.difficulty;
+            if (previous) {
+                assert.ok(d.shotLimit < previous.shotLimit);
+                assert.ok(d.keeperSpeed > previous.keeperSpeed);
+                assert.ok(d.reactionTime < previous.reactionTime);
+            }
+            assert.ok(d.shotLimit >= 2.8);
+            const before = s.keeper.x;
+            h.step(.1);
+            assert.notEqual(s.keeper.x, before, 'goalkeeper moves before shot');
+            assert.ok(Math.abs(s.keeper.x - before) <= d.keeperSpeed * .1 + 1e-8);
+            previous = d;
+        }
+        const h = harness('soccer', 1, 50);
+        const aim = { id: 1, sx: 180, sy: 470, x: 180, y: 370, len: 100, dx: 0, dy: -100, vx: 0, vy: -500, path: [] };
+        h.game.down(aim);
+        for (let i = 0; i < 400 && !h.game._state().ball; i++) h.step();
+        assert.equal(h.game._state().ball.outcome, 'timeout');
+        h.game.up(aim);
+        assert.equal(h.game._state().ball.outcome, 'timeout');
+        for (let i = 0; i < 4000 && !h.result; i++) h.step();
+        assert.ok(h.result);
+        assert.equal(h.result.win, false);
+        assert.equal(h.game._state().goals, 0);
+        assert.equal(h.game._state().log.length, 6);
+        assert.equal(h.awards, 1);
+    });
+
+test('soccer leaves an achievable open corner at beginner and test level 50', () => {
+    for (const level of [1, 50]) {
+        const h = harness('soccer', 9, level);
+        for (let shot = 0; shot < 6; shot++) {
+            let s = h.game._state();
+            for (let i = 0; i < 180 && !s.finished && s.ball; i++) {
+                h.step(); s = h.game._state();
+            }
+            if (s.finished) break;
+            // Wait for the patrol to expose the opposite corner, then swipe there.
+            for (let i = 0; i < 180 && Math.abs(s.keeper.x) < .5; i++) h.step();
+            assert.equal(s.ball, null);
+            const x = s.keeper.x > 0 ? -.86 : .86;
+            h.game._shoot({ tgt: x, height: .83, curl: Math.sign(x) * .65, T: .68 });
+            for (let i = 0; i < 90; i++) h.step();
+        }
+        advance(h, 3);
+        assert.ok(h.result, `level ${level} match finishes`);
+        assert.equal(h.result.win, true, `level ${level} rewards aiming away from a moving keeper`);
+    }
+});
 
 test('tennis queues optional swipe placement and ignores cancelled swipes', () => {
     const h = harness('tennis');

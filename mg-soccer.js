@@ -5,14 +5,21 @@ Minigames.register('soccer', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const KICKS = 6, GOAL_HW = 100, BAR_PX = 62, GY = 222, BY = 478, CX = 180;
     const rank = U.challenge(env.level), target = Math.min(5, 3 + Math.floor(rank / 2));
+    const pressure = U.pressure(env.level);
+    const difficulty = {
+        shotLimit: U.lerp(12, 2.8, pressure),
+        keeperSpeed: U.lerp(.38, 2.6, pressure),
+        diveSpeed: U.lerp(.65, 1.65, pressure),
+        reactionTime: U.lerp(.38, .16, pressure)
+    };
     const persp = t => U.lerp(2.35, 1, t);
     const gy = t => U.lerp(BY, GY, t);
     const sx = (X, t) => CX + X * GOAL_HW * persp(t);
 
-    let kick, goals, points, x0, wall, keeper, ball, aim, resultT, streak, best, flavor, log;
+    let kick, goals, points, x0, wall, keeper, ball, aim, resultT, streak, best, flavor, log, shotTime, finished;
 
     function start() {
-        kick = 0; goals = 0; points = 0; streak = 0; best = 0; ball = null; aim = null; log = [];
+        kick = 0; goals = 0; points = 0; streak = 0; best = 0; ball = null; aim = null; log = []; finished = false;
         setup();
     }
 
@@ -21,11 +28,12 @@ Minigames.register('soccer', env => {
         x0 = U.pick([-.45, -.22, 0, .25, .45]) + U.rand(-.05, .05);
         const n = Math.min(4, 1 + Math.floor((kick - 1) / 2) + Math.floor(rank / 2));
         wall = { n, x: x0 * .6, jump: Math.random() < .35 + kick * .06, jumpAt: U.rand(.22, .36), up: 0 };
-        keeper = { x: 0, target: 0, dive: false, diveAt: 0, state: 'wait', ext: 0, read: Math.min(.95, .3 + kick * .08 + rank * .05) };
+        keeper = { x: U.rand(-.3, .3), direction: U.pick([-1, 1]), target: 0, dive: false, diveAt: 0, state: 'wait', ext: 0, read: Math.min(.95, .3 + kick * .08 + rank * .05) };
         ball = null; aim = null; resultT = 0; flavor = null;
+        shotTime = difficulty.shotLimit;
     }
 
-    function down(p) { if (!ball && !resultT && p.y > 300) aim = p; }
+    function down(p) { if (!finished && !ball && !resultT && p.y > 300) aim = p; }
     function move() { }
     function up(p) {
         if (aim !== p) return;
@@ -56,19 +64,18 @@ Minigames.register('soccer', env => {
     const xAt = (pl, u) => U.lerp(x0, pl.tgt, u) + pl.curl * .8 * 4 * u * (1 - u);
 
     function shoot(pl) {
+        if (finished || ball || resultT || shotTime <= 0) return;
         // Keeper reads the shot better as the kicks go on, and dives late if the strike is fast.
         const correct = Math.random() < keeper.read;
         const side = pl.tgt >= 0 ? 1 : -1;
         keeper.dive = Math.random() < .85;
         keeper.target = keeper.dive ? (correct ? pl.tgt + U.rand(-.18, .18) : -side * U.rand(.3, .9)) : 0;
-        keeper.diveAt = U.rand(.1, .22);
+        keeper.diveAt = difficulty.reactionTime / pl.T;
         const endX = xAt(pl, 1);
         ball = { pl, u: 0, outcome: null, rot: 0, endX, wallHit: false, over: false };
         sfx('thud'); buzz(14);
         fx.burst(sx(x0, 0), BY + 10, { n: 8, colors: ['#4ade80', '#16a34a'], speed: 90, life: .4 });
     }
-
-    function clamp01(v) { return Math.max(0, Math.min(1, v)); }
 
     function wallBounds() {
         const half = wall.n * .1;
@@ -76,10 +83,27 @@ Minigames.register('soccer', env => {
     }
 
     function update(dt) {
+        if (finished) return;
+        if (!ball && !resultT) {
+            if (keeper.state === 'wait') {
+                keeper.x += keeper.direction * difficulty.keeperSpeed * dt;
+                if (Math.abs(keeper.x) >= .72) {
+                    keeper.x = Math.sign(keeper.x) * (1.44 - Math.abs(keeper.x));
+                    keeper.direction *= -1;
+                }
+            }
+            shotTime = Math.max(0, shotTime - dt);
+            if (shotTime <= 0) {
+                aim = null;
+                ball = { pl: { tgt: x0, height: 0, curl: 0, T: 1 }, u: 0, rot: 0 };
+                finishKick('timeout');
+                return;
+            }
+        }
         if (wall) wall.up = U.lerp(wall.up, ball && wall.jump && ball.u > wall.jumpAt ? .26 : 0, Math.min(1, dt * 14));
         if (keeper.state === 'wait' && ball && ball.u > keeper.diveAt) keeper.state = 'dive';
         if (keeper.state === 'dive') {
-            keeper.x += (keeper.target - keeper.x) * Math.min(1, dt * (5 + rank * .5 + 4 * clamp01(1 - ball.pl.T)));
+            keeper.x += U.clamp(keeper.target - keeper.x, -difficulty.diveSpeed * dt, difficulty.diveSpeed * dt);
             keeper.ext = U.lerp(keeper.ext, keeper.dive ? 1 : 0, Math.min(1, dt * 8));
         }
         if (ball && !ball.outcome) {
@@ -110,7 +134,7 @@ Minigames.register('soccer', env => {
     function resolve(bx, bh) {
         const pl = ball.pl;
         const absx = Math.abs(bx);
-        const kx = keeper.x, reach = .4 + rank * .025 + keeper.ext * .24, kh = .66 + keeper.ext * .22;
+        const kx = keeper.x, reach = .28 + pressure * .08 + keeper.ext * .13, kh = .66 + keeper.ext * .22;
         if (bh > 1.1) return finishKick('over');
         if (bh > .96) return finishKick('bar');
         if (absx > 1.09) return finishKick('wide');
@@ -139,7 +163,7 @@ Minigames.register('soccer', env => {
             b.vx = 0; b.vy = 0; b.net = true;
         } else {
             streak = 0;
-            const msg = { wall: 'BLOCKED BY THE WALL', over: 'OVER THE BAR', bar: 'OFF THE BAR!', wide: 'WIDE!', post: 'OFF THE POST!', save: 'SAVED!' }[kind];
+            const msg = { timeout: 'TIME UP - KICK LOST', wall: 'BLOCKED BY THE WALL', over: 'OVER THE BAR', bar: 'OFF THE BAR!', wide: 'WIDE!', post: 'OFF THE POST!', save: 'SAVED!' }[kind];
             banner(msg, kind === 'post' || kind === 'bar' ? '#fbbf24' : '#fca5a5');
             sfx(kind === 'post' || kind === 'bar' ? 'rim' : 'sad'); fx.shake(kind === 'save' ? 4 : 3, .2);
             if (kind === 'post' || kind === 'bar') { sfx('bell'); buzz(25); }
@@ -149,6 +173,8 @@ Minigames.register('soccer', env => {
     }
 
     function finish() {
+        if (finished) return;
+        finished = true;
         const stars = Math.min(9, 1 + points);
         end({
             win: goals >= target, head: goals >= target ? 'MATCH WINNER!' : 'FULL TIME',
@@ -282,7 +308,11 @@ Minigames.register('soccer', env => {
             c.beginPath(); c.arc(240 + i * 18, 25, 6, 0, 7);
             c.fillStyle = r === undefined ? 'rgba(255,255,255,.2)' : r === 'goal' ? '#4ade80' : '#ef4444'; c.fill();
         }
-        if (streak >= 2) U.text(c, `STREAK ${streak}`, 180, 56, { size: 11, color: '#fb923c', stroke: 'rgba(0,0,0,.6)', lw: 3 });
+        if (!ball && !resultT) {
+            U.text(c, `SHOOT IN ${shotTime.toFixed(1)}s`, 180, 60, { size: 18, color: shotTime < 3 ? '#fca5a5' : '#fde047', stroke: '#0f172a', lw: 3 });
+            c.fillStyle = '#0f172a'; c.fillRect(70, 77, 220, 7);
+            c.fillStyle = shotTime < 3 ? '#ef4444' : '#38bdf8'; c.fillRect(70, 77, 220 * shotTime / difficulty.shotLimit, 7);
+        } else if (streak >= 2) U.text(c, `STREAK ${streak}`, 180, 56, { size: 11, color: '#fb923c', stroke: 'rgba(0,0,0,.6)', lw: 3 });
         if (!ball && !resultT && env.running() && kick === 1) U.text(c, 'SWIPE UP FROM THE BALL', 180, 535, { size: 12, color: '#fff', alpha: .6 + .4 * Math.sin(env.time() * 4), stroke: 'rgba(0,0,0,.7)', lw: 3 });
         if (!ball && !resultT && env.running() && kick === 2) U.text(c, 'Curve your swipe to bend it', 180, 535, { size: 12, color: '#fff', alpha: .8, stroke: 'rgba(0,0,0,.7)', lw: 3 });
     }
@@ -305,9 +335,9 @@ Minigames.register('soccer', env => {
     return {
         title: '⚽ Free Kick Masters',
         goal: `Score ${target} goals from 6 free kicks`,
-        intro: { head: 'FREE KICK MASTERS', lines: ['Swipe up from the ball to shoot', 'Longer swipe = higher · side = aim', 'Curve your swipe to bend it'] },
+        intro: { head: 'FREE KICK MASTERS', lines: ['Aim away from the moving goalkeeper', `Release your shot within ${difficulty.shotLimit.toFixed(1)} seconds`, 'Longer swipe = higher - side = aim', 'Late shots lose a kick; curve to bend it'] },
         init: start, start, update, draw, down, move, up, idle() { },
-        _state: () => ({ kick, goals, points, ball, keeper, wall, x0 }),
+        _state: () => ({ kick, goals, points, ball, keeper, wall, x0, shotTime, difficulty, finished, log }),
         _shoot: shoot
     };
 });

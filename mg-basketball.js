@@ -4,19 +4,20 @@ Minigames.register('basketball', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const START = { x: 180, y: 478 }, HOOP_Y = 196, IDEAL = 150;
     const rank = U.challenge(env.level), target = Math.min(18, 6 + Math.floor(rank) * 2);
+    const pressure = U.pressure(env.level), powerWindow = .27 - pressure * .12;
     let time, points, baskets, streak, best, shots, ball, aim, hoopT, readyIn, lastLevel, swishes, fire;
 
     const level = () => 1 + rank + Math.floor(points / 8);
-    const rimR = () => Math.max(20, 31 - (level() >= 3 ? 4 : 0) - Math.max(0, level() - 4) * 2);
+    const rimR = () => Math.max(20, 31 - pressure * 9 - Math.floor(points / 8));
     const hoopAt = t => {
         const lv = level();
         if (lv < 2) return { x: W / 2, y: HOOP_Y };
-        const amp = Math.min(105, 55 + lv * 14), sp = .9 + Math.min(lv, 7) * .25;
+        const amp = 55 + pressure * 50, sp = 1.15 + pressure * 2.4;
         return { x: W / 2 + amp * Math.sin(t * sp), y: HOOP_Y + (lv >= 4 ? 14 * Math.sin(t * 1.7) : 0) };
     };
 
     function start() {
-        time = 45 - rank * 2; points = 0; baskets = 0; streak = 0; best = 0; shots = 0; ball = null; aim = null;
+        time = 45 - pressure * 8; points = 0; baskets = 0; streak = 0; best = 0; shots = 0; ball = null; aim = null;
         hoopT = 0; readyIn = 0; lastLevel = level(); swishes = 0; fire = 0;
     }
     start();
@@ -42,9 +43,9 @@ Minigames.register('basketball', env => {
         let kind;
         if (perr < -.42) kind = 'short';
         else if (perr > .45) kind = 'long';
-        else if (Math.abs(ex) < R * .35 && Math.abs(perr) < .13) kind = 'swish';
-        else if (Math.abs(ex) < R * .8 && Math.abs(perr) < .27) kind = 'in';
-        else if (Math.abs(ex) < R * 1.5 && Math.abs(perr) < .38) kind = Math.random() < .3 ? 'in' : 'rim';
+        else if (Math.abs(ex) < R * .35 && Math.abs(perr) < .13 - pressure * .05) kind = 'swish';
+        else if (Math.abs(ex) < R * .8 && Math.abs(perr) < powerWindow) kind = 'in';
+        else if (Math.abs(ex) < R * 1.5 && Math.abs(perr) < .38 - pressure * .12) kind = Math.random() < .3 ? 'in' : 'rim';
         else kind = Math.abs(ex) > R * 2.8 ? 'air' : 'rim';
         if (kind === 'long' && Math.abs(ex) < R * 1.2 && Math.random() < .55) kind = 'bank';
         shots++;
@@ -256,7 +257,7 @@ Minigames.register('basketball', env => {
         goal: `Make ${target} baskets before time runs out`,
         intro: { head: 'HOOP SHOOTOUT', lines: ['Drag UP from the ball & release', 'Drag length = power · angle = aim', 'The hoop speeds up as you score'] },
         start, update, draw, down, move, up, idle() { hoopT += .016; },
-        _state: () => ({ points, baskets, shots, streak, time, level: level(), ball, hoopT }),
+        _state: () => ({ points, baskets, shots, streak, time, level: level(), ball, hoopT, rimRadius: rimR(), hoopSpeed: 1.15 + pressure * 2.4, powerWindow }),
         _shoot: shoot, _setTime: t => { time = t; }
     };
 });

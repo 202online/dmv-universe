@@ -634,7 +634,7 @@
                 .filter(([x, y]) => Math.abs(x - y) <= WORLD - 60 && x + y > 40 && x + y < 2 * WORLD - 40)
                 .filter(([x, y]) => !near(q.activities, x, y, 25) && !near(q.buildings, x, y, 25) &&
                     !near(q.neighborhood.buildings, x, y, 30) && !near(lot ? [lot] : [], x, y, 15) &&
-                    !near(q.playerParking, x, y, 15))
+                    !near(q.parkingAreas, x, y, 15) && !near(q.approaches, x, y, 15))
                 .filter(([x, y]) => !CityLayout.nearRoad(q, x, y, 24))
                 .map(([x, y]) => ({ x, y }));
             q.lamps = [];
@@ -651,15 +651,16 @@
             }
             const clearSpots = billboardSpots.filter(([x, y]) => Math.abs(x - y) <= WORLD - 80 && x + y > 80 && x + y < 2 * WORLD - 80 &&
                 !near(q.activities, x, y, 45) && !near(q.buildings, x, y, 45) && !near(q.neighborhood.buildings, x, y, 45) &&
-                !near(lot ? [lot] : [], x, y, 30) && !near(q.playerParking, x, y, 30) && !CityLayout.nearRoad(q, x, y, 30) &&
+                !near(lot ? [lot] : [], x, y, 30) && !near(q.parkingAreas, x, y, 30) && !near(q.approaches, x, y, 30) && !CityLayout.nearRoad(q, x, y, 30) &&
                 ![...q.trees, ...q.lamps].some(t => Math.hypot(t.x - x, t.y - y) < 30));
             q.billboards = TravelArt.billboards(id).map((card, i) => {
                 const spot = clearSpots[Math.floor((i + .5) * clearSpots.length / 3)];
                 return spot && { x: spot[0], y: spot[1], card: card.id };
             }).filter(Boolean);
-            q.neighborhoodSolids = q.neighborhood.buildings.map(CityLayout.footprint);
+            q.neighborhoodSolids = q.neighborhood.buildings.flatMap(CityLayout.buildingSolids);
             q.solids = [
-                ...q.buildings.map(CityLayout.footprint),
+                ...q.buildings.filter(b => !b.garage).flatMap(CityLayout.buildingSolids),
+                ...q.parkingSolids,
                 ...q.activities.filter(a => a.type === 'boxing').map(CityLayout.footprint),
                 ...q.cars.map(CityLayout.footprint),
                 ...q.trees.map(t => ({ x0: t.x - 6, y0: t.y - 6, x1: t.x + 6, y1: t.y + 6 })),
@@ -673,6 +674,7 @@
         const WALK_SPEED_MULTIPLIER = 10; // Temporary testing boost; vehicle speeds remain unchanged.
         const player = { x: WORLD / 2, y: WORLD / 2, speed: (3.6 / 5) * 1.2 * 1.2, r: 9, fx: 0, fy: 1, moving: false, appearance: null };
         const keys = { up: false, down: false, left: false, right: false };
+        const starterBay = quadrants.NW.playerParking.find(b => b.area.kind === 'driveway');
         const vehicles = {
             bike: { name: 'Bicycle', price: 0, speed: 1.2, ...VehicleArt.sizes.bike, color: '#38bdf8', trim: '#f8fafc', kind: 'bike' },
             scooter: { name: 'Electric scooter', price: 60, speed: 1.4, ...VehicleArt.sizes.scooter, color: '#a855f7', trim: '#e5e7eb', kind: 'scooter' },
@@ -680,7 +682,8 @@
             impala: { name: 'the Bucket', price: 720, speed: 1.8, ...VehicleArt.sizes.car, color: '#5A1414', trim: '#FFB612', kind: 'car' },
             truck: { name: 'Pickup truck', price: 828, speed: 1.98, ...VehicleArt.sizes.truck, color: '#475569', trim: '#e2e8f0', kind: 'truck' }
         };
-        const ownCar = { ...vehicles.bike, x: WORLD / 2 + 35, y: WORLD / 2, ownRide: true };
+        const ownCar = { ...vehicles.bike, x: starterBay.x + (starterBay.w - vehicles.bike.w) / 2,
+            y: starterBay.y + (starterBay.d - vehicles.bike.d) / 2, heading: [...starterBay.heading], ownRide: true };
         let transitTrip = null;
         let ridePacked = false, parkedVehicles = {}, rideAwaySince = null;
         const storedAwaySince = {};
@@ -794,21 +797,7 @@
                         cx *= CityLayout.scale; cy *= CityLayout.scale;
                         ride.x = cx - vehicle.w / 2; ride.y = cy - vehicle.d / 2;
                     }
-                    if (carBlocked(cx, cy, ride.quadrant, ride.heading, vehicle)) {
-                        // The map layout changed, so any saved position that is now blocked is moved to open ground.
-                        const candidates = [];
-                        for (let dx = -300; dx <= 300; dx += 20) {
-                            for (let dy = -300; dy <= 300; dy += 20) candidates.push([dx, dy]);
-                        }
-                        candidates.sort((a, b) => Math.hypot(...a) - Math.hypot(...b));
-                        const spot = candidates.find(([dx, dy]) =>
-                            Math.abs(cx + dx - cy - dy) <= WORLD &&
-                            Math.abs(cx + dx + cy + dy - WORLD) <= WORLD &&
-                            !carBlocked(cx + dx, cy + dy, ride.quadrant, ride.heading, vehicle));
-                        if (!spot) throw new Error('No room to relocate saved ride');
-                        cx += spot[0]; cy += spot[1];
-                        ride.x = cx - vehicle.w / 2; ride.y = cy - vehicle.d / 2;
-                    }
+                    // Loaded rides are secured in real home parking after all stored rides are restored below.
                 }
                 player.appearance = data.appearance;
                 transitTrip = data.transit || null;
@@ -1171,6 +1160,11 @@
             }
         });
         function modalOpen() { return !modalEl.classList.contains('hidden'); }
+        function homeAccess(building) {
+            if (building.type !== 'crib') return 'venue';
+            if (Object.values(quadrants).some(q => q.buildings.includes(building))) return 'owned';
+            return ResidentialArt.listing(building) ? 'preview' : 'private';
+        }
         function checkInteraction() {
             if (transitTrip) return;
             if (!player.appearance || modalOpen()) return;
@@ -1199,7 +1193,7 @@
             if (!activeBuilding) return;
             if (activeBuilding.type === 'boxing') openBuildingModal('boxing');
             else if (quadrants[currentQuadrant].activities.includes(activeBuilding)) openSportsGame(activeBuilding.type);
-            else openBuildingModal(activeBuilding.type);
+            else openBuildingModal(activeBuilding.type, activeBuilding);
         }
         document.getElementById('interaction-btn').addEventListener('click', checkInteraction);
 
@@ -1210,12 +1204,7 @@
         }
 
         function carCorners(cx, cy, heading = ownCar.heading || [1, 0], vehicle = ownCar) {
-            const [fx, fy] = heading;
-            const sx = -fy, sy = fx;
-            return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([f, s]) => [
-                cx + f * vehicle.w / 2 * fx + s * vehicle.d / 2 * sx,
-                cy + f * vehicle.w / 2 * fy + s * vehicle.d / 2 * sy
-            ]);
+            return CityLayout.vehicleCorners(cx, cy, heading, vehicle);
         }
 
         function carBounds(cx, cy, heading) {
@@ -1268,40 +1257,38 @@
             return Object.entries(parkedVehicles).filter(([, p]) => p.quadrant === quadrant).map(([id,p]) =>
                 ({ ...rideLook(id), x:p.x, y:p.y, ownRide:true, parkedRideId:id, heading:p.heading||[1,0] }));
         }
+        function findParkingBay(quadrant, vehicle, destination = null, anchor = player, ignoreStoredId = null, avoidPlayer = false) {
+            const bays = [...quadrants[quadrant].playerParking].sort((a, b) =>
+                Number(b.destination === destination) - Number(a.destination === destination) ||
+                Math.hypot(a.x + a.w / 2 - anchor.x, a.y + a.d / 2 - anchor.y) -
+                Math.hypot(b.x + b.w / 2 - anchor.x, b.y + b.d / 2 - anchor.y));
+            return bays.find(bay => {
+                const cx = bay.x + bay.w / 2, cy = bay.y + bay.d / 2, heading = bay.heading;
+                if (!CityLayout.contains(bay, carCorners(cx, cy, heading, vehicle), 1) ||
+                    carBlocked(cx, cy, quadrant, heading, vehicle, ignoreStoredId)) return false;
+                if (vehicle !== ownCar && !ridePacked && driving.quadrant === quadrant &&
+                    carIntersectsRect(cx, cy, { corners: carCorners(ownCar.x + ownCar.w / 2, ownCar.y + ownCar.d / 2) }, heading, vehicle)) return false;
+                return !avoidPlayer || quadrant !== currentQuadrant || !carIntersectsRect(cx, cy,
+                    { x0: player.x - player.r, y0: player.y - player.r, x1: player.x + player.r, y1: player.y + player.r }, heading, vehicle);
+            });
+        }
         function secureStoredRide(id,destination=null) {
             const p=parkedVehicles[id],vehicle=vehicles[id];
             if(!p)return;
             const anchor=destination?{x:destination.x+destination.w/2,y:destination.y+destination.d/2}:{x:p.x+vehicle.w/2,y:p.y+vehicle.d/2};
-            const bays=[...quadrants[p.quadrant].playerParking].sort((a,b)=>
-                Math.hypot(a.x+a.w/2-anchor.x,a.y+a.d/2-anchor.y)-Math.hypot(b.x+b.w/2-anchor.x,b.y+b.d/2-anchor.y));
-            const heading=[Math.SQRT1_2,-Math.SQRT1_2];
-            const bay=bays.find(b=>!carBlocked(b.x+b.w/2,b.y+b.d/2,p.quadrant,heading,vehicle,id) &&
-                (ridePacked||driving.quadrant!==p.quadrant||!carIntersectsRect(b.x+b.w/2,b.y+b.d/2,
-                    {corners:carCorners(ownCar.x+ownCar.w/2,ownCar.y+ownCar.d/2)},heading,vehicle)));
+            const bay=findParkingBay(p.quadrant,vehicle,destination,anchor,id);
             if(!bay){console.error('Unable to secure stored vehicle',id);transitNotice('No clear parking bay was found for '+vehicle.name);return;}
             p.x=bay.x+(bay.w-vehicle.w)/2;p.y=bay.y+(bay.d-vehicle.d)/2;
-            p.heading=heading;
+            p.heading=[...bay.heading];
             delete storedAwaySince[id];
+            return true;
         }
         function parkRide(destination = null, notify = true) {
             if (driving.active) return false;
             if (ridePacked) return true;
-            const q = quadrants[driving.quadrant];
             const cx = ownCar.x+ownCar.w/2;
             const cy = ownCar.y+ownCar.d/2;
-            const preferred = destination ?
-                q.playerParking.find(b => b.destination === destination) : null;
-            const bays = [...q.playerParking].sort((a, b) => {
-                if (a === preferred) return -1;
-                if (b === preferred) return 1;
-                return Math.hypot(a.x + a.w / 2 - cx, a.y + a.d / 2 - cy) -
-                    Math.hypot(b.x + b.w / 2 - cx, b.y + b.d / 2 - cy);
-            });
-            const heading=[Math.SQRT1_2,-Math.SQRT1_2];
-            const bay = bays.find(b => !carBlocked(b.x + b.w / 2, b.y + b.d / 2, driving.quadrant, heading) &&
-                (driving.quadrant !== currentQuadrant ||
-                !carIntersectsRect(b.x + b.w / 2, b.y + b.d / 2,
-                    { x0: player.x - player.r, y0: player.y - player.r, x1: player.x + player.r, y1: player.y + player.r }, heading)));
+            const bay = findParkingBay(driving.quadrant, ownCar, destination, {x:cx,y:cy}, null, true);
             if (!bay) {
                 console.error('Unable to park ride: no clear public parking bay', driving.quadrant);
                 if (notify) transitNotice('No clear parking bay was found. Your ride has not been moved.');
@@ -1309,7 +1296,7 @@
             }
             ownCar.x = bay.x + (bay.w - ownCar.w) / 2;
             ownCar.y = bay.y + (bay.d - ownCar.d) / 2;
-            ownCar.heading = heading;
+            ownCar.heading = [...bay.heading];
             rideAwaySince = null;
             if (notify) transitNotice(`Your ${ownCar.name} is parked at ${bay.destination.name || 'the neighborhood shop'} (${driving.quadrant}).`);
             return true;
@@ -1437,6 +1424,7 @@
             let nearest = 60;
             for (const b of [...quadrants[currentQuadrant].buildings, ...quadrants[currentQuadrant].activities,
                 ...quadrants[currentQuadrant].neighborhood.buildings.filter(b => b.type === 'crib')]) {
+                if (homeAccess(b) === 'private') continue;
                 const distance = CityLayout.distanceTo(b,player.x,player.y);
                 if (distance < nearest) { activeBuilding = b; nearest = distance; }
             }
@@ -1465,7 +1453,8 @@
                     return;
                 }
                 document.getElementById('interaction-text').innerText = `Near ${activeBuilding.name} — press [E]`;
-                document.getElementById('interaction-btn').textContent = quadrants[currentQuadrant].activities.includes(activeBuilding) ? 'Play Game' : 'Enter Venue';
+                document.getElementById('interaction-btn').textContent = homeAccess(activeBuilding) === 'preview' ? 'Preview Home' :
+                    quadrants[currentQuadrant].activities.includes(activeBuilding) ? 'Play Game' : 'Enter Venue';
                 bannerEl.classList.remove('hidden');
             } else {
                 bannerEl.classList.add('hidden');
@@ -1548,7 +1537,15 @@
                 }
                 });
             }
-            for (const bay of q.playerParking) {
+            for (const area of q.parkingAreas.filter(a => ['lot', 'garage'].includes(a.kind) && !CityLayout.residentialPlan(a.destination))) {
+                roadAligned(area, () => {
+                    groundRect(area.x, area.y, area.w, area.d, '#414a50', '#a8a99a');
+                    groundRect(area.x + 3, area.y + area.d - 18, area.w - 6, 2, '#c1c4ab');
+                });
+            }
+            for (const approach of q.approaches) roadAligned(approach, () =>
+                groundRect(approach.x, approach.y, approach.w, approach.d, approach.pedestrian ? '#cabfa6' : '#6a6b63'));
+            for (const bay of q.playerParking.filter(b => !CityLayout.residentialPlan(b.destination))) {
                 roadAligned(bay,()=>{
                     groundRect(bay.x, bay.y, bay.w, bay.d, '#304754', '#c8dedb', 1.5);
                     groundRect(bay.x + 2, bay.y + 3, 2, bay.d - 6, '#d6d5bd');
@@ -2618,12 +2615,20 @@
             if (transitTrip || driving.active) throw new Error('Finish your trip or get off your current ride first');
             const vehicle = rideLook(id), portable = RideBag.portable.includes(id), stored = parkedVehicles[id];
             if(id===progress.vehicle&&!portable)return;
-            let quadrant = stored?.quadrant || currentQuadrant, x, y;
-            if (stored) { x = stored.x; y = stored.y; }
-            else {
-                const spots = portable && !deploy ? [[player.x,player.y]] :
-                    [[player.x+40,player.y],[player.x-40,player.y],[player.x,player.y+40],[player.x,player.y-40],
-                    ...quadrants[quadrant].playerParking.map(b => [b.x+b.w/2,b.y+b.d/2])];
+            let quadrant = stored?.quadrant || currentQuadrant, x, y, heading = [1, 0];
+            if (stored) {
+                const corners = carCorners(stored.x + vehicle.w / 2, stored.y + vehicle.d / 2, stored.heading || heading, vehicle);
+                if (!quadrants[quadrant].playerParking.some(b => CityLayout.contains(b, corners, 1)) ||
+                    carBlocked(stored.x + vehicle.w / 2, stored.y + vehicle.d / 2, quadrant, stored.heading || heading, vehicle, id))
+                    if (!secureStoredRide(id)) throw new Error('No clear parking is available for this ride.');
+                x = stored.x; y = stored.y; heading = stored.heading || heading;
+            } else if (!portable) {
+                const bay = findParkingBay(quadrant, vehicle, null, player, id, true);
+                if (!bay) throw new Error('No clear parking is available here.');
+                x = bay.x + (bay.w - vehicle.w) / 2; y = bay.y + (bay.d - vehicle.d) / 2; heading = [...bay.heading];
+            } else {
+                const spots = !deploy ? [[player.x,player.y]] :
+                    [[player.x+40,player.y],[player.x-40,player.y],[player.x,player.y+40],[player.x,player.y-40]];
                 const spot = spots.find(([cx,cy]) => Math.abs(cx-cy) < WORLD-20 && cx+cy > 20 && cx+cy < 2*WORLD-20 &&
                     !carBlocked(cx,cy,quadrant,[1,0],vehicle,id) &&
                     (ridePacked||id===progress.vehicle||driving.quadrant!==quadrant||
@@ -2633,17 +2638,20 @@
                 if (!spot) throw new Error('No safe place to use this ride here. Move into open space first.');
                 x = spot[0]-vehicle.w/2; y = spot[1]-vehicle.d/2;
             }
+            let previousCar = null;
             if (id !== progress.vehicle && !RideBag.portable.includes(progress.vehicle)){
+                previousCar = progress.vehicle;
                 parkedVehicles[progress.vehicle] = {quadrant:driving.quadrant,x:ownCar.x,y:ownCar.y,heading:[...ownCar.heading]};
                 delete storedAwaySince[progress.vehicle];
             }
             delete parkedVehicles[id];
             delete storedAwaySince[id];
             setRidePacked(true);
-            Object.assign(ownCar,vehicle,{x,y,heading:stored?.heading||[1,0]});
+            Object.assign(ownCar,vehicle,{x,y,heading});
             progress.vehicle=id;
             moveCarToQuadrant(quadrant);
             setRidePacked(portable && !deploy);
+            if (previousCar) secureStoredRide(previousCar);
             rideAwaySince=null;
             if (deploy) {
                 driving.active=true; player.x=x+vehicle.w/2; player.y=y+vehicle.d/2;
@@ -3159,8 +3167,12 @@
             document.getElementById('vehicle-back').addEventListener('click', () => openBuildingModal(shop ? 'retail' : 'crib'));
         }
 
-        function openBuildingModal(type) {
+        function openBuildingModal(type, building = null) {
             if (transitTrip) return;
+            if (type === 'crib' && building && homeAccess(building) === 'private') {
+                transitNotice('Private residence - only homes marked FOR SALE or AVAILABLE are open for tours.');
+                return;
+            }
             if (['busstop', 'metro'].includes(type)) { openTransit(nearbyTransit()); return; }
             const content = document.getElementById('modal-content');
             if (!modalOpen()) learningReturnFocus = document.activeElement;
@@ -3235,6 +3247,14 @@
                 VenueInteriors.mount(content, type, modalEl);
                 return;
             } else if (type === 'crib') {
+                if (building && homeAccess(building) === 'preview') {
+                    content.innerHTML = `<h2 class="text-2xl font-black text-blue-300 mb-2">${DMVMedia.escape(building.name)} - ${ResidentialArt.listing(building)}</h2>
+                        <p class="text-gray-300 text-sm mb-4">View-only property preview. These furnishings show what a home offers after buying or renting.
+                        Nothing here can be used or change your belongings, stars or progress during a tour.</p>
+                        ${VenueInteriors.rooms.crib.items.map(spec => `<button type="button" id="${spec.selector.slice(1)}" disabled>${spec.label}</button>`).join('')}`;
+                    VenueInteriors.mount(content, type, modalEl, { preview: true });
+                    return;
+                }
                 const c = 'bg-blue-950/80 hover:bg-blue-900 border border-blue-400';
                 content.innerHTML = `
                     <h2 class="text-2xl font-black text-blue-300 mb-2">🏠 The Crib & Garage (Mystics/Capitals)</h2>

@@ -4,9 +4,10 @@
 Minigames.register('airhockey', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const L = 36, R = 324, T = 86, B = 514, MID = (T + B) / 2, PR = 13, MR = 30, WIN = 5;
-    const rank = U.challenge(env.level);
-    const opponentRadius = 23, goalWidth = 154 - rank * 2, playerGoalWidth = 78;
-    const maxSpeed = 460 + rank * 12, cpuSpeed = 100 + rank * 12;
+    const pressure = U.pressure(env.level);
+    const opponentRadius = 23 + pressure * 3, goalWidth = 154 - pressure * 18, playerGoalWidth = 78;
+    const maxSpeed = 460 + pressure * 96, cpuSpeed = 100 + pressure * 96;
+    const reactionTime = .30 - pressure * .20, aimError = 34 - pressure * 26;
 
     let me, cpu, puck, pm, om, holdId, serveT, goalT, rallyV, ptX, ptY, reaction, cpuTarget, slowT, finished;
 
@@ -84,8 +85,8 @@ Minigames.register('airhockey', env => {
         const spd = (cpuSpeed + level() * 25) * dt;
         reaction -= dt;
         if (reaction <= 0) {
-            reaction = .30 - rank * .012;
-            const error = Math.sin(env.time() * 2.3) * (34 - rank * 2);
+            reaction = reactionTime;
+            const error = Math.sin(env.time() * 2.3) * aimError;
             cpuTarget.x = puck.y < MID ? puck.x + error : U.lerp(180, puck.x, .25);
             cpuTarget.y = puck.y < MID && puck.vy < 100 ? Math.min(puck.y + 12, MID - 36) : T + 54;
         }
@@ -198,7 +199,7 @@ Minigames.register('airhockey', env => {
         goal: 'Beat the CPU to 5 goals',
         intro: { head: 'NEON SLIDE', lines: ['Tap or drag anywhere in your half', 'A gentle hit sends the puck forward', 'Release for automatic goal guarding', `Larger target goal - first to ${WIN}`] },
         init: start, start, update, draw, down, move, up, idle() { },
-        _state: () => ({ me, cpu, puck, pm, om, cpuSpeed, maxSpeed, goalWidth, playerGoalWidth, holdId, finished }),
+        _state: () => ({ me, cpu, puck, pm, om, cpuSpeed, maxSpeed, goalWidth, playerGoalWidth, holdId, finished, reactionTime, aimError, opponentRadius }),
         _set: o => { if (o.puck) Object.assign(puck, o.puck); }
     };
 });

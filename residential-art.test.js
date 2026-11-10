@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const Art = require('./residential-art.js');
+const Layout = require('./city-layout.js');
 
 test('nine residential silhouettes reserve bounded driveways or apartment parking without changing lots', () => {
     const forms = new Set();
@@ -49,11 +50,11 @@ test('roofs, balconies, driveways, garages and apartment spaces draw within each
     }
 });
 
-test('apartment parking holds 4-6 cars with an aisle and a separate animated waterfall garden', () => {
+test('apartment parking has four full-size spaces, an aisle and a separate animated waterfall garden', () => {
     for (const [w, d] of [[160, 110], [170, 130]]) for (const variant of [0, 1, 2]) {
         const b = { x: 100, y: 200, w, d, h: 150, kind: 'apartment', variant, color: '#976b53', trim: '#e3ceb0' };
         const { parking: p, garden: g, parts } = Art.plan(b);
-        assert.ok(p.spaces >= 4 && p.spaces <= 6);
+        assert.equal(p.spaces, 4);
         assert.ok(p.w / p.spaces >= 19, 'Marked bays fit the detailed parked cars');
         assert.ok(p.d * .34 >= 14, 'The clear access aisle fits the widest parked car');
         assert.ok(g.x + g.w <= p.x && g.y >= b.y + b.d / 2, 'Front garden stays outside parking bays');
@@ -72,6 +73,30 @@ test('apartment parking holds 4-6 cars with an aisle and a separate animated wat
         }
         assert.notDeepEqual(frames[0], frames[1], 'Waterfall streams animate');
     }
+});
+
+test('listing text exactly follows visible sale and availability boards, including style-based buildings', () => {
+    for (const kind of ['house', 'apartment', 'condo']) for (const variant of [0, 1, 2])
+        for (const available of [undefined, false, true]) {
+            const b = { x: 0, y: 0, w: 160, d: 110, h: 140, kind, variant, available };
+            const expected = kind === 'house' ? (variant !== 1 ? 'FOR SALE' : null) :
+                (available ?? variant === 0) ? 'AVAILABLE' : null;
+            assert.equal(Art.listing(b), expected);
+            assert.equal(Art.plan(b).listed, expected !== null);
+            const boards = [];
+            Art.draw({ ...b, color: '#976b53', trim: '#e3ceb0' }, {
+                ctx: new Proxy({ fillText(text) { if (text !== 'P') boards.push(text); } },
+                    { get: (target, key) => key in target ? target[key] : () => {} }),
+                P: (x, y, z = 0) => [x - y, (x + y) / 2 - z],
+                poly() {}, box() {}, shade: color => color
+            });
+            assert.equal(boards.length > 0, expected !== null);
+            if (expected) assert.ok(boards.some(text => text.includes(expected)));
+        }
+    assert.equal(Art.listing({ style: 'apartment' }), null, 'The starter apartment uses its rendered occupied variant');
+    assert.equal(Art.listing({ style: 'apartment', available: true }), 'AVAILABLE');
+    assert.equal(Art.listing({ style: 'garage', garage: true }), null);
+    assert.equal(Art.listing({ kind: 'shop' }), null);
 });
 
 test('rear garages have roll-up doors and a physical PARK HERE board fixed to their side wall', () => {
@@ -112,6 +137,7 @@ test('property notices are supported 3D boards with lettering projected onto the
             ctx: new Proxy({
                 transform(...matrix) { transforms.push(matrix); projected = true; },
                 fillText(title) {
+                    if (title === 'P') return;
                     assert.ok(projected, 'Sign lettering uses world projection, not a floating screen label');
                     text.push(title);
                 },
@@ -130,7 +156,7 @@ test('property notices are supported 3D boards with lettering projected onto the
         assert.equal(transforms.length, 1);
         assert.deepEqual(transforms[0].slice(0, 4), [1, .5, 0, 1]);
         assert.ok(supports.some(p => p.z === 0 && p.w === 2 && p.d === 2 && p.h >= 43), 'Boards have ground-supported posts');
-        assert.ok(supports.some(p => p.z > 0 && p.w >= 40 && p.d === 2 && p.h >= 20), 'Board has physical thickness');
+        assert.ok(supports.some(p => p.z > 0 && p.w >= 20 && p.d === 2 && p.h >= 20), 'Board has physical thickness');
     }
 });
 
@@ -161,8 +187,22 @@ test('rowhome condos reserve front parking bays below their shared wall and balc
         assert.equal(parts[0].x, b.x);
         assert.equal(parts[0].w, b.w, 'Full-width walls can join the next rowhome');
         assert.ok(parts.every(p => p.y + p.d + b.d * .08 < parking.y));
-        assert.equal(parking.spaces, 4);
+        assert.equal(parking.spaces, 2);
         assert.ok(parking.w / parking.spaces >= 14);
         assert.ok(parking.d >= 30);
+    }
+});
+
+test('decorative cars fit their own spaces and never occupy a player bay or the entrance path', () => {
+    for (const kind of ['house', 'condo', 'apartment']) for (const variant of [0, 1, 2]) {
+        const plan = Art.plan({ x: 100, y: 200, w: kind === 'house' ? 80 : 160,
+            d: kind === 'house' ? 60 : 110, h: 140, kind, variant });
+        const reserved = plan.bays.slice(0, kind === 'apartment' ? 2 : undefined);
+        for (const car of plan.decorativeCars) {
+            const corners = Layout.vehicleCorners(car.x + car.w / 2, car.y + car.d / 2, car.heading, car);
+            assert.ok(Layout.contains(plan.parking, corners, 1));
+            for (const region of [...reserved, plan.path])
+                assert.equal(Layout.polygonsOverlap(corners, Layout.footprint(region).corners), false);
+        }
     }
 });

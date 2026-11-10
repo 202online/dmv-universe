@@ -14,17 +14,19 @@
     Minigames.register('resale', env => {
         const { U, end, fx, sfx } = env, rank = U.challenge(env.level);
         const target = 4 + Math.floor(rank / 2), total = target + 2, duration = 75 - rank * 2;
+        const pressure = U.pressure(env.level), inspectLimit = 24 - pressure * 16;
+        const codeDigits = 3 + Math.floor(pressure * 6);
         const specs = ['Style code', 'Stitch count', 'Box label'];
-        let time, round, correct, profit, tab, ticket, cooldown, message, finished, sequence;
+        let time, round, correct, profit, tab, ticket, cooldown, message, finished, sequence, inspectTime;
         function nextTicket() {
-            const serial = Math.floor(U.rand(100, 999));
+            const serial = Math.floor(U.rand(10 ** (codeDigits - 1), 10 ** codeDigits - 1));
             const code = `202-${serial}`, stitches = 8 + Math.floor(U.rand(0, 5)), label = U.pick(['CAPITAL', 'DISTRICT', 'UPTOWN']);
             const reference = [code, String(stitches), label], actual = [...reference];
             const genuine = sequence[round], defect = Math.floor(U.rand(0, 3));
             if (!genuine) actual[defect] = defect === 0 ? `202-${serial + (rank >= 3 ? 1 : 10)}` :
                 defect === 1 ? String(stitches + 1) : label.replace(/I|A|O/, rank >= 3 ? '1' : 'X');
             ticket = { genuine, defect, reference, actual, price: 35 + Math.floor(U.rand(0, 6)) * 5, value: 95 };
-            tab = 0; cooldown = 0; message = '';
+            tab = 0; cooldown = 0; message = ''; inspectTime = inspectLimit;
         }
         function start() {
             time = duration; round = 0; correct = 0; profit = 0; finished = false;
@@ -41,12 +43,13 @@
             end({ win, head: win ? 'SHARP EYE!' : 'KEEP INSPECTING', stars: 0,
                 lines: [`${correct}/${total} correct | goal ${target}`, `Practice resale margin: $${profit}`, 'Fictional items - not real authentication'] });
         }
-        function decide(buy) {
+        function decide(buy, timedOut = false) {
             if (finished || cooldown > 0) return;
-            const ok = buy === ticket.genuine;
+            const ok = !timedOut && buy === ticket.genuine;
             if (ok) correct++;
-            if (buy) profit += ticket.genuine ? ticket.value - ticket.price : -ticket.price;
-            message = ticket.genuine ? 'All 3 details matched the reference' : `${specs[ticket.defect]} did not match`;
+            if (buy && !timedOut) profit += ticket.genuine ? ticket.value - ticket.price : -ticket.price;
+            message = timedOut ? 'Inspection timed out - check the next item' :
+                ticket.genuine ? 'All 3 details matched the reference' : `${specs[ticket.defect]} did not match`;
             fx.text(180, 307, ok ? 'GOOD CALL!' : 'CHECK THE DETAILS', { size: 22, color: ok ? '#86efac' : '#fca5a5' });
             sfx(ok ? 'coin' : 'thud'); env.buzz(ok ? 15 : 30);
             if (ok) fx.burst(180, 280, { n: 18, colors: ['#fbbf24', '#a78bfa', '#fff'], speed: 110 });
@@ -64,6 +67,10 @@
             time = Math.max(0, time - dt);
             if (time <= 0) { finish(false); return; }
             if (cooldown > 0) { cooldown -= dt; if (cooldown <= 0) nextTicket(); }
+            else {
+                inspectTime = Math.max(0, inspectTime - dt);
+                if (inspectTime <= 0) decide(false, true);
+            }
         }
         function draw(c) {
             c.fillStyle = U.vgrad(c, 0, 560, [[0, '#1e1b4b'], [1, '#020617']]); c.fillRect(0, 0, 360, 560);
@@ -77,6 +84,7 @@
             panel(c, U, 12, 8, 336, 58);
             U.text(c, 'RESELL HUB: SPOT THE FAKE', 180, 28, { size: 17, color: '#c4b5fd' });
             U.text(c, `${Math.ceil(time)}s | Item ${Math.min(total, round + 1)}/${total} | Correct ${correct}/${target}`, 180, 50, { size: 12 });
+            U.text(c, `INSPECT: ${Math.ceil(inspectTime)}s`, 180, 80, { size: 12, color: inspectTime < 5 ? '#fca5a5' : '#fde68a' });
             U.glow(c, 180, 200, 150, '#6d28d9', .5);
             U.shadow(c, 180, 268, 125, 14);
             c.save(); c.translate(60, 170);
@@ -120,17 +128,17 @@
             U.text(c, 'Fictional brand; three checks do not prove real authenticity', 180, 548, { size: 9, color: '#cbd5e1' });
         }
         return { title: 'Resell Hub', goal: `Make ${target} correct decisions across ${total} items`,
-            intro: { head: 'SPOT THE FAKE', lines: ['Tap all 3 detail tabs to inspect', 'Compare this item with the reference', 'All match? BUY. Any mismatch? PASS.', 'Fictional items, not real brand advice'] },
+            intro: { head: 'SPOT THE FAKE', lines: ['Tap all 3 detail tabs before the inspection timer expires', 'Compare this item with the reference', 'All match? BUY. Any mismatch? PASS.', 'Fictional items, not real brand advice'] },
             start, update, draw,
             down(p) { p.inspectTap = true; },
             up(p) { if (p.inspectTap && !p.cancelled && p.len < 24) tap(p); },
-            _state: () => ({ time, round, correct, profit, tab, ticket, cooldown, target, total, duration, finished }) };
+            _state: () => ({ time, round, correct, profit, tab, ticket, cooldown, target, total, duration, finished, inspectTime, inspectLimit, codeDigits }) };
     });
 
     Minigames.register('courier', env => {
         const { U, fx, sfx, end } = env, rank = U.challenge(env.level);
         const lanes = [80, 180, 280], target = 4 + Math.floor(rank / 2);
-        const speed = 125 + rank * 11, gap = 1.65 - rank * .04;
+        const pressure = U.pressure(env.level), speed = 125 + pressure * 140, gap = 1.65 - pressure * .65;
         let time, lane, x, bag, delivered, lives, rows, spawn, rowIndex, distance, hurt, finished, steer;
         function start() {
             time = 65; lane = 1; x = 180; bag = 0; delivered = 0; lives = 3;

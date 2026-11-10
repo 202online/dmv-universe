@@ -10,7 +10,16 @@ chess, Lemonade Stand, Sub Shop, Carryout Craze, Resell Hub, Courier Lane Sprint
 and Baseball Diamond Batting
 have endless numbered levels. Win a level to unlock the next; select a cleared
 level to practice. The panel above each game shows its clear goal and reward.
-Tennis retains automatic movement, serving and hitting, with optional swipe aiming.
+Tennis uses **manual positioning**: tap or drag sideways to move to the ball.
+Serving and hits within racket reach are automatic; an upward swipe optionally
+aims the next shot. Players no longer chase incoming balls or return to center
+on their own. Higher levels make CPU returns faster, wider toward the open
+corner, more accurate and harder to outrun.
+Soccer gives each free kick a visible countdown: 12 seconds at level 1,
+8.7 seconds at level 10, and about 5.1 seconds at level 50, approaching a safe
+2.8-second minimum. The keeper patrols the goal before the shot and moves
+faster with each level; aim away from the keeper and release before time runs
+out. Expired kicks count as misses, including when a swipe is still held.
 Air hockey now uses a slower, delayed-reaction CPU, a larger opponent goal,
 a larger player mallet, bounded puck speed and automatic goal guarding when
 you release the controls. Tap or drag in your half; a gentle contact returns
@@ -44,6 +53,9 @@ Your Garage (`vehicle-paints.js`). The paint is saved and applies to the ride
 you are using and to rides parked around the city.
 Cars draw only the faces, windows, wheels and lights that face the camera, so
 parked cars look solid instead of showing their far side through the body.
+Tires are projected in the car's own wheel planes, inset within its width and
+drawn beneath the chassis, so they turn with the car instead of protruding
+from its screen-right side.
 
 | Ride | Colors |
 | --- | --- |
@@ -90,8 +102,9 @@ settle instead of freezing mid-stride), the body breathes gently while idle,
 eyes blink on an irregular rhythm, long hair bends and trails a beat behind each
 step, and curls bounce with the stride.
 
-The level picker shows a small moving window rather than an ever-growing list.
-Use Previous to revisit older levels or Latest unlocked to return to progression.
+The level dropdown temporarily exposes levels 1-50 for testing, without
+changing normal saved progression. Test-only locked levels give no rewards or
+unlocks. Use Previous to revisit levels or Latest unlocked to return to progression.
 There is no gameplay level cap. Levels after five use diminishing difficulty
 growth toward safe playability limits, rather than endlessly increasing raw
 speeds, targets or damage. Goals stay achievable: soccer never requires more than
@@ -99,7 +112,8 @@ five of six goals, pool keeps at least eight shots, and tennis flight times stay
 positive. Later chess levels reduce evaluation errors without unbounded AI search.
 
 Higher levels increase basketball targets and hoop movement; football defenders;
-soccer goals, wall size and keeper reactions; tennis and air hockey opponent
+soccer goals, wall size and keeper patrol/dive speed while reducing shot time;
+tennis return pace, open-corner placement and CPU reactions; air hockey opponent
 pressure; driving speed and boss strength; boxing stamina and punch speed; and
 chess accuracy/lookahead. Pool has fewer shots; golf requires fewer strokes,
 softer cup entry and faster windmill timing.
@@ -165,7 +179,8 @@ stops, an access aisle and several detailed parked cars. The main apartment's
 garage shares its full rear wall, with side-facing roll-up doors and a physical
 **PARK HERE / GARAGE** board mounted on the garage wall. Apartment fronts have
 stone waterfall walls, animated falling water, catch pools and landscaped
-garden islands, separate from the parking bays. Selected
+garden islands placed beside entrances, with clear door approaches even in
+the isometric projection. Selected
 houses carry hanging **FOR SALE** boards on cross-arm posts; selected apartments
 advertise **1–4 BEDROOMS AVAILABLE**, while selected condos use **AVAILABLE CONDOS /
 INQUIRE WITHIN**, on framed, twin-post boards. Occupied variants have no
@@ -233,8 +248,10 @@ reload resumes the same card. Moving tunnel lights turn off under
 reduced-motion settings.
 
 Every public venue, game, field and currently accessible home has a dedicated
-**P** bay sized for the pickup, separate from decorative parking and clear of
-roads, trees and buildings. **Getting off does not move your ride.** It is
+**P** bay sized for the pickup inside its driveway, apartment lot/garage
+approach or an attached venue parking lot, rather than an isolated marker.
+These areas are drivable, while walls, decorative cars and pedestrian entrance
+paths remain protected. **Getting off does not move your ride.** It is
 secured in a nearby clear bay after 60 continuous seconds unattended (outside
 its 60-unit interaction area), even if you have left the quadrant. The bay is
 chosen near **where the vehicle was left**, not near the player's new location.
@@ -284,6 +301,14 @@ in `centralLayouts.SW.activities` in `index.html`. The fan hub and arena also
 launch the same saved baseball campaign.
 
 ## Interactive interiors and appearance
+
+The starter apartment and its garage remain fully usable. Other homes,
+apartments and condos open only when their exterior actually displays a
+FOR SALE or AVAILABLE sign. Those entrances lead to a **view-only model-home
+tour**, showing the TV, computer, wardrobe, garage and pet space with all
+actions disabled. Unmarked residences stay private. Tours do not spend stars
+or change inventory, pets, learning data or progress; they do not introduce a
+new purchase/rental economy.
 
 Entering a building changes the backdrop and opens a themed room. Tap the
 illustrated objects or use keyboard Tab/Enter; these are the same working

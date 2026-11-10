@@ -4,6 +4,8 @@
 Minigames.register('pool', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const rank = U.challenge(env.level);
+    const pressure = U.pressure(env.level), pocketRadius = 15 - pressure * 1.8;
+    const guideLength = 170 - pressure * 100;
     const L = 52, R = 308, T = 104, B = 466, BR = 9, SHOTS = Math.max(8, 14 - Math.floor(rank));
     const POCKETS = [[L, T], [R, T], [L, (T + B) / 2], [R, (T + B) / 2], [L, B], [R, B]];
     const COLORS = ['#fbbf24', '#3b82f6', '#ef4444', '#8b5cf6', '#f97316', '#10b981', '#991b1b', '#111827', '#e879f9'];
@@ -71,7 +73,7 @@ Minigames.register('pool', env => {
             if (sp0 > 0) { b.vx *= sp / sp0; b.vy *= sp / sp0; }
             b.x += b.vx * dt; b.y += b.vy * dt;
             for (const [px, py] of POCKETS) {
-                if (Math.hypot(b.x - px, b.y - py) < 15 - Math.max(0, rank - 4) * .5) { pot(b); break; }
+                if (Math.hypot(b.x - px, b.y - py) < pocketRadius) { pot(b); break; }
             }
             if (b.dead) continue;
             if (b.x < L + BR) { b.x = L + BR; b.vx = Math.abs(b.vx) * .82; if (sp > 60) sfx('thud'); }
@@ -130,7 +132,7 @@ Minigames.register('pool', env => {
         // pockets
         for (const [px, py] of POCKETS) {
             c.fillStyle = '#2b1708'; c.beginPath(); c.arc(px, py, 17, 0, 7); c.fill();
-            c.fillStyle = '#05080a'; c.beginPath(); c.arc(px, py, 13, 0, 7); c.fill();
+            c.fillStyle = '#05080a'; c.beginPath(); c.arc(px, py, pocketRadius, 0, 7); c.fill();
             c.strokeStyle = 'rgba(255,215,130,.35)'; c.lineWidth = 2; c.beginPath(); c.arc(px, py, 15, 0, 7); c.stroke();
         }
     }
@@ -157,7 +159,7 @@ Minigames.register('pool', env => {
         const col = pow > .8 ? '#f87171' : pow > .45 ? '#fde047' : '#4ade80';
         const ux = aim.dx / len, uy = aim.dy / len;
         c.setLineDash([5, 6]); c.strokeStyle = col; c.lineWidth = 2.5;
-        c.beginPath(); c.moveTo(cue.x, cue.y); c.lineTo(cue.x + ux * 170, cue.y + uy * 170); c.stroke();
+        c.beginPath(); c.moveTo(cue.x, cue.y); c.lineTo(cue.x + ux * guideLength, cue.y + uy * guideLength); c.stroke();
         c.setLineDash([]);
         // cue stick
         c.save(); c.translate(cue.x, cue.y); c.rotate(Math.atan2(-uy, -ux));
@@ -189,7 +191,7 @@ Minigames.register('pool', env => {
         goal: `Pot all 9 balls with ${SHOTS} starting shots`,
         intro: { head: 'RACK \u2019EM DMV', lines: ['Pull back from the cue ball, release to shoot', 'Pot all 9 balls before shots run out', 'Back-to-back pots earn bonus shots'] },
         init: start, start, update, draw, down, move, up, idle() { },
-        _state: () => ({ shots, potted, balls, cue }),
+        _state: () => ({ shots, potted, balls, cue, pocketRadius, guideLength }),
         _set: o => { if (o.cue) Object.assign(cue, o.cue); }
     };
 });

@@ -6,6 +6,32 @@ const vm = require('node:vm');
 const VehicleArt = require('./vehicle-art.js');
 const ResidentialArt = require('./residential-art.js');
 
+test('car wheels are inset world-oriented shapes under the chassis, never side-mounted screen circles', () => {
+    for (const kind of ['car', 'truck']) for (const heading of [[1, 0], [0, 1], [-1, 0], [0, -1],
+        [Math.SQRT1_2, -Math.SQRT1_2], [-Math.SQRT1_2, Math.SQRT1_2]]) {
+        const c = { ...VehicleArt.sizes[kind], x: 100, y: 200, kind, color: '#8b3344', heading };
+        const faces = [], screenArcs = [];
+        VehicleArt.draw(c, {
+            ctx: { arc: (...args) => screenArcs.push(args) },
+            P: (x, y, z = 0) => [x, y, z],
+            poly: (points, color) => faces.push({ points, color }),
+            shade: color => color
+        });
+        const tires = faces.filter(f => f.color === '#101821');
+        assert.equal(tires.length, 4);
+        assert.equal(screenArcs.length, 0, 'wheels must rotate with the car, not stay circular in screen space');
+        const [fx, fy] = heading, cx = c.x + c.w / 2, cy = c.y + c.d / 2;
+        for (const tire of tires) for (const [x, y, z] of tire.points) {
+            const forward = (x - cx) * fx + (y - cy) * fy;
+            const side = -(x - cx) * fy + (y - cy) * fx;
+            assert.ok(Math.abs(forward) < c.w / 2);
+            assert.ok(Math.abs(side) < c.d / 2, 'tire stays inside body width');
+            assert.ok(z >= 0 && z <= 6.4, 'tires touch the ground beneath the body');
+        }
+        assert.ok(faces.indexOf(tires.at(-1)) < faces.findIndex(f => f.color === c.color), 'body must occlude the top of every tire');
+    }
+});
+
 test('owned and parked vehicles share dimensions and one renderer regardless of location', () => {
     const html = fs.readFileSync(`${__dirname}/index.html`, 'utf8');
     const env = { VehicleArt };
@@ -29,7 +55,7 @@ test('owned and parked vehicles share dimensions and one renderer regardless of 
     }
 });
 
-test('for-sale houses have no decorative cars; only occupied houses have parked cars', () => {
+test('house driveways reserve their single space for player rides, not decorative cars', () => {
     const original = VehicleArt.draw;
     try {
         for (const variant of [0, 1, 2]) {
@@ -44,7 +70,7 @@ test('for-sale houses have no decorative cars; only occupied houses have parked 
                 ctx: new Proxy({ fillText(t) { text.push(t); } }, { get: (target, key) => key in target ? target[key] : () => {} }),
                 P: (x,y,z=0) => [x-y,(x+y)/2-z], poly() {}, box() {}, shade: color => color
             });
-            assert.equal(cars, text.includes('FOR SALE') ? 0 : 1);
+            assert.equal(cars, 0);
         }
     } finally { VehicleArt.draw = original; }
 });

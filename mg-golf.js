@@ -6,6 +6,8 @@ Minigames.register('golf', env => {
     const BR = 7, FR = 2.2; // ball radius, friction
     const TOP = 70, BOT = 470;
     const rank = U.challenge(env.level), allowance = [4, 2, 0, -1, -2][Math.min(4, Math.floor(rank))];
+    const pressure = U.pressure(env.level), cupRadius = 11 - pressure * 4;
+    const cupSpeed = 300 - pressure * 150, windmillPace = 1 + pressure * 1.8;
 
     // hole: tee, cup, par, walls [x,y,w,h], sand/water [x,y,w,h], windmill {x,y}
     const HOLES = [
@@ -77,7 +79,7 @@ Minigames.register('golf', env => {
     }
 
     function update(dt) {
-        wmA += dt * (1.1 + hi * .15) * (1 + rank * .15);
+        wmA += dt * (1.1 + hi * .15) * windmillPace;
         shotT = Math.max(0, shotT - dt); splashT = Math.max(0, splashT - dt); cardT = Math.max(0, cardT - dt);
         if (sunk) {
             sunkT -= dt;
@@ -137,7 +139,7 @@ Minigames.register('golf', env => {
         }
         // cup
         const cd = Math.hypot(ball.x - hole.cup[0], ball.y - hole.cup[1]);
-        if (cd < 11 - rank * .6 && sp < 300 - rank * 25) {
+        if (cd < cupRadius && sp < cupSpeed) {
             sunk = true; sunkT = 1.5; ball.moving = false;
             ball.x = hole.cup[0]; ball.y = hole.cup[1];
             total += strokes; if (strokes <= hole.par) pars++;
@@ -147,7 +149,7 @@ Minigames.register('golf', env => {
             sfx(diff <= 0 ? 'cheer' : 'thud');
             if (diff <= 0) { fx.flash('#4ade80', .2); fx.burst(ball.x, ball.y, { n: 18, colors: ['#4ade80', '#fde047', '#fff'], speed: 170, life: .6, g: 120 }); }
             return;
-        } else if (cd < 13 && sp >= 300) {
+        } else if (cd > .001 && cd < 13 && sp >= cupSpeed) {
             // lip out
             const nx = (ball.x - hole.cup[0]) / cd, ny = (ball.y - hole.cup[1]) / cd;
             ball.vx += nx * 60; ball.vy += ny * 60;
@@ -208,7 +210,7 @@ Minigames.register('golf', env => {
         // cup
         const [cx, cy] = hole.cup;
         c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(cx, cy + 1, 13, 7, 0, 0, 7); c.fill();
-        c.fillStyle = '#0a0f0a'; c.beginPath(); c.ellipse(cx, cy, 11, 6, 0, 0, 7); c.fill();
+        c.fillStyle = '#0a0f0a'; c.beginPath(); c.ellipse(cx, cy, cupRadius, cupRadius * .55, 0, 0, 7); c.fill();
         c.strokeStyle = '#374151'; c.lineWidth = 2; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx, cy - 46); c.stroke();
         c.fillStyle = '#ef4444'; U.poly ? 0 : 0;
         c.beginPath(); c.moveTo(cx, cy - 46); c.lineTo(cx + 24, cy - 38); c.lineTo(cx, cy - 30); c.closePath(); c.fill();
@@ -283,7 +285,7 @@ Minigames.register('golf', env => {
         goal: `Finish 6 holes in ${HOLES.reduce((sum, h) => sum + h.par, 0) + allowance} strokes or fewer`,
         intro: { head: 'PUTT CLUB DMV', lines: ['Pull back from the ball, release to putt', 'Dodge sand, water & the windmill', '6 holes · stay under the stroke target'] },
         init: start, start, update, draw, down, move, up, idle() { },
-        _state: () => ({ hi, strokes, total, ball, sunk }),
+        _state: () => ({ hi, strokes, total, ball, sunk, cupRadius, cupSpeed, windmillPace, wmA }),
         _set: o => { if (o.ball) Object.assign(ball, o.ball); }
     };
 });

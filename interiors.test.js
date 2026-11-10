@@ -50,6 +50,41 @@ test('home, gym, carryout, club and arena expose their actual working activities
     assert.match(html, /activeBuilding.type === 'boxing'\) openBuildingModal\('boxing'\)/);
 });
 
+test('model home tours show the same furnishings but disable every object', () => {
+    const buttons = new Map(Interiors.rooms.crib.items.map(spec => [spec.selector, node()]));
+    const content = node(), overlay = node();
+    content.querySelector = selector => buttons.get(selector);
+    Interiors.mount(content, 'crib', overlay, { preview: true });
+    const scene = content.children[0];
+    assert.match(scene.children[0].textContent, /view-only/);
+    assert.match(scene.children[1].textContent, /display-only/);
+    for (const spec of Interiors.rooms.crib.items) {
+        const button = buttons.get(spec.selector);
+        assert.equal(button.disabled, true);
+        assert.match(button.innerHTML, /<svg/);
+        assert.match(button.attributes.title, /Display only/);
+    }
+});
+
+test('residential entry distinguishes the starter home, listed tours and private homes', () => {
+    const html = fs.readFileSync(`${__dirname}/index.html`, 'utf8');
+    const owned = { type: 'crib' }, garage = { type: 'crib', garage: true };
+    const env = {
+        quadrants: { SW: { buildings: [owned, garage] }, NW: { buildings: [] } },
+        ResidentialArt: { listing: b => b.listed ? 'AVAILABLE' : null }
+    };
+    vm.runInNewContext(html.slice(html.indexOf('function homeAccess('), html.indexOf('function checkInteraction(')) +
+        ';globalThis.access=homeAccess;', env);
+    assert.equal(env.access(owned), 'owned');
+    assert.equal(env.access(garage), 'owned');
+    assert.equal(env.access({ type: 'crib', listed: true }), 'preview');
+    assert.equal(env.access({ type: 'crib', listed: false }), 'private');
+    assert.equal(env.access({ type: 'library' }), 'venue');
+    assert.match(html, /if \(homeAccess\(b\) === 'private'\) continue/);
+    assert.match(html, /openBuildingModal\(activeBuilding.type, activeBuilding\)/);
+    assert.match(html, /VenueInteriors.mount\(content, type, modalEl, \{ preview: true \}\);\s*return;/);
+});
+
 test('oval arena and detailed avatars render finite geometry for all saved appearance choices', () => {
     const html = fs.readFileSync(`${__dirname}/index.html`, 'utf8');
     const canvas = new Proxy({}, { get: (target, key) => key in target ? target[key] : (...args) => {

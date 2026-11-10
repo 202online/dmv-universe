@@ -5,6 +5,8 @@ Minigames.register('drive', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const RL = 40, RR = 320, CY = 415, STAGES = 3, ROW_GAP = 190;
     const rank = U.challenge(env.level);
+    const pressure = U.pressure(env.level), roadPace = 1 + pressure * .8;
+    const bossCadence = 1 + pressure * 1.2, copPursuit = 26 + pressure * 48;
     const WEAPONS = ['Exhaust Pops', 'Twin Cannons', 'Rocket Launchers', 'Plasma Lasers'];
     const BOSSES = [
         { name: 'CHIEF CRUISER', hp: 85, color: '#1e293b', kind: 'cop' },
@@ -204,7 +206,7 @@ Minigames.register('drive', env => {
         modeT += dt; hurtT = Math.max(0, hurtT - dt); flameT += dt;
         shown += (count - shown) * Math.min(1, dt * 9);
         nitroOn = !!nitroHeld && meter > 0 && mode === 'run';
-        let v = (mode === 'run' ? 135 + stage * 12 : 150) * (1 + rank * .08);
+        let v = (mode === 'run' ? 135 + stage * 12 : 150) * roadPace;
         if (nitroOn) { meter = Math.max(0, meter - .2 * dt); v *= 1.85; } else if (brakeHeld && mode === 'run') v *= .35;
         scroll = (scroll || 0) + v * dt;
         const bw = bodyW();
@@ -222,7 +224,7 @@ Minigames.register('drive', env => {
         ents.forEach(e => {
             e.y += (v + e.sp) * dt; e.x += e.vx * dt;
             if (e.flash) e.flash -= dt;
-            if (e.type === 'cop') e.x += U.clamp(cx - e.x, -1, 1) * 26 * dt;
+            if (e.type === 'cop') e.x += U.clamp(cx - e.x, -1, 1) * copPursuit * dt;
             if (e.dead || e.hit) return;
             if (e.type === 'gate') {
                 if (e.y + e.h / 2 >= CY && !e.used) {
@@ -283,11 +285,11 @@ Minigames.register('drive', env => {
         if (!b || b.hp <= 0) return;
         b.t += dt; if (b.flash) b.flash -= dt;
         if (b.y < 110) { b.y += 90 * dt; return; }
-        b.x = W / 2 + Math.sin(b.t * (.8 + stage * .15)) * (85 + stage * 10);
+        b.x = W / 2 + Math.sin(b.t * (.8 + stage * .15) * (1 + pressure * .65)) * (85 + stage * 10);
         b.atk -= dt;
         b.charge = b.atk < .45 ? 1 - b.atk / .45 : 0;
         if (b.atk <= 0) {
-            b.atk = Math.max(.75, 1.7 - stage * .28) * U.rand(.8, 1.15) / (1 + rank * .12);
+            b.atk = Math.max(.75, 1.7 - stage * .28) * U.rand(.8, 1.15) / bossCadence;
             const r = Math.random();
             if (r < .45) [-34, 0, 34].forEach(o => ents.push(ent('proj', b.x + o, b.y + 70, { w: 22, h: 22, sp: 200, vx: o * 1.1 })));
             else if (r < .75 || stage === 1) [-1, 0, 1].forEach(o => ents.push(ent('proj', b.x + o * 24, b.y + 70, { w: 20, h: 20, sp: 150 + stage * 20, vx: (cx - b.x) * .25 + o * 18 })));
@@ -562,7 +564,7 @@ Minigames.register('drive', env => {
         goal: 'Survive the convoy run and defeat all 3 bosses',
         intro: { head: 'CONVOY RUSH', lines: ['Drag to steer · pick the best gate', 'Shoot cops, dodge potholes & red lights', 'Grab 🔫 crates · defeat 3 bosses'] },
         start() { start(); scroll = 0; }, update, draw, down, move, up,
-        _state: () => ({ stage, mode, count, tier, meter, dist, boss, ents, rowIdx, rows, cleared, cx }),
+        _state: () => ({ stage, mode, count, tier, meter, dist, boss, ents, rowIdx, rows, cleared, cx, roadPace, bossCadence, copPursuit }),
         _set: o => { if (o.count !== undefined) { count = o.count; shown = o.count; } if (o.tier !== undefined) tier = o.tier; if (o.meter !== undefined) meter = o.meter; if (o.dist !== undefined) dist = o.dist; if (o.cx !== undefined) { cx = o.cx; tx = o.cx; } }
     };
 });

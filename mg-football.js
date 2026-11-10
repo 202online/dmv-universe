@@ -5,6 +5,8 @@ Minigames.register('football', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const PXY = 24, PY = 420, L = 24, R = 336;
     const rank = U.challenge(env.level), target = rank >= 4 ? 2 : 1;
+    const pressure = U.pressure(env.level), pursuit = 1 + pressure * .95;
+    const spinDuration = .42 - pressure * .14, spinCooldown = 1.5 + pressure * 1.3;
     const DEF = {
         line: { w: 38, lat: 50, vy: 1.2, color: '#1e40af', name: 'LINEMAN' },
         lb: { w: 30, lat: 92, vy: 2.0, color: '#0f766e', name: 'LB' },
@@ -34,7 +36,7 @@ Minigames.register('football', env => {
             const r = Math.random();
             const k = r < .42 ? 'line' : r < .8 ? 'lb' : 'safety';
             defs.push({ k, w: DEF[k].w, x: U.rand(L + 24, R - 24), y, juked: false, flash: 0, face: 0 });
-            y += U.rand(3.4, 5.6);
+            y += U.rand(3.4, 5.6) * (1 - pressure * .25);
         }
         if (spot < 80) defs.push({ k: 'safety', w: 26, x: U.rand(80, 280), y: Math.min(99, spot + 24), juked: false, flash: 0, face: 0 });
         for (let i = 0; i < 2; i++) pads.push({ x: U.rand(L + 30, R - 30), y: spot + 8 + i * 12 + U.rand(0, 5), used: false });
@@ -51,7 +53,7 @@ Minigames.register('football', env => {
     }
     function spin() {
         if (spinCd > 0 || phase !== 'run') return;
-        spinT = .42; spinCd = 1.5 + rank * .15; sfx('whoosh'); buzz(12);
+        spinT = spinDuration; spinCd = spinCooldown; sfx('whoosh'); buzz(12);
         fx.burst(px, PY, { n: 10, colors: ['#fde047', '#fff'], speed: 120, life: .4 });
     }
 
@@ -72,9 +74,9 @@ Minigames.register('football', env => {
             for (const d of defs) {
                 const spec = DEF[d.k];
                 if (d.y > py - 2) {
-                    d.y -= spec.vy * dt * (d.y - py > 14 ? 1.6 : 1);
-                    const lead = px + (tx - px) * .25;
-                    d.x += U.clamp(lead - d.x, -spec.lat * dt, spec.lat * dt) * (1 + drive * .06 + rank * .1);
+                    d.y -= spec.vy * dt * (d.y - py > 14 ? 1.6 : 1) * (1 + pressure * .35);
+                    const lead = U.clamp(px + (tx - px) * (.25 + pressure * .35), L + 12, R - 12);
+                    d.x += U.clamp(lead - d.x, -spec.lat * dt * pursuit, spec.lat * dt * pursuit) * (1 + drive * .06);
                     d.face = Math.atan2(lead - d.x, 1);
                 }
                 const dy = (d.y - py) * PXY;
@@ -261,7 +263,7 @@ Minigames.register('football', env => {
         goal: `Score ${target} touchdown${target === 1 ? '' : 's'} in 2 drives`,
         intro: { head: 'GRIDIRON RUSH', lines: ['Drag to steer · tap to SPIN', 'Weave through the defense', 'Move the chains · score TDs'] },
         init: start, start, update, draw, down, move, up, idle() { },
-        _state: () => ({ drive, downN, spot, py, px, phase, tds, total, defs, firstLine }),
+        _state: () => ({ drive, downN, spot, py, px, phase, tds, total, defs, firstLine, pursuit, spinDuration, spinCooldown }),
         _set: o => { if (o.py !== undefined) py = o.py; if (o.defs) defs = o.defs; if (o.spot !== undefined) spot = o.spot; }
     };
 });

@@ -6,7 +6,9 @@ Minigames.register('chess', env => {
     const SQ = 42, BX = (360 - SQ * 8) / 2, BY = 92;
     const GLYPH = { wK: '♔', wQ: '♕', wR: '♖', wB: '♗', wN: '♘', wP: '♙', bK: '♚', bQ: '♛', bR: '♜', bB: '♝', bN: '♞', bP: '♟' };
     const VAL = { P: 100, N: 310, B: 330, R: 500, Q: 900, K: 0 };
-    const rank = U.challenge(env.level), noise = 180 * Math.exp(-rank * .65);
+    const pressure = U.pressure(env.level), noise = 180 * Math.pow(1 - pressure, 3);
+    const searchDepth = pressure >= .5 ? 3 : pressure > 0 ? 2 : 1;
+    const searchWidth = 3 + Math.floor(pressure * 9);
 
     let bd, turn, sel, legal, castle, ep, thinking, thinkT, lastMove, over, moveN, capsW, capsB, checkFlash, msg, msgT;
 
@@ -120,20 +122,32 @@ Minigames.register('chess', env => {
         return s;
     }
 
+    function search(b, cas, epSq, col, depth, alpha, beta) {
+        const ms = legalMoves(b, col, cas, epSq);
+        if (!ms.length) return inCheck(b, col) ? (col === 'b' ? -1e8 - depth : 1e8 + depth) : 0;
+        if (!depth) return evalB(b);
+        const maximize = col === 'b';
+        const candidates = ms.map(m => {
+            const r = apply(b, m, cas, epSq);
+            return { r, score: evalB(r.b) };
+        }).sort((a, z) => maximize ? z.score - a.score : a.score - z.score).slice(0, searchWidth);
+        let best = maximize ? -Infinity : Infinity;
+        for (const { r } of candidates) {
+            const score = search(r.b, r.cas, r.ep, maximize ? 'w' : 'b', depth - 1, alpha, beta);
+            best = maximize ? Math.max(best, score) : Math.min(best, score);
+            if (maximize) alpha = Math.max(alpha, best); else beta = Math.min(beta, best);
+            if (beta <= alpha) break;
+        }
+        return best;
+    }
+
     function aiMove() {
         const ms = legalMoves(bd, 'b', castle, ep);
         if (!ms.length) return null;
         let best = null, bestS = -1e9;
         for (const m of ms) {
             const r1 = apply(bd, m, castle, ep);
-            // Later levels anticipate replies and make progressively fewer evaluation errors.
-            const replies = legalMoves(r1.b, 'w', r1.cas, r1.ep);
-            let worst = rank === 0 ? evalB(r1.b) : 1e9;
-            if (!replies.length) worst = inCheck(r1.b, 'w') ? 1e8 : 0;
-            for (const w of rank === 0 ? [] : replies) {
-                const r2 = apply(r1.b, w, r1.cas, r1.ep);
-                worst = Math.min(worst, evalB(r2.b));
-            }
+            const worst = search(r1.b, r1.cas, r1.ep, 'w', searchDepth - 1, -Infinity, Infinity);
             const s = worst + Math.random() * noise;
             if (s > bestS) { bestS = s; best = m; }
         }
@@ -267,7 +281,7 @@ Minigames.register('chess', env => {
         goal: 'Checkmate the house AI (draws do not clear)',
         intro: { head: 'CHECKMATE LOUNGE', lines: ['Full chess vs the house AI', 'Tap a piece, then a highlighted square', 'Castling, en passant & auto-queen included'] },
         init: start, start, update, draw, down, move() { }, up() { }, idle() { },
-        _state: () => ({ bd, turn, over, moveN, capsW, capsB }),
+        _state: () => ({ bd, turn, over, moveN, capsW, capsB, noise, searchDepth, searchWidth }),
         _move: (from, to) => { const m = legalMoves(bd, 'w', castle, ep).find(m => m.from === from && m.to === to); if (m) doMove(m, 'w'); return !!m; }
     };
 });

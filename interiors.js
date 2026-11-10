@@ -85,7 +85,7 @@ const VenueInteriors = (() => {
         if (!Object.hasOwn(art, name)) throw new Error(`Unknown interior object: ${name}`);
         return `<svg viewBox="0 0 160 128" aria-hidden="true" focusable="false">${art[name]}</svg>`;
     }
-    function mount(content, type, overlay) {
+    function mount(content, type, overlay, { preview = false } = {}) {
         const key = aliases[type] || type, room = rooms[key];
         if (!room) throw new Error(`Unknown venue interior: ${type}`);
         overlay.dataset.interior = key;
@@ -95,9 +95,10 @@ const VenueInteriors = (() => {
         scene.className = 'venue-room';
         scene.setAttribute('aria-label', room.title);
         const title = document.createElement('h2');
-        title.textContent = room.title;
+        title.textContent = preview ? 'Model home - view-only tour' : room.title;
         const hint = document.createElement('p');
-        hint.textContent = 'Tap an object to use it. More options are below.';
+        hint.textContent = preview ? 'Computer, TV, closet, garage and pet space are display-only until this property is yours.' :
+            'Tap an object to use it. More options are below.';
         const stage = document.createElement('div');
         stage.className = 'venue-room-stage';
         const decor = document.createElement('div');
@@ -117,6 +118,10 @@ const VenueInteriors = (() => {
         for (const spec of room.items) {
             const button = content.querySelector(spec.selector);
             if (!button) throw new Error(`Missing ${type} interior action: ${spec.selector}`);
+            if (preview) {
+                button.disabled = true;
+                button.setAttribute('title', 'Display only - available after buying or renting this home');
+            }
             button.className = 'venue-object';
             button.setAttribute('aria-label', spec.label);
             button.innerHTML = illustration(spec.art) + `<span>${spec.label}</span>`;

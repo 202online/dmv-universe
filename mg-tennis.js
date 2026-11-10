@@ -1,21 +1,29 @@
 'use strict';
 
-// Baseline Rally: automatic movement and hitting, with optional swipes to place the next shot.
+// Baseline Rally: manual positioning, assisted hitting and swipe shot placement.
 Minigames.register('tennis', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
     const WIN = 5, G = 4.2, NET_H = .12;
-    const rank = U.challenge(env.level);
+    const pressure = U.pressure(env.level);
+    const difficulty = {
+        returnTime: U.lerp(1.35, .72, pressure),
+        placement: U.lerp(.32, .98, pressure),
+        cpuSpeed: U.lerp(1.05, 3.9, pressure),
+        reactionTime: U.lerp(.3, .075, pressure),
+        errorChance: U.lerp(.26, .025, pressure),
+        playerSpeed: 2.6
+    };
     const ys = v => U.lerp(505, 208, v);
     const hw = v => U.lerp(150, 88, v);
     const sc = v => U.lerp(1, .6, v);
     const X = (u, v) => 180 + u * hw(v);
     const HPX = 175;
 
-    let me, cpu, pu, ou, ball, phase, phaseT, server, rally, bestRally, swingT, oswing, hitCd, tx, tossT, reaction, aces, nextShot;
+    let me, cpu, pu, ou, ball, phase, phaseT, server, rally, bestRally, swingT, oswing, hitCd, tx, tossT, reaction, aces, nextShot, holdId, finished;
 
     function start() {
         me = 0; cpu = 0; server = 'p'; bestRally = 0; aces = 0; tx = 0;
-        pu = 0; ou = 0; hitCd = 0;
+        pu = 0; ou = 0; hitCd = 0; holdId = null; finished = false;
         newPoint();
     }
 
@@ -23,7 +31,7 @@ Minigames.register('tennis', env => {
         rally = 0; ball = null; swingT = 0; oswing = 0; nextShot = null; hitCd = 0;
         phase = 'serve'; phaseT = 0; tossT = 0; reaction = 0;
         if (server === 'o') { phaseT = 1.1; }
-        pu = U.clamp(pu, -.5, .5); ou = 0;
+        tx = pu; ou = 0;
         fx.text(180, 340, server === 'p' ? 'YOUR SERVE' : 'CPU SERVE', { color: '#fde047', size: 22, life: 1.1, vy: -20 });
     }
 
@@ -34,10 +42,20 @@ Minigames.register('tennis', env => {
         b.vu = (tu - b.u) / T; b.vv = (tv - b.v) / T; b.vh = (G / 2 * T * T - b.h) / T;
     }
 
-    function down() { }
-    function move() { }
+    function steer(p) { tx = U.clamp((p.x - 180) / hw(.05), -1.15, 1.15); }
+    function down(p) {
+        if (finished || phase === 'point' || holdId !== null) return;
+        holdId = p.id;
+        steer(p);
+    }
+    function move(p) { if (p.id === holdId && !finished && phase !== 'point') steer(p); }
     function up(p) {
-        if (p.cancelled) return;
+        if (p.id === holdId) {
+            holdId = null;
+            if (p.cancelled) tx = pu;
+            else if (phase !== 'point' && !finished) steer(p);
+        }
+        if (p.cancelled || finished) return;
         const speed = Math.hypot(p.vx, p.vy);
         if (p.dy < -45 && p.vy < -300 && speed > 350 && phase !== 'point') {
             const len = Math.hypot(p.dx, p.dy);
@@ -76,6 +94,7 @@ Minigames.register('tennis', env => {
             return;
         }
         swingT = .3; hitCd = .35;
+        reaction = difficulty.reactionTime;
         ball.u = pu; ball.v = Math.max(.05, ball.v); ball.last = 'p'; ball.bounces = 0;
         launch(ball, tu, tv, T);
         rally++; bestRally = Math.max(bestRally, rally);
@@ -118,10 +137,11 @@ Minigames.register('tennis', env => {
 
     function update(dt) {
         hitCd = Math.max(0, hitCd - dt); swingT = Math.max(0, swingT - dt); oswing = Math.max(0, oswing - dt);
-        tx = phase === 'rally' && ball && !ball.dead && ball.last === 'o'
-            ? U.clamp(ball.u + ball.vu * .12, -1.15, 1.15) : 0;
-        pu += U.clamp(tx - pu, -2.6 * dt, 2.6 * dt);
-        pu = U.clamp(pu, -1.2, 1.2);
+        if (finished) return;
+        if (phase !== 'point') {
+            pu += U.clamp(tx - pu, -difficulty.playerSpeed * dt, difficulty.playerSpeed * dt);
+            pu = U.clamp(pu, -1.2, 1.2);
+        }
         if (phase === 'point') { phaseT -= dt; stepBall(dt); if (phaseT <= 0) { if (me >= WIN || cpu >= WIN) finish(); else newPoint(); } return; }
         if (phase === 'serve') {
             if (server === 'p') {
@@ -132,8 +152,8 @@ Minigames.register('tennis', env => {
                 phaseT -= dt;
                 if (phaseT <= 0) {
                     ball = { u: ou, v: .96, h: .5, vu: 0, vv: 0, vh: 0, last: 'o', bounces: 0, dead: null, rot: 0 };
-                    launch(ball, U.rand(-.75, .75), U.rand(.12, .38), 1.25 - level() * .25);
-                    phase = 'rally'; oswing = .3; reaction = .35; sfx('tap');
+                    launch(ball, opponentAim(), U.rand(.15, .3), difficulty.returnTime);
+                    phase = 'rally'; oswing = .3; reaction = difficulty.reactionTime; sfx('tap');
                 }
             }
             return;
@@ -166,27 +186,33 @@ Minigames.register('tennis', env => {
     function opp(dt) {
         const b = ball;
         if (!b || b.dead) return;
-        const spd = .8 + level() * .75 + rank * .15;
+        const spd = difficulty.cpuSpeed + level() * .2;
         if (reaction > 0) reaction -= dt;
         else if (b.last === 'p') {
             const aim = b.u + b.vu * .15;
             ou += U.clamp(aim - ou, -spd * dt, spd * dt);
         } else ou += U.clamp(0 - ou, -spd * dt * .6, spd * dt * .6);
         ou = U.clamp(ou, -1.25, 1.25);
-        const reach = .27 + level() * .09;
+        const reach = .27 + pressure * .07;
         if (b.last === 'p' && b.bounces >= 1 && b.vv > 0 && b.v > .8 && b.h < .6 && Math.abs(b.u - ou) < reach) {
-            const sloppy = Math.random() < Math.max(.02, .3 - level() * .28 - rank * .04);
+            const sloppy = Math.random() < difficulty.errorChance;
             b.u = ou; b.last = 'o'; b.bounces = 0; oswing = .3;
-            const tu = sloppy ? U.pick([-1, 1]) * U.rand(1.15, 1.4) :
-                U.clamp(-pu * (.9 + rank * .15) + U.rand(-.45, .45), -.95, .95);
-            launch(b, tu, U.rand(.06, .42), U.lerp(1.3, .85, U.clamp(level() + Math.random() * .3, 0, 1)) - rank * .035);
+            const tu = sloppy ? U.pick([-1, 1]) * U.rand(1.15, 1.4) : opponentAim();
+            launch(b, tu, U.rand(.12, .32), Math.max(.68, difficulty.returnTime - level() * .06));
             sfx('tap'); fx.burst(X(b.u, b.v), ys(b.v) - 30, { n: 6, colors: ['#fef08a'], speed: 90, life: .25, g: 60 });
             rally++;
             bestRally = Math.max(bestRally, rally);
         }
     }
 
+    function opponentAim() {
+        const side = Math.abs(pu) > .12 ? -Math.sign(pu) : (pts() + rally) % 2 ? -1 : 1;
+        return side * U.clamp(difficulty.placement + U.rand(-.1, .1), .2, .95);
+    }
+
     function finish() {
+        if (finished) return;
+        finished = true;
         const win = me > cpu;
         end({
             win, head: win ? 'GAME, SET, MATCH!' : 'MATCH LOST',
@@ -278,7 +304,8 @@ Minigames.register('tennis', env => {
         c.fillStyle = server === 'p' ? '#fde047' : 'rgba(0,0,0,0)'; c.beginPath(); c.arc(30, 27, 4, 0, 7); c.fill();
         if (server === 'o') { c.fillStyle = '#fde047'; c.beginPath(); c.arc(330, 27, 4, 0, 7); c.fill(); }
         if (rally >= 2 && phase === 'rally') U.text(c, `RALLY ${rally}`, 180, 62, { size: 12, color: '#fde047', stroke: 'rgba(0,0,0,.7)', lw: 3 });
-        U.text(c, nextShot ? 'SHOT AIMED · AUTO RETURN READY' : 'AUTO MOVE + HIT · SWIPE TO AIM (OPTIONAL)', 180, 540, { size: 11, color: '#fff', alpha: .8, stroke: 'rgba(0,0,0,.7)', lw: 3 });
+        U.text(c, nextShot ? 'SHOT AIMED - MOVE TO MEET THE BALL' : 'TAP / DRAG TO MOVE - AUTO HIT IN REACH', 180, 540, { size: 11, color: '#fff', alpha: .8, stroke: 'rgba(0,0,0,.7)', lw: 3 });
+        U.text(c, `CPU PACE ${difficulty.returnTime.toFixed(2)}s - CORNER PRESSURE ${Math.round(pressure * 100)}%`, 180, 559, { size: 9, color: '#dbeafe' });
     }
 
     function drawReach(c) {
@@ -304,10 +331,10 @@ Minigames.register('tennis', env => {
 
     return {
         title: '🎾 Baseline Rally',
-        goal: 'Beat the CPU to 5 points (auto movement + hitting)',
-        intro: { head: 'BASELINE RALLY', lines: ['Your player moves, serves & hits automatically', 'Optional: swipe UP to aim the next shot', 'Swipe angle aims · length = depth'] },
+        goal: 'Move to the ball; automatic hits in reach. First to 5 points',
+        intro: { head: 'BASELINE RALLY', lines: ['Tap or drag sideways to move yourself', 'Serves and nearby returns hit automatically', 'Swipe UP to aim your next shot', `CPU flight ${difficulty.returnTime.toFixed(2)}s - faster at higher levels`] },
         init: start, start, update, draw, down, move, up, idle() { },
-        _state: () => ({ me, cpu, phase, ball, pu, ou, rally, server }),
+        _state: () => ({ me, cpu, phase, ball, pu, ou, rally, server, difficulty, tx, finished }),
         _set: o => { if (o.pu !== undefined) { pu = o.pu; tx = o.pu; } }
     };
 });

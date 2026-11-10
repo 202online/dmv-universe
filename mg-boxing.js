@@ -10,6 +10,7 @@ Minigames.register('boxing', env => {
     ];
     const MAXHP = 100, DAZE = 2.6;
     const rank = U.challenge(env.level);
+    const pressure = U.pressure(env.level), dazeWindow = DAZE - pressure * 1.05;
 
     let fi, foe, hp, fhp, state, stT, side, dodge, dodgeT, punchT, punchSide, daze, round, kos, hits, taken, stun, roundBanner, comboLeft, swayT;
 
@@ -18,7 +19,7 @@ Minigames.register('boxing', env => {
     function newFoe() {
         const base = FOES[fi];
         foe = { ...base, hp: Math.round(base.hp * (1 + rank * .12)),
-            tel: Math.max(.3, base.tel * Math.pow(.9, rank)), rest: base.rest * Math.pow(.9, rank), dmg: Math.round(base.dmg + rank * 2) };
+            tel: base.tel * (1 - pressure * .5), rest: base.rest * (1 - pressure * .6), dmg: Math.round(base.dmg + rank * 2) };
         fhp = foe.hp; daze = 0; stun = 0;
         state = 'idle'; stT = U.rand(.8, 1.4); side = 0; comboLeft = 0;
         dodge = 0; dodgeT = 0; punchT = 0; swayT = 0;
@@ -114,7 +115,7 @@ Minigames.register('boxing', env => {
             if (dodged) {
                 fx.text(180 - side * 60, 300, 'DODGED!', { color: '#4ade80', size: 18 });
                 sfx('whoosh'); buzz(10);
-                daze = DAZE; state = 'daze';
+                daze = dazeWindow; state = 'daze';
                 fx.text(180, 170, 'HE\'S DAZED — SWIPE UP!', { color: '#fb923c', size: 15, life: 1.2 });
                 sfx('bounce');
             } else {
@@ -267,7 +268,7 @@ Minigames.register('boxing', env => {
         goal: 'Knock out all 3 opponents',
         intro: { head: 'RING KINGS', lines: ['Watch the glowing glove, swipe AWAY to dodge', 'Dodge = dazed foe · swipe UP to uppercut', 'Tap to jab · beat all 3 champs'] },
         init: start, start, update, draw, down, move() { }, up, idle() { },
-        _state: () => ({ fi, hp, fhp, state, daze, stun, kos }),
+        _state: () => ({ fi, hp, fhp, state, daze, stun, kos, foe, side, stT, dazeWindow }),
         _set: o => { Object.assign({ }, o); if (o.daze !== undefined) daze = o.daze; }
     };
 });

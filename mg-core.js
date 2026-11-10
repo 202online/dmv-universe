@@ -63,6 +63,9 @@ const Minigames = (() => {
         challenge(level = 1) {
             return level <= 5 ? level - 1 : 4 + 4 * ((level - 5) / (level + 25));
         },
+        pressure(level = 1) {
+            return Math.max(0, (level - 1) / (level + 15));
+        },
         rr(c, x, y, w, h, r) { c.beginPath(); c.roundRect(x, y, w, h, r); },
         text(c, str, x, y, o = {}) {
             c.save();

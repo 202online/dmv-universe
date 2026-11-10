@@ -94,6 +94,44 @@
         return point(b, b.x + b.w * u, b.y + b.d + offset);
     }
 
+    function residentialPlan(b) {
+        if (b.garage || !['house', 'condo', 'apartment'].includes(b.kind || b.style)) return null;
+        const art = typeof module !== 'undefined' && module.exports ? require('./residential-art.js') : ResidentialArt;
+        return art.plan({ ...b, variant: b.variant ?? 1 });
+    }
+
+    // Child rectangles rotate around the property's centre, not their own local centre.
+    function region(b, r) {
+        const [cx, cy] = point(b, r.x + r.w / 2, r.y + r.d / 2);
+        const heading = r.heading && (b.roadAligned ?
+            [(r.heading[0] + r.heading[1]) * Math.SQRT1_2, (r.heading[1] - r.heading[0]) * Math.SQRT1_2] : [...r.heading]);
+        return { ...r, x: cx - r.w / 2, y: cy - r.d / 2, roadAligned: b.roadAligned, ...(heading ? { heading } : {}) };
+    }
+
+    function vehicleCorners(cx, cy, heading, vehicle) {
+        const [fx, fy] = heading, sx = -fy, sy = fx;
+        return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([f, s]) =>
+            [cx + f * vehicle.w / 2 * fx + s * vehicle.d / 2 * sx,
+                cy + f * vehicle.w / 2 * fy + s * vehicle.d / 2 * sy]);
+    }
+
+    function contains(area, corners, margin = 0) {
+        return corners.every(([x, y]) => {
+            const [lx, ly] = point(area, x, y, true);
+            return lx >= area.x + margin - 1e-7 && lx <= area.x + area.w - margin + 1e-7 &&
+                ly >= area.y + margin - 1e-7 && ly <= area.y + area.d - margin + 1e-7;
+        });
+    }
+
+    function buildingSolids(b) {
+        const layout = residentialPlan(b);
+        if (!layout) return [footprint(b)];
+        return [...layout.parts.filter(p => !p.z), ...(layout.garden ? [layout.garden] : [])]
+            .map(r => footprint(region(b, r))).concat(layout.decorativeCars.map(car => ({
+                corners: vehicleCorners(...point(b, car.x + car.w / 2, car.y + car.d / 2), region(b, car).heading, car)
+            })));
+    }
+
     function polygonsOverlap(a, b) {
         return [a, b].every(polygon => polygon.every(([x, y], i) => {
             const next = polygon[(i + 1) % polygon.length], ax = y - next[1], ay = next[0] - x;
@@ -247,30 +285,88 @@
     function assignParking(q) {
         const objects = [...targets(q), ...(q.parkingLot ? [q.parkingLot] : [])];
         q.playerParking = [];
-        for (const destination of targets(q).filter(b => !b.privateHome)) {
-            const cx = destination.x + destination.w / 2, cy = destination.y + destination.d / 2;
-            const candidates = [];
-            for (let dx = -220; dx <= destination.w + 220; dx += 20)
-                for (let dy = -220; dy <= destination.d + 220; dy += 20) {
-                    const bay = { x: destination.x + dx, y: destination.y + dy, w: 40, d: 26, destination, roadAligned: true };
-                    const ex = bay.x + bay.w / 2, ey = bay.y + bay.d / 2;
-                    const corners = footprint(bay).corners;
-                    if (corners.some(([x, y]) => Math.abs(x - y) > WORLD - 20 || x + y < 20 || x + y > 2 * WORLD - 20)) continue;
-                    const bounds = footprint(bay);
-                    if (!(bounds.e1 < -125 || bounds.e0 > 125) ||
-                        !(bounds.s1 < WORLD - 170 || bounds.s0 > WORLD + 170)) continue;
-                    if ([...objects, ...q.playerParking].some(b => overlaps(bay, b, 5))) continue;
-                    if (q.neighborhood.streets.some(r => intersects(r, bay))) continue;
-                    if (!nearRoad(q, ex, ey, 70)) continue;
-                    candidates.push({ bay, distance: Math.hypot(ex - cx, ey - cy) });
-                }
-            candidates.sort((a, b) => a.distance - b.distance);
-            if (!candidates.length) throw new Error(`No player parking space for ${destination.name || destination.kind}`);
-            q.playerParking.push(candidates[0].bay);
+        q.parkingAreas = q.parkingLot ? [{ ...q.parkingLot, destination: q.buildings[0], kind: 'overflow' }] : [];
+        q.approaches = [];
+        const addBay = (destination, area, bay) => q.playerParking.push({ ...bay, destination, area });
+        const bounded = r => footprint(r).corners.every(([x, y]) =>
+            Math.abs(x - y) <= WORLD - 4 && x + y >= 4 && x + y <= 2 * WORLD - 4);
+        for (const destination of targets(q)) {
+            const layout = residentialPlan(destination);
+            if (!layout) continue;
+            const area = { ...region(destination, layout.parking), destination, kind: layout.kind === 'house' ? 'driveway' : 'lot' };
+            q.parkingAreas.push(area);
+            q.approaches.push({ ...region(destination, layout.path), destination, pedestrian: true });
+            const access = q.roadAccess.find(a => a.building === destination);
+            const [ax, ay] = point(destination, ...world(...access.path[0]), true);
+            for (const [r, pedestrian] of [[layout.parking, false], [layout.path, true]]) {
+                const bottom = r.y + r.d, end = Math.max(bottom, ay);
+                if (end > bottom) q.approaches.push({ ...region(destination, { x: r.x, y: bottom, w: r.w, d: end - bottom }), destination, pedestrian });
+                const mid = r.x + r.w / 2;
+                q.approaches.push({ ...region(destination, { x: Math.min(mid, ax) - 10, y: end - 10,
+                    w: Math.abs(mid - ax) + 20, d: 20 }), destination, pedestrian });
+            }
+            for (const bay of layout.bays.slice(0, layout.kind === 'apartment' ? 2 : undefined))
+                addBay(destination, area, region(destination, bay));
         }
+        for (const destination of targets(q).filter(b => !b.privateHome)) {
+            if (residentialPlan(destination)) continue;
+            if (destination.garage) {
+                const area = { ...destination, destination, kind: 'garage' };
+                q.parkingAreas.push(area);
+                for (let i = 0; i < 3; i++)
+                    addBay(destination, area, region(destination, { x: destination.x + destination.w - 42,
+                        y: destination.y + 3 + i * 22, w: 38, d: 20, heading: [1, 0] }));
+                continue;
+            }
+            const access = q.roadAccess.find(a => a.building === destination);
+            const [ax, ay] = world(...access.path[0]);
+            const [lx, ly] = point(destination, ax, ay, true);
+            const entrance = region(destination, { x: destination.x + destination.w / 2 - 11,
+                y: destination.y + destination.d, w: 22, d: 80 });
+            q.approaches.push({ ...entrance, destination, pedestrian: true });
+            const candidates = [];
+            for (const side of ['front', 'right', 'left', 'rear']) for (const shift of [0, -20, 20, -40, 40, -60, 60]) {
+                const sideways = side === 'right' || side === 'left';
+                const along = sideways ? destination.y + destination.d / 2 : destination.x + destination.w / 2;
+                const local = sideways ?
+                    { x: side === 'right' ? destination.x + destination.w : destination.x - 66, y: along - 56 + shift, w: 66, d: 112 } :
+                    { x: along - 56 + shift, y: side === 'front' ? destination.y + destination.d : destination.y - 66, w: 112, d: 66 };
+                const area = { ...region(destination, local), destination, kind: 'lot' };
+                if (!bounded(area) || objects.filter(b => b !== destination).some(b => overlaps(area, b)) ||
+                    q.parkingAreas.some(b => overlaps(area, b))) continue;
+                if (!q.neighborhood.streets.some(r => intersects(r, area)) &&
+                    !nearRoad(q, area.x + area.w / 2, area.y + area.d / 2)) continue;
+                const bays = [4, 68].map(offset => {
+                    let r;
+                    if (side === 'front') r = { x: local.x + offset, y: local.y + 3, w: 40, d: 22, heading: [1, 0] };
+                    if (side === 'rear') r = { x: local.x + offset, y: local.y + local.d - 25, w: 40, d: 22, heading: [1, 0] };
+                    if (side === 'right') r = { x: local.x + 3, y: local.y + offset, w: 22, d: 40, heading: [0, 1] };
+                    if (side === 'left') r = { x: local.x + local.w - 25, y: local.y + offset, w: 22, d: 40, heading: [0, 1] };
+                    return region(destination, r);
+                }).filter(bay => !overlaps(bay, entrance) && !q.neighborhood.streets.some(r => intersects(r, bay)) && (() => {
+                    const bounds = footprint(bay);
+                    return (bounds.e1 < -125 || bounds.e0 > 125) &&
+                        (bounds.s1 < WORLD - 170 || bounds.s0 > WORLD + 170);
+                })());
+                if (!bays.length) continue;
+                candidates.push({ area, bays, distance: distanceTo(area, ax, ay) + Math.abs(shift) + Math.hypot(lx - (local.x + local.w / 2), ly - (local.y + local.d / 2)) });
+            }
+            candidates.sort((a, b) => a.distance - b.distance);
+            if (!candidates.length) throw new Error(`No attached parking lot for ${destination.name || destination.kind}`);
+            const { area, bays } = candidates[0];
+            q.parkingAreas.push(area);
+            bays.forEach(bay => addBay(destination, area, bay));
+        }
+        // The rear garage has real open interior bays and a driveable side entrance.
+        // Keep its back and side walls solid, rather than treating the entire floor as a wall.
+        q.parkingSolids = targets(q).filter(b => b.garage).flatMap(b =>
+            [{ x: b.x, y: b.y, w: b.w - 48, d: b.d },
+                { x: b.x + b.w - 48, y: b.y, w: 48, d: 2 },
+                { x: b.x + b.w - 48, y: b.y + b.d - 2, w: 48, d: 2 }].map(r => footprint(region(b, r))));
     }
 
     const api = { apply, targets, nearRoad, intersects, designs, point, footprint, overlaps, distanceTo, front, polygonsOverlap,
+        residentialPlan, region, vehicleCorners, contains, buildingSolids,
         halfWidth: HALF, world: WORLD, scale: SCALE };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     root.CityLayout = api;

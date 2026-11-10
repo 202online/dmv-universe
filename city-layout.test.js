@@ -16,6 +16,14 @@ const solidCorners = s => s.corners || [[s.x0,s.y0],[s.x1,s.y0],[s.x1,s.y1],[s.x
 const walkable = (q,x,y) => !q.solids.some(s => CityLayout.polygonsOverlap(
     [[x-9,y-9],[x+9,y-9],[x+9,y+9],[x-9,y+9]],solidCorners(s)));
 
+test('browser global scripts share the same residential geometry without requiring a window property', () => {
+    const env = { VehicleArt: context.VehicleArt };
+    vm.runInNewContext(`${fs.readFileSync(`${__dirname}/residential-art.js`, 'utf8')}
+        ${fs.readFileSync(`${__dirname}/city-layout.js`, 'utf8')}
+        globalThis.layout = CityLayout.residentialPlan({kind:'apartment',x:0,y:0,w:160,d:110,h:140});`, env);
+    assert.equal(env.layout.parking.spaces, 4);
+});
+
 test('baseball has a standalone SW outdoor diamond with a connected street approach', () => {
     const q = context.city.SW;
     const diamond = q.activities.find(a => a.type === 'baseball');
@@ -76,20 +84,52 @@ test('district distances expand by 60 percent without enlarging venues or rides;
         assert.ok(quadrant.roadAccess.some(access => access.building === station));
     }
 });
-test('every public destination has a separate marked parking bay clear of streets, structures, trees and other bays', () => {
+test('every destination owns real parking containing sized, collision-free bays instead of isolated markers', () => {
     const intersects = CityLayout.overlaps;
     for (const q of Object.values(context.city)) {
         const destinations = CityLayout.targets(q).filter(b => !b.privateHome);
-        assert.equal(q.playerParking.length, destinations.length);
+        for (const destination of destinations) assert.ok(q.playerParking.some(b => b.destination === destination), destination.name || destination.kind);
         for (const [i, bay] of q.playerParking.entries()) {
             assert.ok(destinations.includes(bay.destination));
-            assert.equal(q.playerParking.filter(b => b.destination === bay.destination).length, 1);
-            assert.ok(bay.w >= context.VehicleArt.sizes.truck.w + 4);
-            assert.ok(bay.d >= context.VehicleArt.sizes.truck.d + 4);
-            for (const object of [...CityLayout.targets(q), ...(q.parkingLot ? [q.parkingLot] : []), ...q.playerParking.slice(i+1)])
+            assert.ok(q.parkingAreas.includes(bay.area));
+            assert.equal(bay.area.destination, bay.destination);
+            assert.ok(CityLayout.contains(bay.area, CityLayout.footprint(bay).corners));
+            const corners = CityLayout.vehicleCorners(bay.x + bay.w / 2, bay.y + bay.d / 2, bay.heading, context.VehicleArt.sizes.truck);
+            assert.ok(CityLayout.contains(bay, corners, 1), `${bay.destination.name || bay.destination.kind} fits a pickup with clearance`);
+            for (const solid of q.solids)
+                assert.equal(CityLayout.polygonsOverlap(corners, solidCorners(solid)), false, `${bay.destination.name || bay.destination.kind} does not spawn in a solid`);
+            const residential = CityLayout.residentialPlan(bay.destination);
+            if (residential || bay.destination.garage)
+                assert.ok(CityLayout.contains(bay.destination, CityLayout.footprint(bay).corners), 'Residential parking stays on its own plot');
+            else {
+                assert.ok(bay.area.w * bay.area.d >= 7000, 'Public venues own a full lot with an aisle, not asphalt behind a bay');
+                assert.ok(Math.abs(CityLayout.distanceTo(bay.destination, ...CityLayout.point(bay.area, bay.area.x + bay.area.w / 2, bay.area.y + bay.area.d / 2)) - 33) < 1e-7, 'Lot attaches directly to its destination');
+                assert.ok(q.neighborhood.streets.some(r => CityLayout.intersects(r, bay.area)), 'The lot connects directly to an approach');
+            }
+            for (const object of [...CityLayout.targets(q).filter(b => b !== bay.destination), ...q.playerParking.slice(i+1)])
                 assert.equal(intersects(bay,object), false, `Parking clears ${object.name || object.kind || 'another bay'}`);
             assert.ok(q.neighborhood.streets.every(r => !CityLayout.intersects(r,bay)));
             assert.ok(q.trees.every(t => !intersects(bay,{x:t.x-6,y:t.y-6,w:12,d:12})));
+        }
+    }
+});
+
+test('residential entrances and paths are physically walkable and waterfalls are visually beside doors', () => {
+    for (const q of Object.values(context.city)) for (const b of CityLayout.targets(q)) {
+        const layout = CityLayout.residentialPlan(b);
+        if (!layout) continue;
+        const { door, path, garden } = layout;
+        for (let y = door.y + 13; y <= path.y + path.d; y += 3)
+            assert.ok(walkable(q, ...CityLayout.point(b, door.x, y)), `${b.name} has an unobstructed door path`);
+        for (const bay of q.playerParking.filter(bay => bay.destination === b)) {
+            const corners = CityLayout.vehicleCorners(bay.x + bay.w / 2, bay.y + bay.d / 2, bay.heading, context.VehicleArt.sizes.truck);
+            assert.equal(CityLayout.polygonsOverlap(corners, CityLayout.footprint(CityLayout.region(b, path)).corners), false, 'Parked cars leave the entrance open');
+        }
+        if (garden) {
+            const projectX = (x, y) => { const p = CityLayout.point(b, x, y); return (p[0] - p[1]) * .87; };
+            const gardenRight = Math.max(...[[garden.x,garden.y],[garden.x+garden.w,garden.y+garden.d]].map(p => projectX(...p)));
+            const doorLeft = projectX(door.x - door.w / 2, door.y);
+            assert.ok(doorLeft - gardenRight >= 8, 'The waterfall silhouette is separated horizontally from the door, regardless of its height');
         }
     }
 });
@@ -202,4 +242,69 @@ test('rotated collision polygons leave their empty bounding-box corners walkable
     assert.ok(Math.hypot(inverse[0] - 122, inverse[1] - 245) < 1e-7);
     b.x += 50;
     assert.notEqual(CityLayout.footprint(b), f, 'Moving an object invalidates its cached footprint');
+});
+
+function rideWorld() {
+    const env = { WORLD, CityLayout, VehicleArt: context.VehicleArt, TravelArt: require('./travel-art.js'),
+        RideBag: require('./ride-bag.js'), console, updateProgressHud() {}, snapCamera() {}, transitNotice() {} };
+    vm.runInNewContext(`${source}
+        ${html.slice(html.indexOf('const starterBay ='), html.indexOf('const SAVE_KEY ='))}
+        ${html.slice(html.indexOf('function overlaps(rect, s)'), html.indexOf('let metroCardId ='))}
+        ${html.slice(html.indexOf('function secureLogoutRides('), html.indexOf('function showDrivingMessage('))}
+        ${html.slice(html.indexOf('function selectRide('), html.indexOf('function openItemBag('))}
+        globalThis.quadrants = quadrants; globalThis.vehicles = vehicles;
+        globalThis.ownCar = ownCar; globalThis.driving = driving;
+        globalThis.player = {x: 800, y: 800, r: 9};
+        globalThis.currentQuadrant = 'NW';
+        globalThis.progress = {vehicle:'bike', ownedVehicles:['bike','impala','truck']};
+        globalThis.rideLook = id => ({...vehicles[id]});
+        globalThis.storedAwaySince = {};
+        globalThis.starterBay = starterBay;
+        `, env);
+    return env;
+}
+
+test('starter, purchased, called and secured rides use their bay heading and persist inside real parking', () => {
+    const env = rideWorld();
+    assert.ok(CityLayout.contains(env.starterBay,
+        CityLayout.vehicleCorners(env.ownCar.x + env.ownCar.w / 2, env.ownCar.y + env.ownCar.d / 2, env.ownCar.heading, env.ownCar), 1));
+    const parkedIn = (id, p) => {
+        const vehicle = env.vehicles[id];
+        const corners = CityLayout.vehicleCorners(p.x + vehicle.w / 2, p.y + vehicle.d / 2, p.heading, vehicle);
+        const bay = env.quadrants[p.quadrant].playerParking.find(b => CityLayout.contains(b, corners, 1));
+        assert.ok(bay, `${id} is contained in a real bay`);
+        assert.equal(env.carBlocked(p.x + vehicle.w / 2, p.y + vehicle.d / 2, p.quadrant, p.heading, vehicle, id), false);
+        return bay;
+    };
+    env.setRidePacked(true);
+    env.selectRide('impala');
+    parkedIn('impala', {...env.ownCar, quadrant: env.driving.quadrant});
+    env.selectRide('truck');
+    parkedIn('truck', {...env.ownCar, quadrant: env.driving.quadrant});
+    const stored = vm.runInNewContext('parkedVehicles.impala', env);
+    parkedIn('impala', stored);
+    env.secureLogoutRides(false);
+    const bay = parkedIn('truck', {...env.ownCar, quadrant: env.driving.quadrant});
+    assert.equal(bay.destination.style, 'apartment', 'Logout returns cars to the home property, not random grass');
+    assert.equal(stored.quadrant, 'SE');
+    const storedBay = parkedIn('impala', stored);
+    assert.equal(storedBay.destination, bay.destination, 'Both owned cars fit at home without overlapping');
+    stored.x = 800; stored.y = 800; stored.heading = [1, 0];
+    env.selectRide('impala');
+    parkedIn('impala', {...env.ownCar, quadrant: env.driving.quadrant});
+    const parkedTruck = vm.runInNewContext('parkedVehicles.truck', env);
+    parkedIn('truck', parkedTruck);
+});
+
+test('attached lots and residential driveways keep their pedestrian approaches clear of parked pickups', () => {
+    for (const q of Object.values(context.city)) for (const approach of q.approaches) {
+        for (const b of CityLayout.targets(q).filter(b => b !== approach.destination))
+            assert.equal(CityLayout.overlaps(approach, b), false, 'The approach does not run through another property');
+        if (!approach.pedestrian) continue;
+        for (const bay of q.playerParking) {
+            const corners = CityLayout.vehicleCorners(bay.x + bay.w / 2, bay.y + bay.d / 2, bay.heading, context.VehicleArt.sizes.truck);
+            assert.equal(CityLayout.polygonsOverlap(corners, CityLayout.footprint(approach).corners), false,
+                `${bay.destination.name || bay.destination.kind} leaves the entrance approach clear`);
+        }
+    }
 });

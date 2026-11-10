@@ -86,9 +86,10 @@
     Minigames.register('lemonade', env => {
         const { U, end } = env, rank = U.challenge(env.level);
         const target = 6 + Math.floor(rank), profitGoal = 6 + Math.floor(rank), duration = 65 - rank * 1.5;
-        const sweetSpot = .22 - rank * .009;
+        const pressure = U.pressure(env.level), sweetSpot = .22 - pressure * .15;
+        const pourRate = .7;
         let time, cash, expenses, revenue, stock, price, sold, lost, stage, fill, pour, customer, arrival, patience, finished;
-        const waitLimit = () => 14 - rank * .55;
+        const waitLimit = () => 14 - pressure * 7;
         const demand = () => ({ 2: 1.2, 3: 2, 4: 3.2 })[price];
         function start() {
             time = duration; cash = 12; expenses = 8; revenue = 0; stock = 6; price = 3;
@@ -142,7 +143,7 @@
             if (finished) return;
             time = Math.max(0, time - dt);
             if (time <= 0) { finish(false); return; }
-            if (pour !== null) fill = Math.min(1.2, fill + dt * .7);
+            if (pour !== null) fill = Math.min(1.2, fill + dt * pourRate);
             if (customer) {
                 patience -= dt;
                 if (patience <= 0) { lost++; customer = false; arrival = demand(); feedback(env, 'Customer left', false); }
@@ -198,7 +199,7 @@
         return { title: 'Lemonade Stand', goal: `Sell ${target} cups and make $${profitGoal} profit`,
             intro: { head: 'LEMONADE STAND', lines: ['Tap squeeze, then mix your drink', 'Hold pour; release at the green line', 'Set price, serve, restock from sales', 'Stand cash is not your city stars'] },
             start, update, draw, down, up,
-            _state: () => ({ time, cash, expenses, revenue, stock, price, sold, lost, stage, fill, customer, target, profitGoal, duration, sweetSpot, finished }) };
+            _state: () => ({ time, cash, expenses, revenue, stock, price, sold, lost, stage, fill, customer, target, profitGoal, duration, sweetSpot, pourRate, patience, waitLimit: waitLimit(), finished }) };
     });
 
     const ingredients = [
@@ -208,14 +209,15 @@
     ];
     Minigames.register('subshop', env => {
         const { U, end } = env, rank = U.challenge(env.level);
-        const target = 4 + Math.floor(rank / 2), limit = 18 - rank * .7, duration = 85;
+        const pressure = U.pressure(env.level);
+        const target = 4 + Math.floor(rank / 2), limit = 18 - pressure * 12, duration = 85;
         let time, served, mistakes, lost, order, selected, patience, cooldown, finished;
         function ticket() {
             const meat = U.pick([0, 1]), extras = [2, 3, 4, 5, 6, 7];
             for (let i = extras.length - 1; i > 0; i--) {
                 const j = Math.floor(U.rand(0, i + 1)); [extras[i], extras[j]] = [extras[j], extras[i]];
             }
-            order = [meat, ...extras.slice(0, 2 + Math.floor(rank / 3))].sort((a, b) => a - b);
+            order = [meat, ...extras.slice(0, 2 + Math.floor(pressure * 5))].sort((a, b) => a - b);
             selected = new Set(); patience = limit; cooldown = 0;
         }
         function start() { time = duration; served = 0; mistakes = 0; lost = 0; finished = false; ticket(); }
@@ -285,8 +287,9 @@
 
     Minigames.register('carryout', env => {
         const { U, end } = env, rank = U.challenge(env.level);
-        const target = 4 + Math.floor(rank / 2), cookRate = .24 + rank * .012;
-        const window = .19 - rank * .008, limit = 17 - rank * .5;
+        const pressure = U.pressure(env.level);
+        const target = 4 + Math.floor(rank / 2), cookRate = .24 + pressure * .2;
+        const window = .19 - pressure * .13, limit = 17 - pressure * 8;
         let time, served, burnt, lost, stage, heat, sauce, wanted, patience, cooldown, finished;
         const sauces = ['Mambo', 'BBQ', 'Plain'];
         function ticket() {

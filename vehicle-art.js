@@ -26,15 +26,31 @@ const VehicleArt = (() => {
         const hw = c.w / 2, hd = c.d / 2, glass = '#294455';
         const cab0 = c.kind === 'truck' ? -c.w * .05 : -c.w * .22, cab1 = c.w * .24, cabS = hd * .82;
         face([[-hw,-hd,0],[hw,-hd,0],[hw,hd,0],[-hw,hd,0]], '#00000055', null);
-        prism(-hw, hw, -hd, hd, 3, 10, c.color);
+        // Tires sit inside the body footprint, in the wheel's forward/height plane.
+        // Draw them before the chassis so the upper halves tuck beneath the fenders.
+        for (const side of [-1, 1]) for (const f of [-c.w * .3, c.w * .3]) {
+            const outer = side * (hd - .2), inner = side * (hd - 1.6), r = 3.2;
+            const ring = Array.from({ length: 20 }, (_, i) => {
+                const angle = i * Math.PI / 10;
+                return [f + Math.cos(angle) * r, outer, r + Math.sin(angle) * r];
+            });
+            for (let i = 0; i < ring.length; i++) {
+                const a = ring[i], b = ring[(i + 1) % ring.length];
+                face([a, b, [b[0], inner, b[2]], [a[0], inner, a[2]]], '#141b24', null);
+            }
+            face(ring, '#101821', null);
+            if (sides.includes(side)) {
+                const hub = Array.from({ length: 16 }, (_, i) => {
+                    const angle = i * Math.PI / 8;
+                    return [f + Math.cos(angle) * 1.45, outer, r + Math.sin(angle) * 1.45];
+                });
+                face(hub, '#aebbc4', '#53616c');
+            }
+        }
+        prism(-hw, hw, -hd, hd, 5, 10, c.color);
         for (const side of sides) {
             const outer = side * (hd + .1);
             face([[-hw*.9,outer,6],[hw*.9,outer,6],[hw*.9,outer,7],[-hw*.9,outer,7]], c.trim || '#d5d9d5', null);
-            for (const f of [-c.w * .3, c.w * .3]) {
-                const [x, y] = point(f, outer, 3.5);
-                ctx.fillStyle = '#101821'; ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#c9d0d4'; ctx.beginPath(); ctx.arc(x, y, 1.7, 0, Math.PI * 2); ctx.fill();
-            }
         }
         if (frontSeen) {
             face([[hw+.1,-hd*.8,6],[hw+.1,-hd*.35,6],[hw+.1,-hd*.35,9],[hw+.1,-hd*.8,9]], '#fef9c3');
