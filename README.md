@@ -16,36 +16,28 @@ a larger player mallet, bounded puck speed and automatic goal guarding when
 you release the controls. Tap or drag in your half; a gentle contact returns
 the puck without a fast flick. Later levels remain harder but keep these assists.
 
-- Active minigame play pays **2 stars/minute** (120/hour), including losses,
-  draws, replays and leaving mid-round. Winning adds **1.5 stars/minute** of
-  that round's active time (90/hour); first clears add **0.5/minute** (30/hour).
-  The first-clear portion is capped at 3, 5, 7, 9 and 12 stars for levels 1–5,
-  then 12 at later levels. It cannot be claimed again on a cleared level.
-- The target is **about 200 stars/hour** when two-thirds of active time leads
-  to first-clear wins: 120 participation + 60 wins + 20 first clears.
-  Active losses alone pay 120/hour; replay wins pay 210/hour; first-clear
-  wins pay at most 240/hour. These are calibration rates, not measured player
-  averages; menus, travel, idle time and spending reduce net hourly gains.
-- Time counts only while a minigame is playing in a visible, focused tab and
-  within 30 seconds of touch/mouse input. Keep interacting during automatic
-  games to stay active. Intro/result screens and background tabs do not pay.
-  Rewards settle on round completion or leaving; fractional stars persist
-  across games and reloads. Reloading before settlement loses that round's
-  unbanked time. Retrying is free; there is no daily cap.
+- First clears pay **3, 5, 7, 9 and 12 stars** at levels 1–5, then **12 stars**
+  at every later level, once per level per game.
+- Cleared levels are **practice only**: replay wins pay **0 stars**.
+  There is no daily reward cap or reset to track.
+- Losses and chess draws pay **0 stars**. Retrying is free.
 - Levels and first clears save alongside existing purchases.
   Saves from before campaigns start at level 1; existing campaign saves keep
   their clears and unlock the next level, including level 6 after five clears.
 
-Existing shirts cost 6–8 stars, scooters/e-bikes 60/180, and the Bucket/pickup
-720/828. Grind-time estimates are for economy balancing only, not displayed
-in shops. At the 200 stars/hour target, from zero without spending elsewhere,
-this is about 18 minutes
-for a scooter, 54 minutes for an e-bike, 3.6 hours for the Bucket and 4.1 hours
-for a pickup. Prices have not changed; existing balances, unlocks and owned
-items are preserved. The new catalog clothing is still unpriced and unlisted.
-The former Impala is displayed as **the Bucket**, retaining
+The first five levels pay 36 stars per game (576 across all sixteen games). Existing
+shirts cost 6–8 stars, scooters/e-bikes 60/180, and the Bucket/pickup 720/828.
+Time-per-star can be used as a personal shop-pricing reference; it does not
+affect actual rewards, which remain fixed per first-clear level. Prices have
+not changed; existing balances, unlocks and owned items are preserved. The new
+catalog clothing is still unpriced and unlisted. The former Impala is displayed
+as **the Bucket**, retaining
 its saved `impala` ID. The pickup costs exactly 15% more and moves 10% faster
 (speed multipliers 1.8 versus 1.98).
+Starting from zero, buying the Bucket using just one game's first clears takes
+62 wins, and the pickup takes 71 (without other spending). Across all sixteen
+games, clearing their first five levels still leaves 144/252 stars to earn
+toward those vehicles.
 
 Owned rides can be repainted for free with the swatches in the Vehicle Shop or
 Your Garage (`vehicle-paints.js`). The paint is saved and applies to the ride

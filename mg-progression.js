@@ -14,8 +14,6 @@ const MinigameProgression = (() => {
     function valid(state) {
         if (!state || typeof state !== 'object' || Array.isArray(state) || !state.cleared ||
             typeof state.cleared !== 'object' || Array.isArray(state.cleared)) return false;
-        if (state.rewardRemainder !== undefined &&
-            (!Number.isSafeInteger(state.rewardRemainder) || state.rewardRemainder < 0 || state.rewardRemainder >= 120000)) return false;
         return games.every(name => (!Object.hasOwn(state.cleared, name) && additions.includes(name)) ||
             (Number.isSafeInteger(state.cleared[name]) && state.cleared[name] >= 0 &&
             state.cleared[name] < Number.MAX_SAFE_INTEGER));
@@ -32,7 +30,6 @@ const MinigameProgression = (() => {
         return { cleared, unlocked: cleared + 1, reward: reward(cleared + 1) };
     }
 
-    // Computes first-clear eligibility and its bonus cap. Currency uses settleRound.
     function settle(state, name, level, win) {
         const status = info(state, name);
         if (!Number.isSafeInteger(level) || level < 1 || level > status.unlocked ||
@@ -48,23 +45,7 @@ const MinigameProgression = (() => {
         return { stars: 0, message: 'Already cleared. Practice only - no stars.', unlocked: false };
     }
 
-    function settleRound(state, name, level, win, activeSeconds) {
-        if (!Number.isFinite(activeSeconds) || activeSeconds < 0 || activeSeconds > 86400)
-            throw new Error('Invalid active play time');
-        const payout = settle(state, name, level, win);
-        const ms = Math.floor(activeSeconds * 1000);
-        // Integer units preserve fractional earnings across rounds, games and reloads.
-        const play = ms * 4, skill = win === true ? ms * 3 : 0;
-        const clear = payout.unlocked ? Math.min(ms, payout.stars * 120000) : 0;
-        const units = (state.rewardRemainder || 0) + play + skill + clear;
-        state.rewardRemainder = units % 120000;
-        return {
-            ...payout, stars: Math.floor(units / 120000),
-            message: `${Math.floor(activeSeconds)}s active play + ${win === true ? 'win' : 'participation'} earnings${payout.unlocked ? ' + first-clear bonus' : ''}. Fractional stars saved.`
-        };
-    }
-
-    return { initial, valid, restore, info, settle, settleRound, games, rewards, reward };
+    return { initial, valid, restore, info, settle, games, rewards, reward };
 })();
 
 if (typeof module !== 'undefined') module.exports = MinigameProgression;

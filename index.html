@@ -2698,8 +2698,8 @@
                 overlay: modalEl, isOpen: () => !modalEl.classList.contains('hidden'), close: closeModal,
                 campaign: {
                     info: () => MinigameProgression.info(progress.minigames, type),
-                    settle: (level, win, activeSeconds) => {
-                        const payout = MinigameProgression.settleRound(progress.minigames, type, level, win, activeSeconds);
+                    settle: (level, win) => {
+                        const payout = MinigameProgression.settle(progress.minigames, type, level, win);
                         progress.stars += payout.stars;
                         updateProgressHud();
                         saveProgress();
