@@ -147,7 +147,11 @@ const Sportsbook = (() => {
     }
     const lessons = [
         { id: 'start', title: 'Start here', summary: 'One ticket, step by step.', paragraphs: [
-            '1. Pick a team or result. 2. Choose a stake: the credits you can lose. 3. Read the slip. 4. Place the practice ticket. 5. Simulate the result.',
+            'Step 1: Pick a team or result.',
+            'Step 2: Choose a stake: the credits you can lose.',
+            'Step 3: Read the slip.',
+            'Step 4: Place the practice ticket.',
+            'Step 5: Simulate the result.',
             'Start small in this pretend-money lab. Nothing here predicts real games or proves you can make money.'
         ] },
         { id: 'odds', title: 'Odds made simple', summary: 'What +150 and -200 mean.', paragraphs: [
@@ -189,6 +193,9 @@ const Sportsbook = (() => {
             'Practice results do not show you can profit with real money. Follow local age and legal restrictions.'
         ] }
     ];
+    const teachingSentences = text => text.split(/(?<=[.!?])\s+(?=[A-Z])/);
+    const teachingText = text => teachingSentences(text).map(sentence =>
+        `<span class="book-sentence">${escape(sentence)}</span>`).join('');
     const glossary = [
         ['Bankroll', 'Available practice credits.'], ['Stake', 'Credits you commit and can lose.'],
         ['Odds', 'The price used to calculate a payout.'], ['Favorite', 'The side priced as more likely; it can still lose.'],
@@ -232,15 +239,14 @@ const Sportsbook = (() => {
                     <h3><span class="book-step">2</span> Choose what to predict</h3>
                     <div class="book-markets" role="group" aria-label="Bet type">${markets.map(m =>
                         `<button type="button" data-market="${m.id}" aria-pressed="${marketId === m.id}">${m.name}<small>${m.hint}</small></button>`).join('')}</div>
-                    <p class="book-explainer">${market.lesson}</p>
+                    <p class="book-explainer">${teachingText(market.lesson)}</p>
                     <div class="book-lines">${market.types.map(type => {
                         const id = `${game.id}:${type}`, s = selections[id], chosen = slip.includes(id);
                         return `<button type="button" data-pick="${id}" aria-pressed="${chosen}">
                             <span>${s.label}</span><strong>${oddsText(s.odds)}</strong><small>${chosen ? 'Selected · tap to remove' : 'Tap to add to your slip'}</small>
                         </button>`;
                     }).join('')}</div>
-                    <p class="book-muted">One pick per game. Choosing another from the same game replaces it.
-                        To try a two-game parlay, add a pick from the other matchup.</p>
+                    <p class="book-muted">${teachingText('One pick per game. Choosing another from the same game replaces it. To try a two-game parlay, add a pick from the other matchup.')}</p>
                     ${slip.length ? '<button type="button" id="book-review">Review bet slip below</button>' : ''}
                 </section>
                 <section class="book-card book-slip" aria-labelledby="book-slip-title">
@@ -263,13 +269,13 @@ const Sportsbook = (() => {
             const q = quizzes[quizIndex];
             const lesson = lessons.find(l => l.id === lessonId);
             const index = [['index', 'Learning index'], ...lessons.map(l => [l.id, l.title]), ['glossary', 'Glossary'], ['quiz', 'Quick quiz']];
-            const article = lesson ? `<h3>${lesson.title}</h3>${lesson.paragraphs.map(p => `<p>${escape(p)}</p>`).join('')}
+            const article = lesson ? `<h3>${lesson.title}</h3>${lesson.paragraphs.map(p => `<p class="book-note">${teachingText(p)}</p>`).join('')}
                 ${lessonId === 'markets' ? markets.map(m => `<button type="button" data-try-market="${m.id}">Try ${m.name}</button>`).join(' ') : ''}` :
                 lessonId === 'glossary' ? `<h3>Glossary: look up a word</h3><dl>${glossary.map(([word, meaning]) =>
-                    `<dt><strong>${word}</strong></dt><dd>${meaning}</dd>`).join('')}</dl>` :
+                    `<dt><strong>${word}</strong></dt><dd>${teachingText(meaning)}</dd>`).join('')}</dl>` :
                 lessonId === 'quiz' ? `<h3>One question at a time</h3>
                     <p>${q.question}</p><div class="book-quiz">${q.answers.map((answer, i) => `<button type="button" data-answer="${i}">${answer}</button>`).join('')}</div>
-                    <p role="status" id="book-quiz-feedback">${escape(quizFeedback)}</p>
+                    <p role="status" id="book-quiz-feedback">${teachingText(quizFeedback)}</p>
                     <button type="button" id="book-next-question">Next question</button>` :
                     `<h3>Pick one short topic</h3><p>You do not need to read everything at once.</p>
                     ${lessons.map(l => `<p><button type="button" data-lesson="${l.id}">${l.title}</button><small>${l.summary}</small></p>`).join('')}
@@ -405,7 +411,7 @@ const Sportsbook = (() => {
         }
         draw();
     }
-    return { games, selections, markets, lessons, glossary, initial, valid, decimal, outcome, settle, render, parseStake, quote, place, requirement, evidence };
+    return { games, selections, markets, lessons, glossary, teachingSentences, initial, valid, decimal, outcome, settle, render, parseStake, quote, place, requirement, evidence };
 })();
 
 if (typeof module !== 'undefined') module.exports = Sportsbook;

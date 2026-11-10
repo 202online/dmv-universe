@@ -86,9 +86,9 @@ test('early levels pay 36 per game and later rewards stay capped at 12', () => {
     assert.equal(total, 36 * Campaign.games.length);
 });
 
-test('older ten-game saves gain five new campaigns without changing prior clears or replay data', () => {
+test('older ten-game saves gain new campaigns without changing prior clears or replay data', () => {
     const old = Campaign.initial();
-    for (const name of ['lemonade', 'subshop', 'carryout', 'resale', 'courier']) delete old.cleared[name];
+    for (const name of ['lemonade', 'subshop', 'carryout', 'resale', 'courier', 'baseball']) delete old.cleared[name];
     old.cleared.tennis = 19;
     old.replay = { day: '2026-01-01', paid: 2 };
     assert.ok(Campaign.valid(old));
@@ -96,7 +96,7 @@ test('older ten-game saves gain five new campaigns without changing prior clears
     assert.equal(loaded.cleared.tennis, 19);
     assert.deepEqual(loaded.replay, old.replay);
     assert.ok(!Object.hasOwn(old.cleared, 'lemonade'), 'migration does not mutate old data');
-    for (const name of ['lemonade', 'subshop', 'carryout', 'resale', 'courier']) {
+    for (const name of ['lemonade', 'subshop', 'carryout', 'resale', 'courier', 'baseball']) {
         assert.equal(Campaign.info(loaded, name).unlocked, 1);
         assert.equal(Campaign.settle(loaded, name, 1, true).stars, 3);
         assert.equal(Campaign.settle(loaded, name, 1, true).stars, 0);
@@ -106,6 +106,16 @@ test('older ten-game saves gain five new campaigns without changing prior clears
     assert.throws(() => Campaign.restore(loaded), /Invalid/);
 });
 
+test('fifteen-game saves add baseball while preserving every previous clear', () => {
+    const old = Campaign.initial();
+    delete old.cleared.baseball;
+    old.cleared.carryout = 21;
+    const loaded = Campaign.restore(old);
+    assert.equal(loaded.cleared.carryout, 21);
+    assert.equal(loaded.cleared.baseball, 0);
+    assert.equal(Campaign.settle(loaded, 'baseball', 1, true).stars, 3);
+    assert.equal(Campaign.settle(loaded, 'baseball', 1, true).stars, 0);
+});
 test('invalid saved progression is rejected', () => {
     for (const value of [null, {}, { cleared: {}, replay: {} }]) assert.equal(Campaign.valid(value), false);
     for (const n of [-1, Number.MAX_SAFE_INTEGER, Infinity, 1.5, '2', null]) {

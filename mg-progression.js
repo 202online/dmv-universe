@@ -2,7 +2,7 @@
 
 const MinigameProgression = (() => {
     const originalGames = ['basketball', 'drive', 'football', 'soccer', 'tennis', 'golf', 'boxing', 'pool', 'airhockey', 'chess'];
-    const additions = ['lemonade', 'subshop', 'carryout', 'resale', 'courier'];
+    const additions = ['lemonade', 'subshop', 'carryout', 'resale', 'courier', 'baseball'];
     const games = [...originalGames, ...additions];
     const rewards = [3, 5, 7, 9, 12];
     const reward = level => rewards[Math.min(level - 1, rewards.length - 1)];

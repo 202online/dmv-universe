@@ -27,16 +27,16 @@
         },
         SE: {
             identity: 'Garden-apartment courts, library commons and community recreation',
-            homes: [1690, 1910].flatMap(s => [-800, -560, -320].map(e => [e, s])),
+            homes: [[-800, 1300], [-800, 1690], [-280, 1750], [-600, 1870], [320, 1320], [760, 1320]],
             kind: 'apartment', colors: ['#956e5d', '#a27d65', '#87685b'],
             districts: [
-                { name: 'Library Commons', e: -930, s: 1210, w: 740, d: 410, color: '#426752' },
+                { name: 'Library Commons', e: -940, s: 1210, w: 1880, d: 410, color: '#426752' },
                 { name: 'Garden Apartment Courts', e: -940, s: 1630, w: 1880, d: 360, color: '#526b45' }
             ]
         },
         SW: {
             identity: 'Waterfront homes and promenade beside the civic and arena district',
-            homes: [[-800, 1510], [-800, 1760], [-520, 1890], [300, 1880], [580, 1880]],
+            homes: [[-800, 1510], [-800, 1760], [-520, 1870], [300, 1860], [580, 1860]],
             kind: 'condo', colors: ['#a69482', '#9c8b7b', '#a5a29a'],
             districts: [
                 { name: 'Waterfront Neighborhood', e: -950, s: 1370, w: 230, d: 600, color: '#8a806a' },
@@ -139,8 +139,10 @@
         const shops = q.neighborhood.buildings.filter(b => ['shop', 'restaurant'].includes(b.kind));
         q.neighborhood.buildings = design.homes.map(([e, s], i) => {
             const b = { name: `${id} ${design.kind === 'house' ? 'Rowhouse' : design.kind === 'condo' ? 'Waterfront Home' : 'Garden Apartment'} ${i + 1}`,
-                kind: design.kind, type: 'crib', w: 80, d: 60,
-                h: design.kind === 'house' ? 78 + i % 3 * 8 : 115 + i % 3 * 12,
+                kind: design.kind, variant: i % 3, type: 'crib',
+                w: design.kind === 'apartment' ? 160 : design.kind === 'condo' ? 140 : 80,
+                d: design.kind === 'apartment' ? 90 : design.kind === 'condo' ? 100 : 60,
+                h: design.kind === 'house' ? 78 + i % 3 * 8 : design.kind === 'apartment' ? 140 + i % 3 * 12 : 120 + i % 3 * 10,
                 color: design.colors[i % design.colors.length], trim: '#e3ceb0' };
             center(b, e, s);
             return b;

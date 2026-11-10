@@ -249,15 +249,21 @@
         </div>
     </footer>
 
+    <script src="city-art.js"></script>
     <script src="sportsbook.js"></script>
+    <script src="casino-events.js"></script>
+    <script src="casino.js"></script>
+    <script src="pets.js"></script>
     <script src="investing.js"></script>
     <script src="library.js"></script>
     <script src="library-data.js"></script>
     <script src="library-features.js"></script>
+    <script src="theater-program.js"></script>
     <script src="media.js"></script>
     <script src="learning-data.js"></script>
     <script src="learning.js"></script>
     <script src="city-layout.js"></script>
+    <script src="residential-art.js"></script>
     <script src="interiors.js"></script>
     <script src="mg-progression.js"></script>
     <script src="mg-core.js"></script>
@@ -267,6 +273,7 @@
     <script src="mg-soccer.js"></script>
     <script src="mg-tennis.js"></script>
     <script src="mg-golf.js"></script>
+    <script src="mg-baseball.js"></script>
     <script src="mg-boxing.js"></script>
     <script src="mg-pool.js"></script>
     <script src="mg-airhockey.js"></script>
@@ -410,7 +417,8 @@
                 ],
                 cars: [{ x: 660, y: 380, w: 90, d: 40, color: '#0C2340', trim: '#AB0003' }],
                 activities: [
-                    { name: 'SW Street Racing Strip', type: 'drive', x: 650, y: 650, w: 230, d: 240 }
+                    { name: 'SW Street Racing Strip', type: 'drive', x: 650, y: 650, w: 230, d: 240 },
+                    { name: 'SW Community Baseball Diamond', type: 'baseball', x: 0, y: 0, w: 240, d: 220 }
                 ]
             }
         };
@@ -469,7 +477,7 @@
             NE: { buildings: [[-600, 1450], [-300, 1750], [-330, 1320], [-200, 1460]],
                   activities: [[520, 1420], [-560, 590]], shops: [[520, 640], [260, 560], [820, 1750]] },
             SE: { buildings: [[600, 1780]], library: [-560, 1450], activities: [[-560, 620], [560, 590]], shops: [[-300, 300]] },
-            SW: { buildings: [[560, 560], [300, 300]], activities: [[-560, 590]], shops: [[-800, 1300]], dmv: [-480, 1500] }
+            SW: { buildings: [[560, 560], [300, 300]], activities: [[-560, 590], [520, 1430]], shops: [[-800, 1300]], dmv: [-480, 1500] }
         };
         const lotOffset = { x: 210, y: 0 };
         for (const [id, q] of Object.entries(quadrants)) {
@@ -513,6 +521,12 @@
                 placeCenter(dmv, ...layout.dmv);
                 q.buildings.push(dmv);
             }
+            if (id === 'NE') {
+                const casinoBuilding = { name: 'Chocolate City Casino', w: 180, d: 110, h: 115,
+                    color: '#624358', trim: '#d8b671', neon: '#f5dc9c', style: 'club', type: 'casino' };
+                placeCenter(casinoBuilding, -570, 210);
+                q.buildings.push(casinoBuilding);
+            }
             if (id === 'SW') {
                 const restaurant = q.neighborhood.buildings.find(b => b.kind === 'shop');
                 restaurant.kind = 'restaurant';
@@ -553,8 +567,8 @@
             bike: { name: 'Bicycle', price: 0, speed: 1.2, w: 52, d: 16, color: '#38bdf8', trim: '#f8fafc', kind: 'bike' },
             scooter: { name: 'Electric scooter', price: 60, speed: 1.4, w: 48, d: 16, color: '#a855f7', trim: '#e5e7eb', kind: 'scooter' },
             ebike: { name: 'Electric bike', price: 180, speed: 1.6, w: 54, d: 18, color: '#10b981', trim: '#f8fafc', kind: 'ebike' },
-            impala: { name: "'96 Impala SS", price: 720, speed: 1.8, w: 96, d: 42, color: '#5A1414', trim: '#FFB612', kind: 'car' },
-            truck: { name: 'Pickup truck', price: 1440, speed: 1.8, w: 108, d: 46, color: '#475569', trim: '#e2e8f0', kind: 'truck' }
+            impala: { name: 'the Bucket', price: 720, speed: 1.8, w: 96, d: 42, color: '#5A1414', trim: '#FFB612', kind: 'car' },
+            truck: { name: 'Pickup truck', price: 828, speed: 1.98, w: 108, d: 46, color: '#475569', trim: '#e2e8f0', kind: 'truck' }
         };
         const ownCar = { ...vehicles.bike, x: 535, y: 500, ownRide: true };
         quadrants.NW.cars.push(ownCar);
@@ -574,6 +588,9 @@
         player.features = defaultFeatures('boy');
         const progress = { stars: 12, property: 1, owned: ['basic'], shirt: 'basic', ownedVehicles: ['bike'], vehicle: 'bike', minigames: MinigameProgression.initial() };
         let sportsbook = Sportsbook.initial();
+        let casino = Casino.initial();
+        let pets = Pets.initial();
+        let petFollower = null;
         let investing = Investing.initial();
         let learning = Learning.initial();
         let saveEnabled = true, lastCarSave = 0;
@@ -583,7 +600,7 @@
             if (!saveEnabled || !player.appearance) return;
             const data = {
                 version: 1, appearance: player.appearance, features: player.features, stars: progress.stars,
-                property: progress.property, owned: progress.owned, shirt: progress.shirt, sportsbook, investing, learning, minigames: progress.minigames,
+                property: progress.property, owned: progress.owned, shirt: progress.shirt, sportsbook, casino, pets, investing, learning, minigames: progress.minigames,
                 vehicle: { id: progress.vehicle, owned: progress.ownedVehicles, quadrant: driving.quadrant, x: ownCar.x, y: ownCar.y, heading: ownCar.heading || [1, 0] }
             };
             try {
@@ -612,6 +629,8 @@
                 if (data.version !== 1 || !['boy', 'girl'].includes(data.appearance) ||
                     (data.features !== undefined && !validFeatures(data.features)) ||
                     (data.sportsbook !== undefined && !Sportsbook.valid(data.sportsbook)) ||
+                    (data.casino !== undefined && !Casino.valid(data.casino)) ||
+                    (data.pets !== undefined && !Pets.valid(data.pets)) ||
                     (data.investing !== undefined && !Investing.valid(data.investing)) ||
                     (data.learning !== undefined && !Learning.valid(data.learning)) ||
                     (data.minigames !== undefined && !MinigameProgression.valid(data.minigames)) ||
@@ -649,6 +668,8 @@
                 }
                 player.appearance = data.appearance;
                 if (data.sportsbook !== undefined) sportsbook = data.sportsbook;
+                if (data.casino !== undefined) casino = data.casino;
+                if (data.pets !== undefined) pets = data.pets;
                 if (data.investing !== undefined) investing = data.investing;
                 if (data.learning !== undefined) learning = data.learning;
                 player.features = data.features === undefined ? defaultFeatures(data.appearance) : { ...data.features };
@@ -881,7 +902,7 @@
         }).observe(modalContent, { childList: true });
         modalEl.addEventListener('keydown', e => {
             if (e.key !== 'Tab' || !modalContent.querySelector('.library-reader, .venue-room')) return;
-            const controls = [...modalEl.querySelectorAll('button:not(:disabled), input:not(:disabled), summary, a[href]')]
+            const controls = [...modalEl.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), summary, a[href]')]
                 .filter(el => el.getClientRects().length > 0);
             const first = controls[0], last = controls[controls.length - 1];
             if (!first) return;
@@ -1168,7 +1189,20 @@
         function drawActivityGround(a) {
             const { x, y, w, d } = a;
             groundRect(x - 5, y - 5, w + 10, d + 10, '#374151');
-            if (a.type === 'football') {
+            if (a.type === 'baseball') {
+                groundRect(x, y, w, d, '#2d854b', '#c4b998', 2);
+                for (let i = 0; i < 7; i++) groundRect(x + i * w / 7, y, w / 14, d, '#378f53');
+                const home = [x + w / 2, y + d - 22], first = [x + w - 45, y + d - 85];
+                const second = [x + w / 2, y + d - 148], third = [x + 45, y + d - 85];
+                poly([home, first, second, third].map(p => P(...p)), '#b9794f', '#fff4db', 2);
+                poly([[home[0], home[1] - 18], [first[0] - 21, first[1]],
+                    [second[0], second[1] + 18], [third[0] + 21, third[1]]].map(p => P(...p)), '#378f53');
+                poly([P(x + 10, y + 34), P(...home), P(x + w - 10, y + 34)], null, '#fff4db', 2);
+                for (const [bx, by] of [home, first, second, third])
+                    groundRect(bx - 4, by - 4, 8, 8, '#fff9e8');
+                groundCircle(x + w / 2, y + d - 85, 11, '#dab38a');
+                groundRect(x + w / 2 - 5, y + d - 86, 10, 3, '#fff9e8');
+            } else if (a.type === 'football') {
                 groundRect(x, y, w, d, '#237343', '#e5e7eb', 2);
                 groundRect(x, y, 28, d, '#5a1414');
                 groundRect(x + w - 28, y, 28, d, '#5a1414');
@@ -1224,7 +1258,15 @@
                 });
                 ctx.strokeStyle = color; ctx.lineWidth = width; ctx.stroke();
             };
-            if (a.type === 'football') {
+            if (a.type === 'baseball') {
+                line([[x + 9, y + 34, 0], [x + 9, y + 34, 38]], '#fde047', 3);
+                line([[x + w - 9, y + 34, 0], [x + w - 9, y + 34, 38]], '#fde047', 3);
+                for (let i = 0; i <= 12; i++) {
+                    const bx = x + 10 + i * (w - 20) / 12;
+                    line([[bx, y + 10, 0], [bx, y + 10, 14]], '#a7b8b0', 1);
+                }
+                line([[x + 10, y + 10, 14], [x + w - 10, y + 10, 14]], '#a7b8b0', 2);
+            } else if (a.type === 'football') {
                 for (const gx of [x + 12, x + w - 12]) {
                     line([[gx, y + d / 2, 0], [gx, y + d / 2, 38]], '#facc15', 4);
                     line([[gx, y + d / 2 - 25, 38], [gx, y + d / 2 + 25, 38]], '#facc15', 4);
@@ -1261,7 +1303,7 @@
             const [sx, sy] = P(x + w / 2, y + d, 25);
             ctx.save();
             ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
-            const label = { football: 'FOOTBALL FIELD', basketball: 'BASKETBALL COURT', golf: 'PUTTING GREEN', soccer: 'SOCCER FIELD', tennis: 'TENNIS COURT', drive: 'STREET RACING STRIP' }[a.type];
+            const label = { baseball: 'BASEBALL DIAMOND', football: 'FOOTBALL FIELD', basketball: 'BASKETBALL COURT', golf: 'PUTTING GREEN', soccer: 'SOCCER FIELD', tennis: 'TENNIS COURT', drive: 'STREET RACING STRIP' }[a.type];
             const width = ctx.measureText(label).width + 16;
             ctx.fillStyle = '#111827'; ctx.fillRect(sx - width / 2, sy - 16, width, 22);
             ctx.strokeStyle = a === activeBuilding ? '#34d399' : '#fbbf24'; ctx.strokeRect(sx - width / 2, sy - 16, width, 22);
@@ -1271,6 +1313,10 @@
 
         // ---------- Rendering: objects ----------
         function drawNeighborhoodBuilding(b) {
+            if (['house', 'apartment', 'condo'].includes(b.kind)) {
+                ResidentialArt.draw(b, { ctx, P, poly, box, shade }, b === activeBuilding, performance.now() / 1000);
+                return;
+            }
             const { x, y, w, d, h } = b;
             poly([P(x + 6, y + 6), P(x + w + 10, y + 6), P(x + w + 10, y + d + 10), P(x + 6, y + d + 10)], 'rgba(0,0,0,.25)');
             box(x, y, 0, w, d, h, b.color, 'rgba(0,0,0,.4)');
@@ -1353,6 +1399,10 @@
 
         function drawBuilding(b, active, t) {
             const { x, y, w, d, h } = b, Y = y + d;
+            if (b.type === 'crib' && !b.garage) {
+                ResidentialArt.draw({ ...b, kind: 'apartment', variant: 1 }, { ctx, P, poly, box, shade }, active, t);
+                return;
+            }
             if (b.shape === 'oval') { drawOvalArena(b, active, t); return; }
             if (b.style === 'stand') {
                 poly([P(x + 4, y + 4), P(x + w + 8, y + 4), P(x + w + 8, Y + 8), P(x + 4, Y + 8)], 'rgba(0,0,0,.3)');
@@ -1682,25 +1732,18 @@
             line(sx + 9, sy - 30 - bob, sx + 11, sy - 19 - bob - sw * 0.5, skin, 4);
             ctx.fillStyle = shirtColor; ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 1;
             ctx.beginPath();
-            if (appearance === 'girl') {
-                ctx.moveTo(sx - 8, sy - 37 - bob); ctx.lineTo(sx + 8, sy - 37 - bob);
-                ctx.lineTo(sx + 6, sy - 26 - bob); ctx.lineTo(sx + 9, sy - 15 - bob);
-                ctx.lineTo(sx - 9, sy - 15 - bob); ctx.lineTo(sx - 6, sy - 26 - bob);
-                ctx.closePath();
-            } else {
-                ctx.roundRect(sx - 9, sy - 37 - bob, 18, 22, 4);
-            }
+            ctx.moveTo(sx - 4, sy - 37 - bob); ctx.lineTo(sx - 8, sy - 36 - bob);
+            ctx.lineTo(sx - 13, sy - 29 - bob); ctx.lineTo(sx - 9, sy - 27 - bob);
+            ctx.lineTo(sx - 7, sy - 30 - bob); ctx.lineTo(sx - 8, sy - 15 - bob);
+            ctx.lineTo(sx + 8, sy - 15 - bob); ctx.lineTo(sx + 7, sy - 30 - bob);
+            ctx.lineTo(sx + 9, sy - 27 - bob); ctx.lineTo(sx + 13, sy - 29 - bob);
+            ctx.lineTo(sx + 8, sy - 36 - bob); ctx.lineTo(sx + 4, sy - 37 - bob);
+            ctx.quadraticCurveTo(sx, sy - 33 - bob, sx - 4, sy - 37 - bob); ctx.closePath();
             ctx.fill(); ctx.stroke();
-            line(sx - 7, sy - 34 - bob, sx - 10, sy - 29 - bob, shirtColor, 5);
-            line(sx + 7, sy - 34 - bob, sx + 10, sy - 29 - bob, shirtColor, 5);
-            line(sx - 5, sy - 36 - bob, sx, sy - 33.5 - bob, shade(shirtColor, .65), 1.3);
-            line(sx, sy - 33.5 - bob, sx + 5, sy - 36 - bob, shade(shirtColor, .65), 1.3);
-            line(sx - 6, sy - 17 - bob, sx + 6, sy - 17 - bob, shade(shirtColor, .7), .9);
+            ctx.beginPath(); ctx.arc(sx, sy - 37 - bob, 3.5, 0, Math.PI);
+            ctx.strokeStyle = shade(shirtColor, .8); ctx.lineWidth = .7; ctx.stroke();
             line(sx + 5, sy - 30 - bob, sx + 6, sy - 21 - bob, shade(shirtColor, .75), .8);
             line(sx - 6, sy - 28 - bob, sx - 5, sy - 21 - bob, shade(shirtColor, 1.2), .8);
-            ctx.fillStyle = '#f1ead6';
-            ctx.beginPath(); ctx.roundRect(sx - 4, sy - 29 - bob, 5, 4, 1); ctx.fill();
-            line(sx - 3, sy - 27 - bob, sx, sy - 27 - bob, '#253b54', .6);
 
             const hy = sy - 45 - bob;
             if (features.hair === 'long') {
@@ -1723,19 +1766,17 @@
                     line(ex - 1.5, hy - 2.7, ex + 1.1, hy - 2.9, hair, .8);
                 }
                 line(sx + fx, hy + .5, sx + fx + .7, hy + 2.2, shade(skin, .7), .7);
-                line(sx - 1.6, hy + 4.1, sx + 1.7, hy + 4.1, '#704539', .7);
                 if (features.facial === 'beard') {
-                    ctx.fillStyle = hair;
-                    ctx.beginPath(); ctx.moveTo(sx - 5.7, hy + 1.5); ctx.lineTo(sx - 4.5, hy + 5);
-                    ctx.quadraticCurveTo(sx, hy + 9, sx + 4.5, hy + 5); ctx.lineTo(sx + 5.7, hy + 1.5);
-                    ctx.lineTo(sx + 2.3, hy + 3); ctx.lineTo(sx - 2.3, hy + 3); ctx.closePath(); ctx.fill();
-                    for (let i = -3; i <= 3; i += 1.5)
-                        line(sx + i, hy + 4, sx + i * .8, hy + 6, shade(hair, 1.4), .5);
+                    ctx.beginPath(); ctx.moveTo(sx - 5.2, hy + 2.5);
+                    ctx.quadraticCurveTo(sx - 4.5, hy + 6.6, sx, hy + 6.4);
+                    ctx.quadraticCurveTo(sx + 4.5, hy + 6.6, sx + 5.2, hy + 2.5);
+                    ctx.strokeStyle = hair; ctx.lineWidth = 1.2; ctx.stroke();
                 }
                 if (features.facial !== 'none') {
-                    line(sx, hy + 2.7, sx - 3.1, hy + 3.5, hair, 1.3);
-                    line(sx, hy + 2.7, sx + 3.1, hy + 3.5, hair, 1.3);
+                    line(sx - .4, hy + 2.6, sx - 1.9, hy + 2.8, hair, .7);
+                    line(sx + .4, hy + 2.6, sx + 1.9, hy + 2.8, hair, .7);
                 }
+                line(sx - 1.2, hy + 4.4, sx + 1.2, hy + 4.4, '#704539', .6);
             }
             ctx.fillStyle = hair;
             ctx.beginPath(); ctx.arc(sx, hy - 2, 7, Math.PI, 0); ctx.fill();
@@ -1778,6 +1819,14 @@
             q.activities.filter(a => a.type !== 'boxing').forEach(drawActivityGround);
 
             const objs = [];
+            if (pets.companion && player.appearance && !driving.active && !modalOpen()) {
+                petFollower = Pets.follow(petFollower, { x: player.x, y: player.y, quadrant: currentQuadrant }, blocked);
+                if (petFollower) {
+                    const petPosition = petFollower;
+                    objs.push({ x0: petPosition.x - 8, y0: petPosition.y - 8, x1: petPosition.x + 8, y1: petPosition.y + 8,
+                        draw: () => Pets.drawCompanion(ctx, pets.companion.species, ...P(petPosition.x, petPosition.y), t) });
+                }
+            }
             q.activities.forEach(a => objs.push({ x0: a.x, y0: a.y, x1: a.x + a.w, y1: a.y + a.d, draw: () => {
                 if (a.type === 'boxing') drawBuilding(a, a === activeBuilding, t);
                 else drawActivityEquipment(a);
@@ -2478,6 +2527,7 @@
                     resale: 'Resell Hub', courier: 'Courier Dispatch', boxing: 'SE Boxing Gym' };
                 content.innerHTML = `<div class="sports-game"><h2>${names[type]}</h2>
                     <p>Explore the space, then tap the equipment to begin. Your saved campaign continues where you left off.</p>
+                    ${type === 'carryout' ? '<aside class="carryout-special"><strong>House special: Mambo Sauce Rush</strong><p>Sweet, tangy mambo sauce coats our wings in a glossy dark reddish-red glaze, sometimes a lighter red, with a ketchup-like look. Choose Mambo on the sauce menu when your ticket calls for it.</p><span class="mambo-sauce-swatch" aria-hidden="true"></span> Mambo wings + fries</aside>' : ''}
                     <button type="button" data-venue-play>Play ${names[type]}</button></div>`;
             } else if (type === 'fashion') {
                 renderShirtShop(true, true);
@@ -2493,8 +2543,12 @@
                     <button type="button" id="open-library-reads">📖 Short stories (original fiction)</button>
                     <button type="button" id="open-personal-computer">💻 Use a public computer</button></div></div>`;
             } else if (type === 'theater') {
-                DMVMedia.renderTheater(content, closeModal);
-                VenueInteriors.mount(content, type, modalEl);
+                DMVMedia.renderTheater(content, closeModal, mode => {
+                    modalEl.dataset.interior = 'theater';
+                    modalEl.dataset.theaterMode = mode;
+                    modalEl.style.setProperty('--room-wall', mode === 'performance' ? '#652638' : '#152337');
+                    modalEl.style.setProperty('--room-floor', mode === 'performance' ? '#68442f' : '#1c2433');
+                });
                 return;
             } else if (type === 'dmv') {
                 Learning.renderDMV(content, () => learning, next => { learning = next; saveProgress(); }, closeModal);
@@ -2510,25 +2564,81 @@
                         <button type="button" id="open-vehicle-garage" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🚲 Vehicle Garage</button>
                         <button type="button" id="open-personal-computer" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">💻 Personal Computer</button>
                         <button type="button" id="open-home-tv" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">📺 Living Room TV</button>
-                        ${btn('🐕 Pet Companion', 'Pet Companion interaction!', c)}
+                        <button type="button" id="open-pet-profile" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🐕 Pet Companion — profile & care</button>
                         ${btn('🏢 Upgrade Property Tier', 'Property upgraded to Tier 2 Navy Yard Loft!', c, 'upgrade')}
                     </div>`;
+            } else if (type === 'casino') {
+                content.innerHTML = `<div class="sports-game sportsbook"><h2>Chocolate City Casino</h2>
+                    <p>Free practice tables: 1,000 starting play credits. No real money, prizes or conversion to stars. The sports lab uses its own practice balance.</p>
+                    <p>Practice balance: <strong>${Casino.money(casino.practice.balance)} credits</strong>${Casino.activeRound(casino.practice) ? ' - an unfinished round is saved; finish it before starting another table.' : ''}</p>
+                    <div class="sports-controls"><button type="button" id="open-sportsbook">Sports Betting Practice Lab</button>
+                        ${Object.entries(Casino.names).map(([id, name]) => `<button type="button" data-casino-game="${id}">${name}</button>`).join('')}</div>
+                    ${casino.practice.balance < 100 && !Casino.activeRound(casino.practice) ? '<button type="button" id="casino-reset">Refill free practice credits (resets practice history)</button>' : ''}
+                    <section class="book-card"><h3>Special promo nights</h3>
+                    <p>On announced dates only: 5 stars buys one entry with 1,000 separate event chips. One entry per event; no rebuys. Event chips cannot become stars or real money.</p>
+                    <p id="casino-event-status" role="status"></p><div id="casino-event-list"></div>
+                    <p class="book-muted">Dates use Washington, DC time. This is local single-player scheduling, not server-verified entry.</p></section></div>`;
+                const eventList = content.querySelector('#casino-event-list');
+                const scheduled = Casino.events();
+                eventList.innerHTML = scheduled.length ? scheduled.map(event => {
+                    const entered = casino.events.find(e => e.id === event.id), active = Casino.isActive(event, Date.now());
+                    const resumable = entered && Casino.activeRound(entered.wallet);
+                    return `<article class="book-selection"><strong>${DMVMedia.escape(event.title)}</strong><p>${DMVMedia.escape(new Date(event.startsAt).toLocaleString('en-US', { timeZone: 'America/New_York' }))} to ${DMVMedia.escape(new Date(event.endsAt).toLocaleString('en-US', { timeZone: 'America/New_York' }))} Washington time</p>
+                        <button type="button" data-casino-event="${event.id}" ${active || resumable ? '' : 'disabled'}>${entered ? resumable && !active ? 'Finish saved event round (closed)' : 'Continue event (no new fee)' : active ? 'Enter: 5 stars for 1,000 event chips' : Date.now() < Date.parse(event.startsAt) ? 'Not open yet' : 'Event closed'}</button></article>`;
+                }).join('') : '<p>No promo is scheduled. Free practice tables are always available.</p>';
             } else if (type === 'sports' || type === 'arena') {
                 const c = 'bg-red-950/80 hover:bg-red-900 border border-red-500';
-                const sports = [['⚾ Baseball', 'Baseball'], ['🏒 Hockey', 'Hockey']];
+                const sports = [['🏒 Hockey', 'Hockey']];
                 content.innerHTML = `
                     <h2 class="text-2xl font-black text-red-400 mb-2">🏟️ ${type === 'arena' ? 'Waterfront Sports Arena' : 'Nationals Park Fan Hub'}</h2>
-                    <p class="text-gray-300 text-sm mb-4">Baseball and hockey are coming soon. Find outdoor football and basketball in NE, boxing and golf in SE, and soccer and tennis in NW.</p>
+                    <p class="text-gray-300 text-sm mb-4">Play baseball at the SW Community Baseball Diamond, in the open block south of the main street. Hockey is coming soon. Find football and basketball in NE, boxing and golf in SE, and soccer and tennis in NW.</p>
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         ${type === 'arena' ? `<button type="button" id="open-sportsbook" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🏈 Betting Practice Lab — learn with play credits</button>` : ''}
+                        <button type="button" onclick="openSportsGame('baseball')" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">⚾ Baseball Diamond Batting</button>
                         ${sports.map(([l, n]) => btn(l, `${n} is not available yet.`, c)).join('')}
                     </div>`;
             }
             const sportsbookButton = document.getElementById('open-sportsbook');
+            const petButton = content.querySelector('#open-pet-profile');
+            if (petButton) petButton.addEventListener('click', () =>
+                Pets.render(content, pets, () => progress.stars, next => { progress.stars = next; updateProgressHud(); },
+                    saveProgress, () => openBuildingModal('crib')));
             if (sportsbookButton) sportsbookButton.addEventListener('click', () => {
                 toast('');
-                Sportsbook.render(content, sportsbook, saveProgress, () => openBuildingModal('arena'));
+                Sportsbook.render(content, sportsbook, saveProgress, () => openBuildingModal(type));
             });
+            content.querySelectorAll('[data-casino-game]').forEach(button => button.addEventListener('click', () =>
+                Casino.render(content, casino.practice, button.dataset.casinoGame, saveProgress, () => openBuildingModal('casino'))));
+            const resetCasino = content.querySelector('#casino-reset');
+            if (resetCasino) resetCasino.addEventListener('click', () => {
+                casino.practice = Casino.wallet(); saveProgress(); openBuildingModal('casino');
+            });
+            content.querySelectorAll('[data-casino-event]').forEach(button => button.addEventListener('click', () => {
+                const event = Casino.events().find(e => e.id === button.dataset.casinoEvent);
+                let entry = casino.events.find(e => e.id === event.id);
+                if (!entry) {
+                    try {
+                        progress.stars = Casino.enterEvent(casino, event.id, progress.stars);
+                        updateProgressHud(); saveProgress();
+                        entry = casino.events.find(e => e.id === event.id);
+                    } catch (error) {
+                        console.error('Casino event entry failed:', error);
+                        content.querySelector('#casino-event-status').textContent = error.message;
+                        return;
+                    }
+                }
+                const showEventMenu = () => {
+                    content.innerHTML = `<div class="sports-game sportsbook library-reader"><h2>${DMVMedia.escape(event.title)}</h2>
+                        <p>Event chips: ${Casino.money(entry.wallet.balance)}. Entry paid once: 5 stars. No exchange back into stars.</p>
+                        <p>New bets close at ${DMVMedia.escape(new Date(event.endsAt).toLocaleString('en-US', { timeZone: 'America/New_York' }))} Washington time. Already-started hands and points can finish afterward.</p>
+                        ${CityArt.gallery('casino')}<div class="sports-controls">${Object.entries(Casino.names).map(([id, name]) => `<button type="button" data-event-game="${id}">${name}</button>`).join('')}</div>
+                        <button type="button" id="event-casino-back">Back to casino</button></div>`;
+                    content.querySelectorAll('[data-event-game]').forEach(b => b.addEventListener('click', () =>
+                        Casino.render(content, entry.wallet, b.dataset.eventGame, saveProgress, showEventMenu, { event })));
+                    content.querySelector('#event-casino-back').addEventListener('click', () => openBuildingModal('casino'));
+                };
+                showEventMenu();
+            }));
             const computerButton = document.getElementById('open-personal-computer');
             if (computerButton) computerButton.addEventListener('click', () => openComputer(type));
             const libraryBack = () => openBuildingModal('library');
@@ -2562,6 +2672,10 @@
             const playButton = content.querySelector('[data-venue-play]');
             if (playButton) playButton.addEventListener('click', () => openSportsGame(type));
             VenueInteriors.mount(content, type, modalEl);
+            if (type === 'crib' && (pets.pet || pets.companion)) {
+                petButton.innerHTML = [pets.pet, pets.companion].filter(Boolean).map(Pets.portrait).join('') +
+                    '<span>Pet habitat & companion care</span>';
+            }
         }
 
         function openComputer(location) {
@@ -2599,6 +2713,7 @@
             for (const k in keys) keys[k] = false;
             modalEl.classList.add('hidden');
             delete modalEl.dataset.interior;
+            delete modalEl.dataset.theaterMode;
             modalEl.style.removeProperty('--room-wall');
             modalEl.style.removeProperty('--room-floor');
             modalEl.removeAttribute('aria-labelledby');

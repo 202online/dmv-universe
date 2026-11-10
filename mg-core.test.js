@@ -7,7 +7,8 @@ const Campaign = require('./mg-progression.js');
 
 function hostStub() {
     const noop = () => {};
-    const context = new Proxy({}, { get: (target, key) => key in target ? target[key] : noop });
+    const context = new Proxy({}, { get: (target, key) => key in target ? target[key] :
+        key === 'createLinearGradient' ? () => ({ addColorStop: noop }) : noop });
     const element = () => ({
         style: {}, dataset: {}, hidden: true, disabled: false, textContent: '', listeners: {},
         setAttribute: noop,

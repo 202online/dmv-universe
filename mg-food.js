@@ -70,11 +70,11 @@
     function wing(c, U, x, y, rotation, sauce, cooked) {
         c.save(); c.translate(x, y); c.rotate(rotation);
         U.shadow(c, 2, 13, 23, 7, .22);
-        c.fillStyle = U.vgrad(c, -15, 16, [[0, cooked ? '#ffd483' : '#f1ccac'], [.5, sauce || '#d88a30'], [1, sauce ? '#8a381c' : '#9d4c20']]);
+        c.fillStyle = U.vgrad(c, -15, 16, [[0, sauce ? (sauce === '#a51f30' ? '#d34a50' : '#a66a3d') : cooked ? '#ffd483' : '#f1ccac'], [.5, sauce || '#d88a30'], [1, sauce ? (sauce === '#a51f30' ? '#691522' : '#54270e') : '#9d4c20']]);
         c.beginPath(); c.moveTo(-23, 2); c.bezierCurveTo(-24, -12, -9, -18, 3, -9);
         c.bezierCurveTo(12, -17, 26, -8, 24, 4); c.bezierCurveTo(20, 20, 7, 16, 0, 12);
         c.bezierCurveTo(-11, 19, -25, 16, -23, 2); c.fill();
-        c.strokeStyle = sauce ? '#ffb35a' : '#f7d391'; c.lineWidth = 2;
+        c.strokeStyle = sauce ? (sauce === '#a51f30' ? '#ef9394' : '#dca578') : '#f7d391'; c.lineWidth = 2;
         c.beginPath(); c.moveTo(-15, -3); c.quadraticCurveTo(-6, -9, 0, -2); c.stroke();
         c.fillStyle = '#8b4526';
         for (let i = 0; i < 7; i++) {
@@ -343,7 +343,7 @@
             c.fillStyle = '#f8f2e5'; U.rr(c, 43, 188, 274, 69, 7); c.fill();
             for (let i = 0; i < 5; i++) {
                 const x = 69 + i * 42, y = 215 + Math.sin(i * 2) * 10;
-                wing(c, U, x, y, -.4 + i * .15, stage === 3 && sauce !== 2 ? (sauce === 0 ? '#d34a1e' : '#78350f') : null, stage >= 2);
+                wing(c, U, x, y, -.4 + i * .15, stage === 3 && sauce !== 2 ? (sauce === 0 ? '#a51f30' : '#78350f') : null, stage >= 2);
                 if (stage === 1) {
                     c.strokeStyle = '#fef3c7'; c.lineWidth = 2; c.beginPath();
                     c.moveTo(x, y - 16); c.quadraticCurveTo(x + 7, y - 25, x, y - 35 - Math.sin(env.time() * 5 + i) * 4); c.stroke();
@@ -358,12 +358,18 @@
             c.fillStyle = '#22c55e'; c.fillRect(28 + (.65 - window) * 304, 288, window * 2 * 304, 14);
             c.fillStyle = '#fff'; c.fillRect(28 + Math.min(1, heat) * 304 - 2, 284, 4, 22);
             button(c, U, 18, 321, 324, 60, stage === 0 ? 'DROP WINGS' : stage === 1 ? 'LIFT IN THE GREEN ZONE' : 'BATCH READY', stage >= 2);
-            sauces.forEach((name, i) => button(c, U, 18 + i * 110, 402, 104, 54, name, sauce === i));
+            U.text(c, 'HOUSE SPECIAL: GLOSSY RED MAMBO SAUCE', 180, 391, { size: 10, color: '#fecdd3' });
+            sauces.forEach((name, i) => {
+                button(c, U, 18 + i * 110, 402, 104, 54, name, sauce === i);
+                c.fillStyle = ['#a51f30', '#78350f', '#d88a30'][i];
+                c.beginPath(); c.ellipse(70 + i * 110, 446, 18, 4, 0, 0, Math.PI * 2); c.fill();
+                c.strokeStyle = '#f8ddd1'; c.lineWidth = 1; c.stroke();
+            });
             button(c, U, 18, 483, 324, 52, 'PACK + SERVE', stage === 3);
             U.text(c, 'Arcade timing only - not real cooking instructions', 180, 549, { size: 10, color: '#cbd5e1' });
         }
         return { title: 'Carryout Craze', goal: `Cook, sauce and serve ${target} wing boxes`,
-            intro: { head: 'MAMBO SAUCE RUSH', lines: ['Tap DROP WINGS to start the fryer', 'Lift while the marker is in green', 'Choose the sauce on the ticket', 'Pack + serve before patience runs out'] },
+            intro: { head: 'MAMBO SAUCE RUSH', lines: ['Tap DROP WINGS to start the fryer', 'Lift while the marker is in green', 'Mambo = glossy red, ketchup-like sauce', 'Choose the ticket sauce, then pack + serve'] },
             start, update, draw, ...taps(tap),
             _state: () => ({ time, served, burnt, lost, stage, heat, sauce, wanted, patience, cooldown, target, window, cookRate, limit, finished }) };
     });

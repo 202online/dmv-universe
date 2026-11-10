@@ -69,6 +69,46 @@ function advance(h, seconds) {
     for (let t = 0; t < seconds && !h.result; t += 1 / 60) h.step(1 / 60);
 }
 
+test('baseball accepts timed hits and home runs, ignores canceled taps and finishes only once', () => {
+    for (const level of [1, 5, 1000000]) {
+        const h = harness('baseball', 1, level);
+        tapGame(h, 180, 512, true);
+        assert.equal(h.game._state().phase, 'pitch');
+        for (let i = 0; i < 10; i++) {
+            const s = h.game._state();
+            h.step(s.flight - s.clock + (i % 2 ? s.window * .6 : 0));
+            tapGame(h, 180, 512);
+            const hit = h.game._state().hits;
+            tapGame(h, 180, 512);
+            assert.equal(h.game._state().hits, hit, 'repeated swings cannot score twice');
+            advance(h, 1.3);
+        }
+        assert.equal(h.result.win, true);
+        assert.equal(h.game._state().hits, 10);
+        assert.equal(h.game._state().homers, 5);
+        assert.equal(h.result.stars, 0, 'campaign controls rewards');
+        h.game.update(10);
+        assert.equal(h.awards, 1);
+    }
+});
+
+test('baseball early swings, late swings and missed pitches consume attempts without hits', () => {
+    for (const mode of ['early', 'late', 'wait']) {
+        const h = harness('baseball');
+        for (let i = 0; i < 10; i++) {
+            const s = h.game._state();
+            if (mode === 'early') tapGame(h, 180, 512);
+            else if (mode === 'late') {
+                h.step(s.flight + s.window + .05 - s.clock);
+                tapGame(h, 180, 512);
+            } else h.step(s.flight + s.window + .3 - s.clock);
+            advance(h, 1.3);
+        }
+        assert.equal(h.result.win, false, mode);
+        assert.equal(h.game._state().hits, 0);
+        assert.equal(h.awards, 1);
+    }
+});
 test('air hockey has a slower fallible CPU, larger target and guarded touch controls at every level', () => {
     for (const level of [1, 5, 1000000]) {
         const h = harness('airhockey', 1, level), s = h.game._state();

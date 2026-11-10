@@ -4,6 +4,15 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const book = require('./sportsbook.js');
 
+test('teaching separates sentences without breaking decimals, odds or numbered steps', () => {
+    assert.deepEqual(book.teachingSentences('+150: stake 10 credits. A win earns 15 profit. You get 25 back.'),
+        ['+150: stake 10 credits.', 'A win earns 15 profit.', 'You get 25 back.']);
+    assert.deepEqual(book.teachingSentences('Decimal 2.50 means 25 returned. Subtract 10.'),
+        ['Decimal 2.50 means 25 returned.', 'Subtract 10.']);
+    assert.equal(book.teachingSentences('-200 suggests about 66.7%. A favorite can still lose.').length, 2);
+    const steps = book.lessons.find(l => l.id === 'start').paragraphs;
+    for (let i = 0; i < 5; i++) assert.match(steps[i], new RegExp(`^Step ${i + 1}:`));
+});
 test('betting education uses short indexed sections and a plain-language glossary', () => {
     assert.deepEqual(book.lessons.map(l => l.id), ['start', 'odds', 'chance', 'markets', 'tickets', 'money', 'rules']);
     for (const lesson of book.lessons) {

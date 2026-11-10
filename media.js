@@ -1,10 +1,11 @@
 'use strict';
 
 // Shared engine for the library's generated nonfiction shelves, short documentaries, home TV channels
-// and the theater's synced showtimes. Every generated item is assembled only from cited fact cards in
-// LibraryData; generation changes selection and order, never the facts themselves.
+// and the theater's synced showtimes. Nonfiction is assembled only from cited LibraryData cards;
+// the separate stage program contains explicitly fictional illustrated previews.
 const DMVMedia = (() => {
     const data = typeof LibraryData !== 'undefined' ? LibraryData : require('./library-data.js');
+    const stageProgram = typeof TheaterProgram !== 'undefined' ? TheaterProgram : require('./theater-program.js');
     const DAY = 86400000, WEEK = 7 * DAY, EPOCH = Date.UTC(2026, 0, 5);
     const CONTENT_NOTICE = 'Educational summaries, not live reporting. Sources are linked for further reading; this collection has not had a complete independent fact-check. Confirm details with the linked institutions and current official guidance.';
     const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -106,19 +107,30 @@ const DMVMedia = (() => {
     // Feature films: every card in a channel, in chronological order, played on a shared UTC loop.
     const features = data.channels.filter(c => c.feature).map(c => {
         const scenes = cardsFor(c.categories).sort(byEra).map(sceneFrom);
-        return { id: `feature-${c.id}`, title: c.feature, icon: c.icon, channel: c.id, scenes,
+        return { id: `feature-${c.id}`, title: c.feature, icon: c.icon, channel: c.id, kind: 'film', scenes,
             seconds: scenes.reduce((sum, s) => sum + s.seconds, 0) };
     });
+    const performances = stageProgram.map(event => {
+        if (!features.some(f => f.id === event.afterFeature) || !['music', 'play'].includes(event.kind) ||
+            !event.id || !event.title || !event.scenes.length ||
+            event.scenes.some(s => !s.title || !s.narration || !Number.isFinite(s.seconds) || s.seconds <= 0))
+            throw new Error(`Invalid theater performance: ${event.id}`);
+        return { ...event, seconds: event.scenes.reduce((sum, scene) => sum + scene.seconds, 0) };
+    });
+    const program = features.flatMap(film => [film, ...performances.filter(p => p.afterFeature === film.id)]);
+    if (new Set(program.map(event => event.id)).size !== program.length) throw new Error('Duplicate theater program ID');
+    const showLabel = event => event.kind === 'film' ? 'Film' :
+        `Live performance slot - ${event.kind === 'music' ? 'music' : 'play'} (illustrated preview)`;
     const INTERMISSION = 60;
-    const cycleSeconds = features.reduce((sum, f) => sum + f.seconds + INTERMISSION, 0);
+    const cycleSeconds = program.reduce((sum, f) => sum + f.seconds + INTERMISSION, 0);
     function nowShowing(date = new Date()) {
         if (!Number.isFinite(date.getTime())) throw new Error('Invalid media date');
         let t = ((date.getTime() - EPOCH) / 1000) % cycleSeconds;
         if (t < 0) t += cycleSeconds;
         const cycleStart = date.getTime() - t * 1000;
         let start = 0;
-        for (let i = 0; i < features.length; i++) {
-            const film = features[i], end = start + film.seconds;
+        for (let i = 0; i < program.length; i++) {
+            const film = program[i], end = start + film.seconds;
             if (t < end) {
                 let into = t - start, scene = 0;
                 while (into >= film.scenes[scene].seconds) { into -= film.scenes[scene].seconds; scene++; }
@@ -126,7 +138,7 @@ const DMVMedia = (() => {
                     startedAt: cycleStart + start * 1000 };
             }
             if (t < end + INTERMISSION)
-                return { film, index: i, intermission: true, nextIn: end + INTERMISSION - t, next: features[(i + 1) % features.length] };
+                return { film, index: i, intermission: true, nextIn: end + INTERMISSION - t, next: program[(i + 1) % program.length] };
             start = end + INTERMISSION;
         }
         throw new Error('Showtime overflow');
@@ -134,11 +146,11 @@ const DMVMedia = (() => {
     function schedule(date = new Date(), count = 4) {
         const now = nowShowing(date), list = [];
         let at = now.intermission ? date.getTime() + now.nextIn * 1000 : now.startedAt + (now.film.seconds + INTERMISSION) * 1000;
-        let i = (now.index + 1) % features.length;
+        let i = (now.index + 1) % program.length;
         for (let n = 0; n < count; n++) {
-            list.push({ film: features[i], at: new Date(at) });
-            at += (features[i].seconds + INTERMISSION) * 1000;
-            i = (i + 1) % features.length;
+            list.push({ film: program[i], at: new Date(at) });
+            at += (program[i].seconds + INTERMISSION) * 1000;
+            i = (i + 1) % program.length;
         }
         return list;
     }
@@ -147,11 +159,14 @@ const DMVMedia = (() => {
         'That source list is long, I’m checking it later.', 'This is why the city is the city.', 'Put this in schools.',
         'Respect to everybody who lived through that.', 'Ooh, I remember hearing about this.', 'History class could never.',
         'They need a part two.', 'DMV stand up.', 'Wild how much changed.'];
-    function npcChat(filmId, scene) {
+    function npcChat(filmId, scene, kind = 'film') {
         const random = rng(`${filmId}:${scene}`), lines = [];
+        const comments = kind === 'film' ? reactions : [
+            'That fictional stage manager needs their own show.', 'Love the curtain and lights.',
+            'This illustrated preview has me ready for a real performance.', 'Front row for the imaginary curtain call!'];
         const n = 1 + Math.floor(random() * 2);
         for (let i = 0; i < n; i++)
-            lines.push({ name: audience[Math.floor(random() * audience.length)], text: reactions[Math.floor(random() * reactions.length)], delay: 2 + Math.floor(random() * 8) });
+            lines.push({ name: audience[Math.floor(random() * audience.length)], text: comments[Math.floor(random() * comments.length)], delay: 2 + Math.floor(random() * 8) });
         return lines;
     }
 
@@ -161,6 +176,18 @@ const DMVMedia = (() => {
             <span class="doc-era">${escape(scene.era)}</span><strong>${escape(scene.title)}</strong>${extra}</div>
             <p class="doc-narration">${escape(scene.narration)}</p>
             <p class="book-muted">Source: <a href="${escape(scene.source)}" target="_blank" rel="noopener noreferrer">${escape(scene.source)}</a></p>`;
+    }
+    function stageCard(scene, kind, sceneIndex) {
+        const performers = kind === 'music' ?
+            '<ellipse cx="70" cy="127" rx="25" ry="12" fill="#c79351"/><path d="M45 127v31h50v-31" fill="#914c2d"/><path d="M174 103v65m-10 0h20" stroke="#cbd5e1" stroke-width="4"/><circle cx="174" cy="98" r="7" fill="#e2e8f0"/><path d="M225 116h68v16h-68zm10 16v31m49-31v31" stroke="#d9cbba" stroke-width="4" fill="#263e56"/>' :
+            '<path d="M147 133h27v7h-27zm3 7v25m21-25v25m-24-32v-26h27v26" stroke="#ccb089" stroke-width="5"/><path d="M214 135h35v27h-35z" fill="#a16b41"/><path d="M220 137h23v4h-23" stroke="#fff1d2" stroke-width="3"/>';
+        return `<div class="doc-screen stage-screen"><svg viewBox="0 0 340 190" aria-hidden="true" focusable="false">
+            <path d="M0 0h340v190H0z" fill="#171427"/><path d="M0 161h340v29H0z" fill="#805435"/>
+            <path d="M70 0l-35 161h115zm200 0-80 161h115z" fill="${sceneIndex % 2 ? '#f5c872' : '#9ad9ef'}" opacity=".18"/>
+            ${[95, 235].map((x, i) => `<circle cx="${x}" cy="77" r="12" fill="${i ? '#b17e59' : '#865539'}"/><path d="M${x - 13} 92h26v40h-26z" fill="${i ? '#6598b7' : '#b14d69'}"/><path d="M${x - 7} 132v31m14-31v31" stroke="#d5d8d8" stroke-width="6"/>`).join('')}
+            ${performers}</svg><strong>${escape(scene.title)}</strong></div>
+            <p class="doc-narration">${escape(scene.narration)}</p>
+            <p class="book-muted">Original fictional stage preview. No live feed, performance recording or musical audio.</p>`;
     }
     const running = new Set();
     function stopAll() { for (const stop of [...running]) stop(); }
@@ -312,16 +339,21 @@ const DMVMedia = (() => {
         channelList();
     }
 
-    function renderTheater(content, back) {
+    function renderTheater(content, back, onMode = () => {}) {
         let timer = null, shownKey = '', pending = [], reading = false, narrate = false;
+        let presentation = '';
         const fmt = d => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
         content.innerHTML = `<div class="sports-game sportsbook library-reader"><h2>🎬 U Street Picture House</h2>
-            <p class="book-muted">Illustrated reading documentaries, not streamed video. A shared schedule follows your device clock; accurate clocks see the same scene. There is no live connection between players.</p>
-            <p class="book-muted">${escape(CONTENT_NOTICE)}</p>
+            <p class="book-muted">Cinema screenings + occasional stage previews. Illustrated scenes only, not streamed video or a live feed.</p>
+            <details class="theater-info"><summary>About this program & showtimes</summary>
+                <p class="book-muted">Films are illustrated reading documentaries. Music and plays are original fictional previews until performances are added. The schedule follows your device clock, not a live connection between players.</p>
+                <p class="book-muted">${escape(CONTENT_NOTICE)}</p></details>
             <div class="doc-controls"><button type="button" id="theater-reading" aria-pressed="false">Pause to read</button>
             ${speechOk() ? '<button type="button" id="theater-voice" aria-pressed="false">🔈 Narrate: off</button>' : ''}</div>
             <p id="theater-status" class="book-muted" role="status">Following the shared showtime.</p>
-            <div id="theater-screen"></div>
+            <section class="theater-auditorium" data-mode="film" aria-label="Theater auditorium">
+                <p id="theater-marquee" class="theater-marquee" role="status"></p>
+                <div id="theater-screen"></div><div class="theater-seat-rows" aria-hidden="true"></div></section>
             <section class="theater-chat" aria-label="Local theater chat"><h3>Local audience chat</h3>
             <p class="book-muted">NPCs are scripted characters, not real people. Your messages stay in this visit and are not sent to anyone.</p>
             <ol id="theater-log" role="log" aria-live="polite" aria-relevant="additions"></ol>
@@ -330,6 +362,7 @@ const DMVMedia = (() => {
             <h3>Coming up (your local time)</h3><ul id="theater-schedule" class="book-muted"></ul>
             <button type="button" id="theater-back">Leave theater</button></div>`;
         const screen = content.querySelector('#theater-screen'), log = content.querySelector('#theater-log');
+        const auditorium = content.querySelector('.theater-auditorium');
         function narrationError() {
             if (!screen.isConnected) return;
             narrate = false;
@@ -351,12 +384,23 @@ const DMVMedia = (() => {
             if (!content.isConnected || !screen.isConnected) return stopTheater();
             const now = new Date(), show = nowShowing(now);
             if (reading) return;
+            const upcoming = show.intermission ? show.next : show.film;
+            const mode = upcoming.kind === 'film' ? 'film' : 'performance';
+            const presentationKey = `${mode}-${upcoming.kind}`;
+            if (presentation !== presentationKey) {
+                presentation = presentationKey;
+                auditorium.dataset.mode = mode;
+                auditorium.dataset.kind = upcoming.kind;
+                onMode(mode);
+            }
+            content.querySelector('#theater-marquee').textContent =
+                `${show.intermission ? 'Next up' : 'Now showing'}: ${showLabel(upcoming)}`;
             const scheduleKey = `${show.index}-${show.intermission}`;
             const list = content.querySelector('#theater-schedule');
             if (list.dataset.show !== scheduleKey) {
                 list.dataset.show = scheduleKey;
                 list.innerHTML = schedule(now).map(s =>
-                    `<li><time datetime="${s.at.toISOString()}">${fmt(s.at)}</time> · ${s.film.icon} ${escape(s.film.title)} (${Math.ceil(s.film.seconds / 60)} min)</li>`).join('');
+                    `<li><time datetime="${s.at.toISOString()}">${fmt(s.at)}</time> · <strong>${escape(showLabel(s.film))}</strong><br>${s.film.icon} ${escape(s.film.title)} (${Math.ceil(s.film.seconds / 60)} min)</li>`).join('');
             }
             if (show.intermission) {
                 const key = `int-${show.index}`;
@@ -365,15 +409,15 @@ const DMVMedia = (() => {
                     screen.innerHTML = `<div class="doc-screen"><span class="doc-icon">🍿</span><strong>Intermission</strong><span class="doc-era">Next: ${escape(show.next.title)}</span></div><p class="doc-narration" id="theater-count"></p>`;
                 }
                 const count = screen.querySelector('#theater-count');
-                if (count) count.textContent = `Next film starts in ${Math.ceil(show.nextIn)} seconds.`;
+                if (count) count.textContent = `Next ${show.next.kind === 'film' ? 'film' : 'performance preview'} starts in ${Math.ceil(show.nextIn)} seconds.`;
                 return;
             }
             const film = show.film, scene = film.scenes[show.scene], key = `${film.id}-${show.scene}`;
             if (key !== shownKey) {
                 shownKey = key;
-                screen.innerHTML = `<h3 class="doc-title">${film.icon} ${escape(film.title)} · Scene ${show.scene + 1}/${film.scenes.length}</h3>${sceneCard(scene, film.icon)}<div class="doc-progress"><span></span></div>`;
+                screen.innerHTML = `<h3 class="doc-title">${film.icon} ${escape(film.title)} · Scene ${show.scene + 1}/${film.scenes.length}</h3>${film.kind === 'film' ? sceneCard(scene, film.icon) : stageCard(scene, film.kind, show.scene)}<div class="doc-progress"><span></span></div>`;
                 speak(scene.narration, narrate && !document.hidden, narrationError);
-                pending = npcChat(film.id, show.scene).map(m => ({ ...m, at: Date.now() + Math.max(0, m.delay - show.sceneElapsed) * 1000 }));
+                pending = npcChat(film.id, show.scene, film.kind).map(m => ({ ...m, at: Date.now() + Math.max(0, m.delay - show.sceneElapsed) * 1000 }));
             }
             pending = pending.filter(m => (Date.now() >= m.at ? (addChat(m.name, m.text), false) : true));
             const bar = screen.querySelector('.doc-progress span');
@@ -452,7 +496,7 @@ const DMVMedia = (() => {
         list();
     }
 
-    return { data, hash, rng, shuffle, weekOf, shelfBooks, documentary, tvClip, features, cycleSeconds, nowShowing, schedule,
+    return { data, hash, rng, shuffle, weekOf, shelfBooks, documentary, tvClip, features, performances, program, showLabel, cycleSeconds, nowShowing, schedule,
         npcChat, player, stopAll, sceneSeconds, countWords, escape, contentNote, CONTENT_NOTICE, renderTV, renderTheater, renderDocumentaries };
 })();
 

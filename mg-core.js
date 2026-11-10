@@ -4,6 +4,7 @@
 // Minigames.register(name, env => game); the shell owns the canvas, input, effects and result flow.
 const Minigames = (() => {
     const W = 360, H = 560;
+    const art = typeof CityArt !== 'undefined' ? CityArt : require('./city-art.js');
     const games = {};
     let S = null;
 
@@ -209,6 +210,7 @@ const Minigames = (() => {
         host.innerHTML = `
             <div class="mg-wrap">
                 <div class="mg-title" id="mg-title"></div>
+                ${art.gallery(name)}
                 ${campaign ? `<div class="mg-levels" role="group" aria-label="Choose level">
                     ${levels.map(n => `<button type="button" data-level="${n}"
                         aria-pressed="${level === n}" ${n > campaign.unlocked ? 'disabled' : ''}>
@@ -242,7 +244,8 @@ const Minigames = (() => {
             host.querySelector('#mg-prev').addEventListener('click', () => open(name, host, api, level - 1));
             host.querySelector('#mg-current').addEventListener('click', () => open(name, host, api));
         }
-        canvas.setAttribute('aria-label', S.game.title + ' play area. Touch gestures control the game.');
+        const tribute = art.theme(name).people.map(id => art.legends[id].name).join(' and ');
+        canvas.setAttribute('aria-label', `${S.game.title} play area. Original tribute artwork features ${tribute}. Touch gestures control the game.`);
         if (api.overlay) api.overlay.classList.add('mg-mode');
         fit();
         canvas.addEventListener('pointerdown', e => handle(e, 'down'));
@@ -418,12 +421,12 @@ const Minigames = (() => {
 
     function drawIntro(c) {
         const intro = S.game.intro || { head: S.game.title, lines: [] };
-        c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(0, 0, W, H);
-        const h = 150 + intro.lines.length * 38;
-        const y = (H - h) / 2 - 10;
+        art.drawLobby(c, S.name, U);
+        const h = 112 + intro.lines.length * 30;
+        const y = Math.max(204, H - h - 24);
         card(c, 22, y, W - 44, h);
-        U.text(c, intro.head, W / 2, y + 40, { size: 25, color: '#fde047', stroke: 'rgba(0,0,0,.6)', lw: 4 });
-        intro.lines.forEach((line, i) => U.text(c, line, W / 2, y + 88 + i * 38, { size: 14.5, weight: 700, color: '#dbe4f0' }));
+        U.text(c, intro.head, W / 2, y + 30, { size: 21, color: '#fde047', stroke: 'rgba(0,0,0,.6)', lw: 4 });
+        intro.lines.forEach((line, i) => U.text(c, line, W / 2, y + 66 + i * 30, { size: 14, weight: 700, color: '#dbe4f0' }));
         const pulse = .65 + .35 * Math.sin(S.t * 5);
         U.rr(c, W / 2 - 86, y + h - 52, 172, 38, 19);
         c.fillStyle = `rgba(16,185,129,${pulse})`; c.fill();

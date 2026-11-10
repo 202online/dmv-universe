@@ -11,6 +11,40 @@ vm.runInNewContext(`${source}\nglobalThis.city = quadrants;`, context);
 const world = (e, s) => [(s + e) / 2, (s - e) / 2];
 const overlaps = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.d && a.y + a.d > b.y;
 
+test('baseball has a standalone SW outdoor diamond with a connected street approach', () => {
+    const q = context.city.SW;
+    const diamond = q.activities.find(a => a.type === 'baseball');
+    assert.ok(diamond);
+    assert.equal(diamond.w, 240);
+    assert.equal(diamond.d, 220);
+    assert.ok(q.roadAccess.some(access => access.building === diamond));
+    assert.ok(!q.solids.some(s => overlaps(diamond, { x: s.x0, y: s.y0, w: s.x1 - s.x0, d: s.y1 - s.y0 })));
+});
+
+test('every outdoor sport renders its equipment and a defined map sign', () => {
+    const canvas = new Proxy({}, { get: (target, key) => key in target ? target[key] : (...args) => {
+        args.filter(a => typeof a === 'number').forEach(n => assert.ok(Number.isFinite(n)));
+        if (key === 'measureText') {
+            assert.equal(typeof args[0], 'string', 'Every activity has a sign label');
+            return { width: args[0].length * 7 };
+        }
+    } });
+    const env = { ctx: canvas, P: (x, y, z = 0) => [x - y, (x + y) / 2 - z], poly() {}, activeBuilding: null };
+    const draw = html.slice(html.indexOf('function drawActivityEquipment('), html.indexOf('// ---------- Rendering: objects ----------'));
+    vm.runInNewContext(`${draw}\nglobalThis.equipment = drawActivityEquipment;`, env);
+    for (const q of Object.values(context.city))
+        for (const activity of q.activities.filter(a => a.type !== 'boxing')) env.equipment(activity);
+});
+test('apartments and condos have broad, multi-family footprints proportional to the main apartment', () => {
+    const homes = Object.values(context.city).flatMap(q => q.neighborhood.buildings).filter(b => b.type === 'crib');
+    const house = homes.find(b => b.kind === 'house');
+    const mainApartment = context.city.SE.buildings.find(b => b.style === 'apartment');
+    for (const b of homes.filter(b => ['apartment', 'condo'].includes(b.kind))) {
+        assert.ok(b.w * b.d >= house.w * house.d * 2.5, 'Multi-family lots are substantially larger than a house');
+        assert.ok(b.w >= mainApartment.w * .8, 'Width is comparable to the existing main apartment');
+        assert.ok(b.h / b.w <= 1.1, 'Residential blocks do not become thin towers');
+    }
+});
 for (const [id, q] of Object.entries(context.city)) {
     test(`${id} has a distinct residential district, bounded properties and unobstructed streets to every destination`, () => {
         const objects = CityLayout.targets(q);
@@ -25,6 +59,10 @@ for (const [id, q] of Object.entries(context.city)) {
         for (const p of [[0, 20], [0, 1980], [-980, 1000], [980, 1000]])
             assert.ok(walkable(...world(...p)), 'Quadrant crossings stay open');
         for (const [i, b] of objects.entries()) {
+            assert.ok(b.x + b.w - b.y <= -120 || b.x - b.y - b.d >= 120,
+                `${b.name || b.kind} clears the full north-south road`);
+            assert.ok(b.x + b.y + b.w + b.d <= 835 || b.x + b.y >= 1165,
+                `${b.name || b.kind} clears the full east-west road`);
             for (const [x, y] of [[b.x, b.y], [b.x + b.w, b.y], [b.x, b.y + b.d], [b.x + b.w, b.y + b.d]]) {
                 assert.ok(Math.abs(x - y) <= 1000 && x + y >= 0 && x + y <= 2000, `${b.name || b.kind} in bounds`);
             }

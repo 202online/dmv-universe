@@ -254,6 +254,42 @@ test('showtime boundaries and schedules preserve millisecond precision', () => {
     assert.throws(() => Media.nowShowing(new Date('invalid')), /Invalid media date/);
 });
 
+test('occasional music and play slots share precise showtimes with films and preserve film-only collections', () => {
+    const epoch = Date.UTC(2026, 0, 5);
+    assert.ok(Media.features.every(f => f.kind === 'film'));
+    assert.ok(Media.program.length > Media.features.length);
+    assert.ok(Media.performances.some(p => p.kind === 'music'));
+    assert.ok(Media.performances.some(p => p.kind === 'play'));
+    let offset = 0;
+    for (const [i, event] of Media.program.entries()) {
+        const beginning = new Date(epoch + offset * 1000);
+        const show = Media.nowShowing(beginning);
+        assert.equal(show.film.id, event.id);
+        assert.equal(show.scene, 0);
+        assert.equal(show.sceneElapsed, 0);
+        assert.equal(show.startedAt, beginning.getTime());
+        const last = Media.nowShowing(new Date(beginning.getTime() + event.seconds * 1000 - 1));
+        assert.equal(last.film.id, event.id);
+        assert.equal(last.intermission, false);
+        const interval = Media.nowShowing(new Date(beginning.getTime() + event.seconds * 1000));
+        assert.equal(interval.intermission, true);
+        assert.equal(interval.next.id, Media.program[(i + 1) % Media.program.length].id);
+        const scheduled = Media.schedule(beginning, Media.program.length);
+        assert.equal(scheduled.at(-1).film.id, event.id);
+        if (event.kind !== 'film') {
+            assert.match(Media.showLabel(event), /Live performance slot.*illustrated preview/);
+            assert.match(event.scenes[0].narration, /not a live feed or recording/);
+            assert.equal(event.seconds, event.scenes.reduce((n, s) => n + s.seconds, 0));
+            const previous = Media.program[i - 1];
+            assert.equal(previous.id, event.afterFeature);
+            assert.ok(Media.npcChat(event.id, 0, event.kind).every(m => !/grandmother|History class/.test(m.text)));
+        }
+        offset += event.seconds + 60;
+    }
+    assert.equal(offset, Media.cycleSeconds);
+    assert.equal(Media.nowShowing(new Date(epoch + offset * 1000)).film.id, Media.program[0].id);
+});
+
 test('sensitive topics carry notes on bookshelves and individual media scenes', () => {
     for (const category of ['crime', 'news2000s', 'blackhistory', 'native', 'dcblack', 'dmvsports'])
         assert.ok(Media.contentNote([category]), category);

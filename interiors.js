@@ -1,11 +1,13 @@
 'use strict';
 
 const VenueInteriors = (() => {
+    const cityArt = typeof CityArt !== 'undefined' ? CityArt : require('./city-art.js');
     const item = (selector, label, art) => ({ selector, label, art });
     const rooms = {
         crib: { title: 'Your living room', wall: '#48667b', floor: '#78553d', items: [
             item('#open-home-tv', 'Watch TV', 'tv'), item('#open-personal-computer', 'Use computer', 'computer'),
-            item('#open-wardrobe', 'Open wardrobe', 'wardrobe'), item('#open-vehicle-garage', 'Enter garage', 'garage')
+            item('#open-wardrobe', 'Open wardrobe', 'wardrobe'), item('#open-vehicle-garage', 'Enter garage', 'garage'),
+            item('#open-pet-profile', 'Pet habitat & companion care', 'habitat')
         ] },
         library: { title: 'Library reading room', wall: '#4d7567', floor: '#826952', items: [
             item('#open-library-shelves', 'Bookshelves', 'books'), item('#open-personal-computer', 'Public computer', 'computer'),
@@ -21,6 +23,13 @@ const VenueInteriors = (() => {
         ] },
         arena: { title: 'Arena concourse', wall: '#5d3544', floor: '#434b60', items: [
             item('#open-sportsbook', 'Betting Practice Lab', 'computer')
+        ] },
+        casino: { title: 'Chocolate City casino floor', wall: '#55354b', floor: '#315b50', items: [
+            item('#open-sportsbook', 'Sports betting lab', 'computer'),
+            item('[data-casino-game="blackjack"]', 'Blackjack table', 'cards'),
+            item('[data-casino-game="craps"]', 'Craps table', 'dice'),
+            item('[data-casino-game="slots"]', 'Slot machine', 'slots'),
+            item('[data-casino-game="roulette"]', 'Roulette table', 'roulette')
         ] },
         sports: { title: 'Fan hub lounge', wall: '#663844', floor: '#4d5765', items: [] },
         boxing: { title: 'Boxing gym floor', wall: '#67534c', floor: '#4b5563', items: [
@@ -47,6 +56,7 @@ const VenueInteriors = (() => {
     };
     const aliases = { gogo: 'venue' };
     const art = {
+        habitat: '<rect x="14" y="20" width="132" height="82" rx="7" fill="#4a8ba2" stroke="#bfd8dc" stroke-width="5"/><path d="M17 85h126v14H17z" fill="#caa36f"/><path d="M39 87V54m0 14-13-12m13 8 12-15" stroke="#7ab46b" stroke-width="5"/><ellipse cx="89" cy="61" rx="21" ry="13" fill="#e7ac5d"/><path d="M109 60l17-12v25z" fill="#e7ac5d"/><circle cx="79" cy="58" r="2" fill="#20354b"/><path d="M22 104h116v11H22z" fill="#805437"/>',
         tv: '<rect x="12" y="12" width="136" height="82" rx="8" fill="#121c30"/><rect x="20" y="20" width="120" height="64" rx="4" fill="#2388a0"/><path d="M25 75L60 38 90 60 120 30 140 70" fill="#86d5b5"/><path d="M70 94v12H42v7h76v-7H90V94" fill="#c6d1de"/><circle cx="80" cy="89" r="2" fill="#67e8f9"/>',
         computer: '<path d="M14 96h132v9H14zM22 105v18m116-18v18" stroke="#573c2b" stroke-width="8"/><rect x="28" y="14" width="104" height="69" rx="5" fill="#111827"/><rect x="34" y="20" width="92" height="56" fill="#386ab0"/><path d="M44 34h27v22H44zm37 0h35v4H81zm0 12h26v4H81z" fill="#91d8f0"/><path d="M74 83v10h16V83M45 94h70" stroke="#cbd5e1" stroke-width="5"/><rect x="135" y="63" width="15" height="31" rx="3" fill="#1e293b"/>',
         wardrobe: '<rect x="24" y="5" width="112" height="109" rx="4" fill="#8f6548" stroke="#e0b988" stroke-width="3"/><path d="M80 8v102M30 22h100" stroke="#513f36" stroke-width="3"/><path d="M47 29l-15 12 9 13 9-5v31h28V49l9 5 9-13-15-12-17 8z" fill="#8bbecb"/><path d="M100 45v20m-10-10h4" stroke="#f5d487" stroke-width="4"/><path d="M30 114v9m100-9v9" stroke="#302a28" stroke-width="6"/>',
@@ -65,7 +75,11 @@ const VenueInteriors = (() => {
         lemonade: '<path d="M29 29h77l-8 83H37z" fill="#f8e077" stroke="#e8f7ff" stroke-width="4"/><path d="M34 59h67l-5 49H39z" fill="#e9bd36"/><path d="M79 69L104 8h20" stroke="#fff5ec" stroke-width="6" fill="none"/><circle cx="34" cy="31" r="22" fill="#edc342" stroke="#fff0ae" stroke-width="4"/><path d="M34 12v38m-19-19h38m-32-13 27 27m-26 0 26-27" stroke="#fff1b1" stroke-width="2"/><path d="M47 68h16v16H47zm25 13h16v16H72" fill="#f7fcff" opacity=".7"/><ellipse cx="122" cy="103" rx="23" ry="15" fill="#eac545"/><path d="M126 85q16-14 22-4-10 11-22 4" fill="#4d8743"/>',
         sneaker: '<path d="M8 104h144v17H8z" fill="#b88859"/><path d="M13 105h134" stroke="#e8c99e" stroke-width="3"/><path d="M18 72l17-38 30 9 25 20 47 12 11 17H16z" fill="#a78bfa" stroke="#ddd4fe" stroke-width="3"/><path d="M16 87h132v13H16z" fill="#f1f5f9"/><path d="M26 93h112M43 40l-6 28m23-18-9 18m23-9-8 17m24-9-6 15" stroke="#fff" stroke-width="4"/><path d="M95 77l21-2" stroke="#4c1d95" stroke-width="5"/>',
         parcel: '<path d="M30 44l50-24 50 24v64l-50 17-50-17z" fill="#c08a50" stroke="#f4c98e" stroke-width="3"/><path d="M30 44l50 18 50-18M80 62v63M58 31l50 20" fill="none" stroke="#f4d396" stroke-width="7"/><rect x="92" y="70" width="25" height="20" fill="#f9f1d7"/><path d="M98 76h13m-13 6h13" stroke="#71604d" stroke-width="2"/>',
-        ring: '<path d="M10 59l70-30 70 30v46l-70 20-70-20z" fill="#273c66"/><path d="M14 96l66-24 66 24-66 23z" fill="#6793b7"/><path d="M14 47v57m66-85v55m66-27v57m-66-36v53" stroke="#c9d6e5" stroke-width="5"/><path d="M14 50l66-26 66 26-66 24zM14 70l66-26 66 26-66 24z" stroke="#d34e5b" stroke-width="3" fill="none"/><path d="M14 60l66-26 66 26-66 24z" stroke="#f1f5f9" stroke-width="3" fill="none"/>'
+        ring: '<path d="M10 59l70-30 70 30v46l-70 20-70-20z" fill="#273c66"/><path d="M14 96l66-24 66 24-66 23z" fill="#6793b7"/><path d="M14 47v57m66-85v55m66-27v57m-66-36v53" stroke="#c9d6e5" stroke-width="5"/><path d="M14 50l66-26 66 26-66 24zM14 70l66-26 66 26-66 24z" stroke="#d34e5b" stroke-width="3" fill="none"/><path d="M14 60l66-26 66 26-66 24z" stroke="#f1f5f9" stroke-width="3" fill="none"/>',
+        cards: '<ellipse cx="80" cy="85" rx="72" ry="33" fill="#297452" stroke="#d0aa61" stroke-width="6"/><rect x="37" y="20" width="38" height="62" rx="5" fill="#f3e8ce" transform="rotate(-12 56 50)"/><rect x="79" y="18" width="38" height="62" rx="5" fill="#f3e8ce" transform="rotate(10 98 50)"/><text x="44" y="49" fill="#9d273b" font-size="26">A</text><text x="89" y="48" fill="#22364d" font-size="24">K</text>',
+        dice: '<rect x="10" y="32" width="140" height="76" rx="20" fill="#2b795a" stroke="#d0aa61" stroke-width="6"/><rect x="35" y="44" width="36" height="36" rx="6" fill="#fff1d8"/><rect x="86" y="54" width="36" height="36" rx="6" fill="#fff1d8"/><g fill="#a02b3c"><circle cx="44" cy="53" r="3"/><circle cx="61" cy="71" r="3"/><circle cx="53" cy="62" r="3"/><circle cx="94" cy="62" r="3"/><circle cx="114" cy="82" r="3"/></g>',
+        slots: '<rect x="29" y="8" width="99" height="110" rx="9" fill="#9c444e" stroke="#e1b862" stroke-width="5"/><rect x="39" y="38" width="79" height="43" fill="#fff0d6"/><path d="M65 39v41m27-41v41" stroke="#514158" stroke-width="2"/><text x="44" y="67" fill="#a2293d" font-size="24">7 7 7</text><path d="M55 97h43m30-30h13V38" stroke="#e1b862" stroke-width="6"/><circle cx="141" cy="33" r="8" fill="#e1b862"/>',
+        roulette: '<ellipse cx="80" cy="78" rx="72" ry="37" fill="#2b795a" stroke="#d0aa61" stroke-width="6"/><circle cx="80" cy="56" r="39" fill="#9a3e45" stroke="#e1b862" stroke-width="5"/><path d="M80 17v78M41 56h78M52 29l56 55m-56 0 56-55" stroke="#e1b862" stroke-width="3"/><circle cx="80" cy="56" r="22" fill="#614331" stroke="#e1b862" stroke-width="3"/><circle cx="80" cy="56" r="4" fill="#f6e8c6"/>'
     };
     function illustration(name) {
         if (!Object.hasOwn(art, name)) throw new Error(`Unknown interior object: ${name}`);
@@ -89,7 +103,7 @@ const VenueInteriors = (() => {
         const decor = document.createElement('div');
         decor.className = 'venue-room-decor';
         decor.setAttribute('aria-hidden', 'true');
-        decor.innerHTML = key === 'arena' || key === 'sports' ? '<span class="room-scoreboard">DISTRICT ARENA</span><div class="room-court"></div><div class="room-seats"></div>' :
+        const furnishings = key === 'arena' || key === 'sports' ? '<span class="room-scoreboard">DISTRICT ARENA</span><div class="room-court"></div><div class="room-seats"></div>' :
             key === 'crib' ? '<div class="room-window"></div><div class="room-sofa"></div><div class="room-rug"></div>' :
                 key === 'theater' ? '<div class="room-film-screen">PICTURE HOUSE</div><div class="room-theater-seats"></div>' :
                     ['carryout', 'subshop'].includes(key) ? '<div class="room-tiles"></div><div class="room-vent"></div>' :
@@ -98,6 +112,7 @@ const VenueInteriors = (() => {
                                 key === 'dmv' ? '<div class="room-service-desk">LEARNER PRACTICE</div><div class="room-theater-seats"></div>' :
                                     ['retail', 'resale', 'fashion'].includes(key) ? '<div class="room-display-shelves"></div>' :
                                         '<div class="room-window"></div><div class="room-rug"></div>';
+        decor.innerHTML = furnishings + `<div class="room-city-mural">${cityArt.mural(key)}</div>`;
         stage.append(decor);
         for (const spec of room.items) {
             const button = content.querySelector(spec.selector);
@@ -107,7 +122,10 @@ const VenueInteriors = (() => {
             button.innerHTML = illustration(spec.art) + `<span>${spec.label}</span>`;
             stage.append(button);
         }
-        scene.append(title, hint, stage);
+        const gallery = document.createElement('div');
+        gallery.className = 'room-legend-wall';
+        gallery.innerHTML = cityArt.gallery(key);
+        scene.append(title, hint, stage, gallery);
         content.prepend(scene);
     }
     return { rooms, illustration, mount };

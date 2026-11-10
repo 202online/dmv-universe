@@ -9,7 +9,7 @@ function node() {
         setAttribute(k, v) { this.attributes[k] = v; }, append(...items) { this.children.push(...items); },
         prepend(item) { this.children.unshift(item); } };
 }
-const context = { module: { exports: {} }, document: { createElement: node } };
+const context = { module: { exports: {} }, CityArt: require('./city-art.js'), document: { createElement: node } };
 vm.runInNewContext(fs.readFileSync(`${__dirname}/interiors.js`, 'utf8'), context);
 const Interiors = context.module.exports;
 

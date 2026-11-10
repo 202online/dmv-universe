@@ -11,6 +11,35 @@
 .venue-object span { padding: 7px 8px; background: #071321ed; border: 1px solid #8cc4cd; border-radius: 7px; }
 .venue-object:hover, .venue-object:focus-visible { background: #ffffff20; outline: 3px solid #67e8f9; outline-offset: -3px; }
 .venue-room-decor { position: absolute; z-index: -1; inset: 0; pointer-events: none; }
+.room-city-mural { position: absolute; top: 4px; left: 4%; width: 92%; height: 110px; opacity: .8; }
+.room-city-mural > svg { width: 100%; height: 100%; }
+.city-legend-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 8px; border: 1px solid #9a8055; border-radius: 8px; background: #101f30; color: #ffe2a1; }
+.city-legend-gallery figure { display: flex; align-items: center; gap: 7px; margin: 0; min-width: 0; }
+.city-legend-gallery svg { flex: 0 0 46px; width: 46px; height: 52px; border: 1px solid #ad8c55; border-radius: 4px; }
+.city-legend-gallery figcaption { min-width: 0; font: 700 11px/1.3 system-ui, sans-serif; overflow-wrap: anywhere; }
+.city-legend-gallery small { display: block; font-size: 10px; font-weight: 400; color: #c8d3df; }
+.city-art-note { grid-column: 1 / -1; text-align: center; }
+.room-legend-wall { margin-top: 10px; }
+.mg-wrap > .city-legend-gallery { width: 100%; box-sizing: border-box; }
+.mg-wrap[data-phase="intro"] > .city-legend-gallery { display: none; }
+.mg-wrap[data-phase="play"] > .city-legend-gallery { padding: 3px 6px; gap: 6px; }
+.mg-wrap[data-phase="play"] .city-legend-gallery svg { flex-basis: 27px; width: 27px; height: 30px; }
+.mg-wrap[data-phase="play"] .city-legend-gallery small { display: none; }
+.casino-felt { padding: 18px 12px; margin: 14px 0; border: 7px solid #87603f; border-radius: 35px; text-align: center; background: radial-gradient(ellipse at 50% 30%, #337b5c, #164334); color: #fff3cc; box-shadow: inset 0 0 0 2px #c7a86c; }
+.casino-hand { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; min-height: 80px; }
+.casino-card { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 70px; border: 2px solid #d5c6a5; border-radius: 6px; background: #fff6e3; color: #132335; font: 800 24px system-ui; }
+.casino-card-red { color: #a9243c; }
+.casino-card-back { background: repeating-linear-gradient(45deg, #274960 0 5px, #193147 6px 10px); color: #ebcf8f; font-size: 15px; }
+.casino-dice { display: flex; justify-content: center; gap: 10px; font-size: 72px; line-height: 1; color: #fff3d4; }
+.casino-reels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 12px 0; }
+.casino-reels > span { border: 3px solid #cca857; border-radius: 9px; background: #fff0cf; color: #b13147; font: 900 42px/1.6 system-ui; }
+.casino-reels small { padding-bottom: 8px; color: #3b2940; }
+.casino-wheel { display: block; width: min(100%, 240px); margin: 12px auto; }
+.casino-status { padding: 12px; border: 1px solid #d0af6c; border-radius: 8px; background: #162536; line-height: 1.6; }
+.pet-card { padding: 16px; border: 2px solid #81b4b1; border-radius: 16px; background: #172f3d; }
+.pet-portrait { display: block; width: min(100%, 220px); margin: 0 auto; border-radius: 12px; }
+.pet-meter { display: block; padding: 8px 0; text-transform: capitalize; }
+.pet-meter meter { display: block; width: 100%; height: 18px; }
 .room-window { position: absolute; right: 12%; top: 10px; width: 23%; height: 75px; background: linear-gradient(#182b50, #60a5a0); border: 6px solid #c1b19b; box-shadow: inset 0 0 0 2px #1e293b; }
 .room-window::after { content: ''; position: absolute; inset: 0 46%; background: #c1b19b; }
 .room-sofa { position: absolute; left: 18%; bottom: 8px; width: 64%; height: 60px; border: 10px solid #375c70; border-radius: 20px 20px 8px 8px; background: #6592a3; box-shadow: 0 5px #1a2e3c; }
@@ -30,8 +59,33 @@
 .room-display-shelves { position: absolute; inset: 8% 5% 30%; border: 4px solid #b6a48a; background: repeating-linear-gradient(0deg, transparent 0 35px, #a88d6f 36px 40px), repeating-linear-gradient(90deg, #627f92 0 16px, #b37d6e 17px 30px, #d5b77c 31px 48px); opacity: .55; }
 .sportsbook #book-lesson { display: block; box-sizing: border-box; width: 100%; margin: 10px 0 16px; min-height: 44px; padding: 10px; background: #17233a; color: white; border: 1px solid #94a3b8; border-radius: 8px; font-size: 15px; }
 .sportsbook #book-lesson-content { line-height: 1.65; }
+.sportsbook .book-note { padding: 4px 14px; margin: 14px 0; border: 1px solid #61738d; border-left: 4px solid #7dd3fc; border-radius: 8px; background: #111c30; }
+.sportsbook .book-sentence { display: block; padding: 10px 0; }
+.sportsbook .book-sentence + .book-sentence { border-top: 1px solid #61738d; }
+.sportsbook #book-lesson-content dt { padding-top: 12px; border-top: 1px solid #61738d; color: #bae6fd; }
 .sportsbook #book-lesson-content dd { margin: 4px 0 14px; color: #cbd5e1; }
 #book-learning:focus { outline: 2px solid #7dd3fc; outline-offset: 3px; }
+.carryout-special { padding: 14px; margin: 14px 0; border: 2px solid #b64b4c; border-radius: 10px; background: #391b22; color: #fff1df; }
+.mambo-sauce-swatch { display: inline-block; vertical-align: middle; width: 40px; height: 22px; border-radius: 50%; background: radial-gradient(ellipse at 35% 25%, #e36765 0, #b52731 40%, #721b27 85%); box-shadow: inset 0 -3px 2px #4e1620; }
+.theater-auditorium { position: relative; isolation: isolate; overflow: hidden; padding: 12px 12px 0; border: 3px solid #485771; border-radius: 12px; background: radial-gradient(ellipse at 50% 20%, #32445c, #060b14 70%); }
+.theater-marquee { padding: 9px; border: 1px solid #c7ab64; background: #080d17; color: #ffe4a3; text-align: center; font-size: 13px; font-weight: 800; }
+.theater-auditorium .doc-title { text-align: center; }
+.theater-auditorium[data-mode="film"] .doc-screen { margin: 12px 0; min-height: 170px; border: 10px solid #030508; border-radius: 3px; background: radial-gradient(ellipse at 45% 35%, #f8eedb, #b7c8ce); box-shadow: 0 0 30px #bddceb40; }
+.theater-auditorium[data-mode="film"] .doc-screen strong { color: #182637; }
+.theater-auditorium[data-mode="film"] .doc-screen::after { background: linear-gradient(transparent 85%, #1c344b33); animation: none; }
+.theater-seat-rows { height: 70px; margin: 20px -12px 0; border-top: 6px solid #0a0a13; background: radial-gradient(ellipse at 50% 85%, #84384f 0 50%, #462237 54% 72%, transparent 76%) 0 0 / 38px 27px, #100d18; transform: perspective(200px) rotateX(12deg); }
+.theater-auditorium[data-mode="performance"] { border-color: #d3a85d; background: radial-gradient(ellipse at 50% 15%, #713747, #24121d 70%); }
+.theater-auditorium[data-mode="performance"] .doc-screen { padding: 0 20px 20px; border: 6px solid #cda45e; border-bottom: 16px solid #96633f; border-radius: 40px 40px 2px 2px; background: #13111e; }
+.theater-auditorium[data-mode="performance"] .doc-screen::before, .theater-auditorium[data-mode="performance"] .doc-screen::after { content: ''; position: absolute; z-index: 2; top: 0; bottom: 0; width: 22px; background: repeating-linear-gradient(90deg, #58152c 0 5px, #ae3b51 8px, #702039 12px); animation: none; pointer-events: none; }
+.theater-auditorium[data-mode="performance"] .doc-screen::before { left: 0; border-radius: 0 0 24px 0; }
+.theater-auditorium[data-mode="performance"] .doc-screen::after { left: auto; right: 0; border-radius: 0 0 0 24px; }
+.stage-screen svg { display: block; width: 100%; height: auto; }
+.stage-screen strong { padding: 10px 0 0; font-size: 17px; }
+#theater-schedule { list-style: none; padding: 0; }
+#theater-schedule li { padding: 12px 0; border-top: 1px solid #697187; }
+@media (prefers-reduced-motion: reduce) {
+    .theater-auditorium .doc-icon { animation: none; }
+}
 @media (max-width: 360px) {
     #modal-overlay[data-interior]:not(.mg-mode) { padding: 8px; }
     #modal-overlay[data-interior]:not(.mg-mode) > div { padding: 14px; }
