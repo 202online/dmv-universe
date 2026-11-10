@@ -289,6 +289,9 @@
                     <label>Facial hair
                         <select id="creator-facial"><option value="none">None</option><option value="mustache">Mustache</option><option value="beard">Beard</option></select>
                     </label>
+                    <label>Expression
+                        <select id="creator-mood"><option value="happy">😊 Happy</option><option value="excited">😄 Excited</option><option value="calm">🙂 Calm</option><option value="cool">😏 Cool</option><option value="surprised">😮 Surprised</option><option value="sad">😢 Sad</option><option value="mad">😠 Mad</option></select>
+                    </label>
                 </div>
                 <div class="creator-actions">
                     <button type="button" id="creator-confirm">Start game</button>
@@ -691,10 +694,23 @@
         };
         const hairColors = { black: '#25170f', brown: '#795034', blond: '#d8b15d' };
         const skinColors = { light: '#f0c49f', medium: '#c68642', dark: '#805035' };
-        const defaultFeatures = appearance => ({ hair: appearance === 'girl' ? 'long' : 'short', color: 'black', skin: 'medium', facial: 'none' });
+        // brow: [inner, outer] vertical offsets (negative raises); mouth: [half width, bend] or a named shape.
+        const avatarExpressions = {
+            happy: { brow: [-.3, -.1], eyes: 'happy', open: 1, mouth: [2.3, 1.9], blush: true },
+            excited: { brow: [-.8, -.6], eyes: 'smile', open: 1, mouth: 'grin', blush: true },
+            calm: { brow: [0, 0], eyes: 'normal', open: .85, mouth: [1.6, .9] },
+            cool: { brow: [.35, .15], eyes: 'normal', open: .6, mouth: 'smirk' },
+            surprised: { brow: [-1.2, -1.1], eyes: 'wide', open: 1.1, mouth: 'o' },
+            sad: { brow: [-.9, .35], eyes: 'normal', open: .9, mouth: [1.8, -1.2] },
+            mad: { brow: [.8, -.4], eyes: 'normal', open: .85, mouth: 'flat' }
+        };
+        const moods = ['happy', 'excited', 'calm', 'cool', 'surprised', 'sad', 'mad'];
+        const defaultFeatures = appearance => ({ hair: appearance === 'girl' ? 'long' : 'short', color: 'black', skin: 'medium', facial: 'none', mood: 'happy' });
+        // Saves from before expressions existed have no mood and default to happy.
         const validFeatures = features => features && ['short', 'curly', 'long'].includes(features.hair) &&
             Object.hasOwn(hairColors, features.color) && Object.hasOwn(skinColors, features.skin) &&
-            ['none', 'mustache', 'beard'].includes(features.facial);
+            ['none', 'mustache', 'beard'].includes(features.facial) &&
+            (features.mood === undefined || moods.includes(features.mood));
         player.features = defaultFeatures('boy');
         player.motion = AvatarMotion.create();
         const progress = { stars: 12, property: 1, owned: ['basic'], shirt: 'basic', ownedVehicles: ['bike'], vehicle: 'bike', paints: VehiclePaints.initial(), minigames: MinigameProgression.initial() };
@@ -866,12 +882,13 @@
             hair: document.getElementById('creator-hair'),
             color: document.getElementById('creator-color'),
             skin: document.getElementById('creator-skin'),
-            facial: document.getElementById('creator-facial')
+            facial: document.getElementById('creator-facial'),
+            mood: document.getElementById('creator-mood')
         };
         const creatorPreview = document.getElementById('avatar-preview');
         let editingAppearance = false;
         function creatorFeatures() {
-            return { hair: creator.hair.value, color: creator.color.value, skin: creator.skin.value, facial: creator.facial.value };
+            return { hair: creator.hair.value, color: creator.color.value, skin: creator.skin.value, facial: creator.facial.value, mood: creator.mood.value };
         }
         function drawCreatorPreview() {
             const previewCtx = creatorPreview.getContext('2d');
@@ -885,7 +902,7 @@
             editingAppearance = editing;
             creator.body.value = player.appearance || 'boy';
             const features = player.appearance ? player.features : defaultFeatures(creator.body.value);
-            for (const key of ['hair', 'color', 'skin', 'facial']) creator[key].value = features[key];
+            for (const key of ['hair', 'color', 'skin', 'facial', 'mood']) creator[key].value = features[key] || defaultFeatures(creator.body.value)[key];
             document.getElementById('creator-confirm').textContent = editing ? 'Save changes' : 'Start game';
             document.getElementById('creator-cancel').classList.toggle('hidden', !editing);
             avatarSelection.classList.remove('hidden');
@@ -2089,16 +2106,34 @@
             ctx.fillStyle = shade(skin, 1.12);
             ctx.beginPath(); ctx.ellipse(sx - 2, hy - 1, 3.8, 4.8, -.3, 0, 7); ctx.fill();
             if (fy >= 0) {
+                const mood = moods.includes(features.mood) ? features.mood : 'happy';
+                const face = avatarExpressions[mood];
+                const mx = sx + fx * .9, lips = '#704539';
+                if (face.blush) {
+                    ctx.fillStyle = 'rgba(244,114,182,.32)';
+                    for (const side of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sx + side * 4.4 + fx, hy + 2.4, 1.5, .9, 0, 0, 7); ctx.fill(); }
+                }
                 for (const eye of [-2.7, 2.3]) {
-                    const ex = sx + eye + fx * 1.2;
+                    const ex = sx + eye + fx * 1.2, side = eye < 0 ? -1 : 1;
                     if (blink > .6) line(ex - 1.6, hy - .2, ex + 1.6, hy - .2, shade(skin, .55), .8);
-                    else {
-                        const open = 1 - blink * .8;
-                        ctx.fillStyle = '#f7ede3'; ctx.beginPath(); ctx.ellipse(ex, hy -.4, 1.7, 1.3 * open, 0, 0, 7); ctx.fill();
-                        ctx.fillStyle = '#30241d'; ctx.beginPath(); ctx.ellipse(ex + fx * .3, hy -.3, .95, .95 * open, 0, 0, 7); ctx.fill();
+                    else if (face.eyes === 'smile') {
+                        // Closed, upturned "laughing" eyes.
+                        ctx.beginPath(); ctx.arc(ex, hy + .5, 1.5, Math.PI * 1.1, Math.PI * 1.9);
+                        ctx.strokeStyle = '#30241d'; ctx.lineWidth = .8; ctx.stroke();
+                    } else {
+                        const open = (1 - blink * .8) * face.open, wide = face.eyes === 'wide' ? 1.15 : 1;
+                        ctx.fillStyle = '#f7ede3'; ctx.beginPath(); ctx.ellipse(ex, hy -.4, 1.7 * wide, 1.3 * open * wide, 0, 0, 7); ctx.fill();
+                        ctx.fillStyle = '#30241d'; ctx.beginPath(); ctx.ellipse(ex + fx * .3, hy -.3, .95, .95 * Math.min(1, open), 0, 0, 7); ctx.fill();
                         if (open > .6) { ctx.fillStyle = '#fff'; ctx.fillRect(ex - .3, hy -.8, .55, .55); }
+                        if (face.open < 1) line(ex - 1.8, hy - .4 - 1.3 * open, ex + 1.8, hy - .4 - 1.3 * open, shade(skin, .6), .6);
+                        else if (face.eyes === 'happy') {
+                            // A lifted lower lid makes the eyes smile with the mouth.
+                            ctx.beginPath(); ctx.arc(ex, hy + 2.2, 1.9, Math.PI * 1.25, Math.PI * 1.75);
+                            ctx.strokeStyle = shade(skin, .72); ctx.lineWidth = .5; ctx.stroke();
+                        }
                     }
-                    line(ex - 1.5, hy - 2.7, ex + 1.1, hy - 2.9, hair, .8);
+                    const [inner, outer] = face.brow;
+                    line(ex + side * 1.6, hy - 2.8 + outer, ex - side * 1.2, hy - 2.8 + inner, hair, .8);
                 }
                 line(sx + fx, hy + .5, sx + fx + .7, hy + 2.2, shade(skin, .7), .7);
                 if (features.facial === 'beard') {
@@ -2111,7 +2146,25 @@
                     line(sx - .4, hy + 2.6, sx - 1.9, hy + 2.8, hair, .7);
                     line(sx + .4, hy + 2.6, sx + 1.9, hy + 2.8, hair, .7);
                 }
-                line(sx - 1.2, hy + 4.4, sx + 1.2, hy + 4.4, '#704539', .6);
+                ctx.strokeStyle = lips; ctx.lineWidth = .8; ctx.lineCap = 'round';
+                if (face.mouth === 'grin') {
+                    ctx.beginPath(); ctx.moveTo(mx - 2.6, hy + 3.5); ctx.quadraticCurveTo(mx, hy + 8, mx + 2.6, hy + 3.5); ctx.closePath();
+                    ctx.fillStyle = '#5b2228'; ctx.fill(); ctx.stroke();
+                    ctx.fillStyle = '#fff'; ctx.fillRect(mx - 1.8, hy + 3.6, 3.6, .9);
+                    ctx.fillStyle = '#e66b7d'; ctx.beginPath(); ctx.ellipse(mx, hy + 5.6, 1.2, .55, 0, 0, 7); ctx.fill();
+                } else if (face.mouth === 'o') {
+                    ctx.fillStyle = '#5b2228'; ctx.beginPath(); ctx.ellipse(mx, hy + 4.6, 1.1, 1.5, 0, 0, 7); ctx.fill();
+                } else if (face.mouth === 'smirk') {
+                    ctx.beginPath(); ctx.moveTo(mx - 1.8, hy + 4.6); ctx.quadraticCurveTo(mx + .6, hy + 5, mx + 2, hy + 3.5); ctx.stroke();
+                } else if (face.mouth === 'flat') {
+                    ctx.beginPath(); ctx.moveTo(mx - 1.8, hy + 4.9); ctx.lineTo(mx - 1, hy + 4.5); ctx.lineTo(mx + 1, hy + 4.5); ctx.lineTo(mx + 1.8, hy + 4.9); ctx.stroke();
+                } else {
+                    // Curves: positive bend smiles, negative frowns.
+                    const [half, bend] = face.mouth;
+                    ctx.beginPath(); ctx.moveTo(mx - half, hy + 4.4 - bend * .35);
+                    ctx.quadraticCurveTo(mx, hy + 4.4 + bend, mx + half, hy + 4.4 - bend * .35); ctx.stroke();
+                }
+                ctx.lineCap = 'butt';
             }
             ctx.fillStyle = hair;
             ctx.beginPath(); ctx.arc(sx, hy - 2, 7, Math.PI, 0); ctx.fill();

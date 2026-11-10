@@ -64,7 +64,8 @@ test('oval arena and detailed avatars render finite geometry for all saved appea
     };
     const arena = html.slice(html.indexOf('function drawOvalArena('), html.indexOf('function drawBuilding('));
     const avatar = html.slice(html.indexOf('function drawAvatar('), html.indexOf('function drawPlayer('));
-    vm.runInNewContext(`${arena}\n${avatar}\nglobalThis.arena = drawOvalArena; globalThis.avatar = drawAvatar;`, env);
+    const faces = html.slice(html.indexOf('const avatarExpressions'), html.indexOf('const defaultFeatures'));
+    vm.runInNewContext(`${faces}\nglobalThis.moods = moods;\n${arena}\n${avatar}\nglobalThis.arena = drawOvalArena; globalThis.avatar = drawAvatar;`, env);
     env.arena({ x: 200, y: 100, w: 260, d: 170, h: 110, color: '#567', trim: '#abc' }, true, 1);
     assert.ok(polygons > 150, 'Arena uses curved rings and glass segments rather than a box');
     for (const hair of ['short', 'curly', 'long'])
@@ -72,5 +73,8 @@ test('oval arena and detailed avatars render finite geometry for all saved appea
             for (const appearance of ['boy', 'girl'])
                 for (const [fx, fy] of [[0, 1], [1, 0], [0, -1]])
                     for (const motion of [undefined, { t: 3.12, walk: .6, phase: 1.3, blink: .9 }, { t: 7, walk: 1, phase: 4, blink: .3 }])
-                        env.avatar(canvas, 100, 100, appearance, { hair, facial, color: 'black', skin: 'medium' }, '#eee', .5, 2, fx, fy, motion);
+                        for (const mood of [undefined, ...env.moods])
+                            env.avatar(canvas, 100, 100, appearance, { hair, facial, color: 'black', skin: 'medium', mood }, '#eee', .5, 2, fx, fy, motion);
+    assert.deepEqual([...env.moods], ['happy', 'excited', 'calm', 'cool', 'surprised', 'sad', 'mad']);
+    for (const mood of env.moods) assert.ok(html.includes(`<option value="${mood}">`), `creator offers ${mood}`);
 });

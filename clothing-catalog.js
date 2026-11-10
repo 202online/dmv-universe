@@ -174,27 +174,58 @@ const ClothingCatalog = (() => {
         }
         if (hoodie && body) {
             const c = hoodie.hex, t = hoodie.trim;
+            // Slim sleeves that follow the arm, finished with a narrow ribbed cuff.
             for (const side of [-1, 1]) {
-                const hx = sx + side * 11, hyand = sy - 19 - bob - side * sw * .5;
-                line(sx + side * 8.5, top + 3, hx, hyand, t, 5.6);
-                line(sx + side * 8.5, top + 3, hx, hyand, c, 4.4);
-                line(hx - side * .2, hyand - 1.2, hx, hyand + .2, t, 4.6);
-                ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(hx, hyand + 1.6, 1.7, 0, Math.PI * 2); ctx.fill();
+                const hx = sx + side * 11, hyand = sy - 19 - bob - side * sw * .5, ax = sx + side * 7.6;
+                // Tapers from a shoulder cap wide enough to hide any tee sleeve down to the wrist.
+                shape([[sx + side * 7.4, top - .6], [sx + side * 13.4, top + 6.6], [sx + side * 12.2, top + 9.8],
+                    [hx + side * 1.9, hyand - 1], [hx - side * 1.9, hyand - .4], [ax - side * .2, top + 8]], c, shade(c, .62));
+                line(ax + side * .4, top + 4, hx - side * .3, hyand - 2.6, shade(c, side < 0 ? 1.18 : .86), .7);
+                line(hx - side * .15, hyand - 1.3, hx, hyand - .1, shade(c, .8), 3.6);
+                ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(hx, hyand + 1.4, 1.6, 0, Math.PI * 2); ctx.fill();
             }
+            // The body hugs the shirt silhouette: shoulders, a slight waist taper and a gathered hem.
+            const hem = bottom - .8;
+            const torso = side => [[sx + side * 3.5, top - 1], [sx + side * 7.8, top - .2], [sx + side * 8.1, top + 4],
+                [sx + side * 7.4, top + 12], [sx + side * 7.9, hem]];
             const open = front ? (1 - zip) * 4.5 : 0, slider = lerp(bottom, top + 1, zip);
+            // Lowered hood, front view: bunched behind the neck so only its rim shows beside the head.
+            if (front && hood < .5) {
+                ctx.beginPath(); ctx.ellipse(sx, top - 1.6, 8, 4.2, 0, 0, Math.PI * 2);
+                ctx.fillStyle = shade(c, .82); ctx.fill(); ctx.strokeStyle = shade(c, .55); ctx.lineWidth = .8; ctx.stroke();
+                ctx.beginPath(); ctx.ellipse(sx, top - 1.9, 6, 2.8, 0, Math.PI, 0);
+                ctx.strokeStyle = shade(c, .5); ctx.lineWidth = .7; ctx.stroke();
+            }
             if (front) for (const side of [-1, 1]) {
-                shape([[sx + side * 3.5, top - 1], [sx + side * 8.5, top], [sx + side * 9.5, top + 6], [sx + side * 9, bottom],
-                    [sx, bottom], [sx, slider], [sx + side * open, top + 1]], c, shade(c, .55));
+                shape([...torso(side), [sx, hem], [sx, slider], [sx + side * open, top + 1]], c, shade(c, .62));
                 if (open > .2) line(sx, slider, sx + side * open, top + 1, shade(c, .6), .7);
             }
             // The back is one seamless panel.
-            else shape([[sx - 3.5, top - 1], [sx - 8.5, top], [sx - 9.5, top + 6], [sx - 9, bottom],
-                [sx + 9, bottom], [sx + 9.5, top + 6], [sx + 8.5, top], [sx + 3.5, top - 1]], c, shade(c, .55));
-            line(sx - 9, bottom - 1.2, sx + 9, bottom - 1.2, t, 2);
+            else shape([...torso(-1), ...torso(1).reverse()], c, shade(c, .62));
+            // Soft shading at the sides gives the fabric some volume.
+            line(sx + 6.2, top + 4, sx + 6.4, hem - 3, shade(c, .84), 1.1);
+            line(sx - 6.2, top + 4, sx - 6.4, hem - 3, shade(c, 1.12), .9);
+            // Ribbed waistband sits snug at the hips.
+            ctx.fillStyle = shade(c, .86); ctx.fillRect(sx - 7.6, hem - 1.8, 15.2, 1.8);
+            for (let x = -6.6; x <= 6.6; x += 1.5) line(sx + x, hem - 1.7, sx + x, hem - .1, shade(c, .7), .3);
             if (front) {
-                line(sx, bottom, sx, slider, '#cbd5e1', .8);
-                ctx.fillStyle = '#e5e7eb'; ctx.fillRect(sx - .9, slider - 1.4, 1.8, 2.8);
-                for (const side of [-1, 1]) line(sx + side * 3.4, bottom - 6, sx + side * 5.6, bottom - 3, shade(c, .6), .7);
+                line(sx, hem, sx, slider, '#cbd5e1', .7);
+                ctx.fillStyle = '#e5e7eb'; ctx.fillRect(sx - .8, slider - 1.3, 1.6, 2.6);
+                // Front pouch-pocket seams.
+                for (const side of [-1, 1]) line(sx + side * 1.6, hem - 6.6, sx + side * 4.8, hem - 2.2, shade(c, .66), .6);
+                if (hood <= .01) for (const side of [-1, 1]) line(sx + side * 2.2, top + 1, sx + side * 2.6, top + 7, '#f3f4f6', .7);
+            } else if (hood < .5) {
+                // Lowered hood, back view: it lies on the upper back with its opening facing up.
+                const k = 1 - hood * 2, h = 11 * k + 2;
+                ctx.beginPath(); ctx.moveTo(sx - 7.6, top - 1.5);
+                ctx.quadraticCurveTo(sx - 8.4, top + h * .7, sx, top + h);
+                ctx.quadraticCurveTo(sx + 8.4, top + h * .7, sx + 7.6, top - 1.5);
+                ctx.quadraticCurveTo(sx, top - 3, sx - 7.6, top - 1.5); ctx.closePath();
+                ctx.fillStyle = c; ctx.fill(); ctx.strokeStyle = shade(c, .55); ctx.lineWidth = .8; ctx.stroke();
+                ctx.beginPath(); ctx.ellipse(sx, top + .2, 5.8, 1.9 * k + .4, 0, 0, Math.PI * 2);
+                ctx.fillStyle = shade(c, .42); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(sx, top + .2, 5.8, 1.9 * k + .4, 0, 0, Math.PI);
+                ctx.strokeStyle = shade(c, 1.25); ctx.lineWidth = .6; ctx.stroke();
             }
         }
         if (cap && head) {
@@ -206,7 +237,7 @@ const ClothingCatalog = (() => {
             for (const ox of [-3.6, 0, 3.6]) line(sx + fx * 1.5, crown + 2, sx + ox * crx / 4.6 + fx, hy - 3, shade(c, .75), .5);
             ctx.fillStyle = c; ctx.beginPath(); ctx.arc(sx + fx * 1.5, crown + 1.7, 1, 0, Math.PI * 2); ctx.fill();
         }
-        if (hoodie && head && (hood > .01 || front)) {
+        if (hoodie && head && hood > .01) {
             const c = hoodie.hex, inner = shade(c, .45);
             // The face opening reaches the face early so the rising hood never covers it.
             const face = Math.min(1, hood * 2.6);

@@ -73,6 +73,14 @@ accepts an optional `dress(layer)` hook: garments are drawn in the `body` layer
 before the hair, so long hair falls over shirts and hoodies, and caps and hoods
 are drawn in the `head` layer after it. Caps and hoods size up over curly hair.
 
+### Expressions
+
+Faces default to a happy smile with rosy cheeks. The character creator (also
+used to edit an existing look) has an **Expression** option: Happy, Excited,
+Calm, Cool, Surprised, Sad or Mad, which changes the brows, eyes and mouth.
+Older saves without an expression load as Happy. Lowered hoodie hoods sit
+behind the neck from the front and lie on the upper back from behind.
+
 ### Avatar motion
 
 `avatar-motion.js` keeps the avatar fluid: walking eases in and out (the legs
