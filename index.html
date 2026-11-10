@@ -1321,7 +1321,7 @@
             toggle.textContent = metroGalleryMinimized ? 'Show art' : 'Hide art';
             toggle.setAttribute('aria-expanded', String(!metroGalleryMinimized));
             document.getElementById('metro-gallery-label').textContent = trip.mode === 'train' ? `Underground Metro · ${trip.origin} → ${trip.destination}` : `City bus · ${trip.origin} → ${trip.destination}`;
-            document.getElementById('metro-timer-label').textContent = st.waiting ? `${vehicle} arrives in ${Math.ceil(st.boardIn / 1000)}s · ${trip.destination} in` : `Next stop ${st.nextStop} · ${trip.destination} in`;
+            document.getElementById('metro-timer-label').textContent = st.waiting ? `Waiting · ${vehicle} arrives in ${Math.ceil(st.boardIn / 1000)}s · ${trip.destination} in` : `On board · riding to ${trip.destination} · next stop ${st.nextStop} · arriving in`;
             document.getElementById('metro-countdown').textContent = `${Math.ceil(st.remaining / 1000)}s`;
             document.getElementById('metro-arrival').textContent = `Arrival ${new Date(st.arrivesAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}`;
             const stopText = st.waiting ? `Waiting for the ${vehicle.toLowerCase()}. Arrival in ${trip.destination} in ${Math.ceil(st.remaining / 1000)} seconds.` : `Next stop: ${st.nextStop}.`;
