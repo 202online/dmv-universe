@@ -158,22 +158,25 @@ when boarding. Cars stay behind; bicycles, scooters and e-bikes travel in the ba
 The bus visibly arrives, you board, and it departs. Train passengers walk
 down the station steps; no above-ground train is drawn.
 
-Bus speed is **1.3× walking**, just below the scooter's 1.4×. The train runs
-at **2.6× walking**: exactly twice bus speed, faster than the pickup.
-Times depend on district distance (a diagonal trip takes twice an adjacent
-trip); train times are exactly half bus times for the same route.
-Trips lock movement and other travel until arrival at the destination station.
+Both services run a one-way loop with **one stop per quadrant**
+(NW → NE → SE → SW → NW). Each trip begins with a one-stop platform wait.
+Bus stops are **4 seconds apart**, so a bus trip takes 8, 12 or 16 seconds
+including the wait; the farthest destination takes 16 seconds. The train
+serves the same stops and runs **70% faster** (about 2.35 seconds per stop,
+9.4 seconds at most). Trips lock movement and other travel until arrival at
+the destination station.
 Paid journeys persist, so reloading resumes/completes the journey without a
 second fare. These are local simulated services, not live transit schedules.
 
-**Metro ride gallery:** after boarding (once the bus pulls away or you reach the
-platform), a gallery of original illustrated cards rotates every 5 seconds. It
-features the Metro vaults, the National Mall, Chocolate City rowhouses, go-go,
-U Street, mambo sauce, the Anacostia, cherry blossoms, Howard University, the
-wider DMV, and stylized tributes to local athletes and culture makers. Train
-riders see it in an underground tunnel; bus riders see it through a bus window.
-**Hide gallery** shrinks it for the current trip. The sequence is deterministic
-per trip, so a reload resumes the same card. Moving lights are disabled under
+**Trip wait screen:** the trip screen opens as soon as you board; train riders
+first walk down the station steps. Original illustrated DMV culture cards fill
+the background and change at every stop (4 seconds): the Metro vaults, the
+National Mall, Chocolate City, go-go, U Street, mambo sauce, the Anacostia,
+cherry blossoms, Howard University, the wider DMV, and stylized tributes to
+local athletes and culture makers. The timer shows when your ride arrives,
+the next stop, a countdown to your destination and the arrival clock time.
+**Hide art** shows only the timer. Cards are deterministic per trip, so a
+reload resumes the same card. Moving tunnel lights turn off under
 reduced-motion settings.
 
 Every public venue, game, field and currently accessible home has a dedicated
@@ -258,6 +261,39 @@ is used. `city-art.js` centralizes the palettes, portraits and venue themes.
 The same art also appears outdoors: each quadrant has three street
 billboards with different culture cards. `travel-art.js` defines those cards and
 the Metro gallery, reusing the `city-art.js` portraits.
+
+## Go-go at The 202
+
+Entering **The 202 Venue** in NW autoplays go-go. You can pause it, set the
+volume, or turn off **Autoplay in The 202**; these settings are saved on your
+device. The Wizards Fan Lounge has the same player but does not autoplay.
+Music stops when you leave the venue.
+
+The default track is an original groove built live with Web Audio
+(`gogo-music.js`). It is written in the modern DMV bounce-beat style
+associated with bands like Backyard Band (BYB), TOB, CCB and New Impressions:
+- a swung 96 BPM pocket beat;
+- conga and cowbell figures;
+- roto-tom fills, timbales, bass and keyboard stabs;
+- a horn call-and-response;
+- a percussion-only breakdown every fourth loop.
+
+It is not a recording by those bands and contains no samples of them.
+
+**Using real band recordings:** only add tracks you have permission to
+distribute. Put the audio files in `music/` and list them in
+`music/playlist.json`:
+
+```json
+{ "tracks": [
+  { "title": "Song title", "artist": "Band name", "src": "music/song.mp3",
+    "license": "Written permission from the band, 2026" }
+] }
+```
+
+Each listed track needs a title, artist, license note and a local
+`music/*.mp3|m4a|ogg|wav` path. Valid tracks play in order instead of the
+original groove. If a file fails to load, the player falls back to the groove.
 
 ## Casino and scheduled promos
 

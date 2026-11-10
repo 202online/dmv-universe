@@ -30,11 +30,18 @@ const TravelArt = (() => {
             svg: () => sky('#3d2219', '#a8643a') + rowhouses(86, ['#7c3b2a', '#b46a3e', '#5b3a5e', '#8a6a3b', '#3f6a6a', '#9c4a47', '#6d4a2f', '#4f5f86']) +
                 `<text x="160" y="58" text-anchor="middle" fill="#f9dda0" ${font} font-weight="900" font-size="30">CHOCOLATE CITY</text>` +
                 `<text x="160" y="76" text-anchor="middle" fill="#f1e2c6" ${font} font-size="11">Washington, DC &#183; 202</text>` },
-        { id: 'go-go', title: 'Go-go: DC\'s Official Music', caption: 'Chuck Brown helped build go-go in the 1970s. DC named go-go its official music in 2020.',
-            svg: () => sky('#2a1236', '#7a2c4b') + '<path d="M0 0l160 180L320 0z" fill="#f6c45c" opacity=".08"/>' +
-                [70, 120, 200, 250].map((x, i) => `<path d="M${x - 20} ${100 + i % 2 * 10}h40l-6 70h-28z" fill="${['#b34a3e', '#d79a3c', '#3d7a8c', '#b34a3e'][i]}"/><ellipse cx="${x}" cy="${100 + i % 2 * 10}" rx="20" ry="7" fill="#f2e3c4"/>`).join('') +
-                '<path d="M150 92l20 0-4 20h-12z" fill="#c8c2b6"/><path d="M160 92v-12" stroke="#c8c2b6" stroke-width="3"/>' +
-                art.portrait('brown').replace('<svg ', '<svg x="128" y="22" width="64" height="72" ') + label('GO-GO', '#ffd36e') },
+        { id: 'go-go', title: 'Go-go: DC\'s Own Sound', caption: 'Congas, cowbell, roto-toms and the pocket beat with call-and-response. Chuck Brown laid the foundation; bands like BYB, TOB, CCB and New Impressions keep the DMV crankin\'. Go-go became DC\'s official music in 2020.',
+            svg: () => sky('#1c0f2b', '#6d1f3f') + '<path d="M0 0l70 120h-30zM320 0l-70 120h30zM160 0l-20 120h40z" fill="#f6c45c" opacity=".1"/>' +
+                '<path d="M0 132h320v48H0z" fill="#2a1a22"/><path d="M0 132h320v5H0z" fill="#c63838"/>' +
+                // Conga line-up
+                [[46, '#b34a3e'], [74, '#d79a3c'], [102, '#9c3d34']].map(([x, c], i) => `<path d="M${x - 13} ${96 + i * 4}h26l-5 42h-16z" fill="${c}"/><ellipse cx="${x}" cy="${96 + i * 4}" rx="13" ry="4.5" fill="#f2e3c4"/><path d="M${x - 11} ${112 + i * 4}h22" stroke="#e5c07a" stroke-width="2"/>`).join('') +
+                // Roto-toms on a stand
+                '<path d="M226 138V104m30 34V104" stroke="#9aa1ad" stroke-width="3"/>' + [[214, 96, 9], [234, 92, 11], [256, 96, 9], [276, 102, 8]].map(([x, y, r]) => `<ellipse cx="${x}" cy="${y}" rx="${r}" ry="3.5" fill="#e9edf2"/><path d="M${x - r} ${y}v6h${2 * r}v-6" fill="#c0c6cf"/>`).join('') +
+                // Cowbell and timbales
+                '<path d="M140 84l18-6 6 16-20 7z" fill="#d7d2c4"/><path d="M152 80l-10-14" stroke="#8a8f99" stroke-width="2"/><path d="M178 112h34v8h-34z" fill="#c9c6bd"/><ellipse cx="186" cy="112" rx="9" ry="3" fill="#f1ede2"/><ellipse cx="204" cy="112" rx="9" ry="3" fill="#f1ede2"/>' +
+                // Crowd silhouettes with raised hands (call-and-response)
+                Array.from({ length: 11 }, (_, i) => `<circle cx="${14 + i * 29}" cy="152" r="7" fill="#120a14"/><path d="M${4 + i * 29} 180v-18q10-6 20 0v18z" fill="#120a14"/>${i % 2 ? `<path d="M${20 + i * 29} 160l6-16" stroke="#120a14" stroke-width="4"/>` : ''}`).join('') +
+                label('GO-GO &#183; CRANK IT', '#ffd36e') + `<text x="12" y="42" fill="#f2d7e0" ${font} font-size="11">Pocket beat &#183; call &amp; response</text>` },
         { id: 'u-street', title: 'U Street — Black Broadway', caption: 'U Street theaters and clubs earned the nickname Black Broadway. DC-born Duke Ellington started his career nearby.',
             svg: () => sky('#101a33', '#3b2350') + rowhouses(70, ['#40213a', '#522a33', '#2f3355', '#40213a', '#522a33', '#2f3355', '#40213a', '#522a33']) +
                 '<path d="M86 42h148v34H86z" fill="#14101e" stroke="#ff6fae" stroke-width="3"/>' +
@@ -67,7 +74,7 @@ const TravelArt = (() => {
                 `<text x="60" y="64" text-anchor="middle" fill="#ffd36e" ${font} font-weight="800" font-size="16">MD</text><text x="262" y="132" text-anchor="middle" fill="#9fe3b0" ${font} font-weight="800" font-size="16">VA</text>` + label('THE DMV', '#f4f0e6') }
     ];
     const byId = Object.fromEntries(cards.map(c => [c.id, c]));
-    const INTERVAL = 5000;
+    const INTERVAL = 4000;
     const escape = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
     function svg(id) {

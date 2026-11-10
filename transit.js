@@ -1,19 +1,31 @@
 'use strict';
 const CityTransit = (() => {
-    const layout = typeof module !== 'undefined' && module.exports ? require('./city-layout.js') : CityLayout;
     const quadrants = ['NW', 'NE', 'SE', 'SW'];
+    // One stop per quadrant on a one-way loop. Every trip includes one stop interval of platform wait.
+    const loop = ['NW', 'NE', 'SE', 'SW'];
+    const BUS_STOP_INTERVAL = 4000, TRAIN_SPEEDUP = 1.7;
     const services = {
-        bus: { fare: 2, speed: 1.3, label: 'Bus' },
-        train: { fare: 4, speed: 2.6, label: 'Metro train' }
+        bus: { fare: 2, label: 'Bus', interval: BUS_STOP_INTERVAL },
+        train: { fare: 4, label: 'Metro train', interval: BUS_STOP_INTERVAL / TRAIN_SPEEDUP }
     };
-    const WALK_SPEED = (3.6 / 5) * 1.2 * 1.2 * 60;
-    function duration(mode, origin, destination) {
-        if (!Object.hasOwn(services, mode) || !quadrants.includes(origin) || !quadrants.includes(destination) || origin === destination)
+    function route(origin, destination) {
+        if (!quadrants.includes(origin) || !quadrants.includes(destination) || origin === destination)
             throw new Error('Invalid transit route');
-        const coordinates = { NW: [0, 0], NE: [1, 0], SW: [0, 1], SE: [1, 1] };
-        const a = coordinates[origin], b = coordinates[destination];
-        const distance = (Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1])) * 2 * layout.world / Math.SQRT2;
-        return distance / (WALK_SPEED * services[mode].speed) * 1000;
+        const stops = [], start = loop.indexOf(origin);
+        for (let i = 1; loop[(start + i) % 4] !== destination; i++) stops.push(loop[(start + i) % 4]);
+        return [...stops, destination];
+    }
+    function duration(mode, origin, destination) {
+        if (!Object.hasOwn(services, mode)) throw new Error('Invalid transit route');
+        return services[mode].interval * (1 + route(origin, destination).length);
+    }
+    function status(trip, now) {
+        if (!valid(trip) || !Number.isFinite(now)) throw new Error('Invalid transit journey time');
+        const interval = services[trip.mode].interval, stops = route(trip.origin, trip.destination);
+        const total = interval * (1 + stops.length), elapsed = Math.max(0, Math.min(total, now - trip.started));
+        const waiting = elapsed < interval, passed = waiting ? 0 : Math.min(stops.length, Math.floor((elapsed - interval) / interval));
+        return { waiting, stops, passed, nextStop: stops[Math.min(passed, stops.length - 1)],
+            boardIn: waiting ? interval - elapsed : 0, remaining: total - elapsed, arrivesAt: trip.started + total };
     }
     function valid(trip) {
         return !!trip && Object.hasOwn(services, trip.mode) && quadrants.includes(trip.origin) &&
@@ -30,6 +42,6 @@ const CityTransit = (() => {
         if (!valid(trip) || !Number.isFinite(now)) throw new Error('Invalid transit journey time');
         return Math.max(0, Math.min(1, (now - trip.started) / duration(trip.mode, trip.origin, trip.destination)));
     }
-    return { services, valid, start, position, duration };
+    return { services, loop, route, valid, start, position, duration, status };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = CityTransit;

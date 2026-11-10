@@ -137,28 +137,42 @@
         .trade-facts { padding-left: 22px; }
         @keyframes doc-float { from { transform: translateY(-4px) scale(1); } to { transform: translateY(4px) scale(1.06); } }
         @keyframes doc-pan { from { transform: translateX(-6%); } to { transform: translateX(6%); } }
-        #metro-gallery { position: absolute; inset: 0; z-index: 25; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 52px 12px 14px; box-sizing: border-box; pointer-events: none; overflow: hidden; }
+        #metro-gallery { position: absolute; inset: 0; z-index: 25; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 52px 12px 14px; box-sizing: border-box; pointer-events: none; overflow: hidden; background: #0c0a09; }
         #metro-gallery[hidden] { display: none; }
-        #metro-gallery[data-mode="train"] { background: radial-gradient(ellipse at center, #3a332d 0%, #0c0a09 78%); }
-        #metro-gallery[data-mode="train"]::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 150px, rgba(255, 214, 120, .16) 150px 158px); animation: metro-lights 1s linear infinite; }
-        #metro-gallery[data-mode="bus"] { background: rgba(9, 12, 20, .45); }
-        #metro-gallery.minimized { background: none; justify-content: flex-start; }
-        #metro-gallery.minimized::before, #metro-gallery.minimized .metro-frame, #metro-gallery.minimized .metro-caption { display: none; }
+        .metro-backdrop { position: absolute; inset: 0; }
+        .metro-backdrop svg { display: block; width: 100%; height: 100%; }
+        .metro-backdrop.enter { animation: metro-card .8s ease-out; }
+        #metro-gallery::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, .25) 0%, rgba(0, 0, 0, .05) 40%, rgba(0, 0, 0, .7) 100%); pointer-events: none; }
+        #metro-gallery[data-mode="train"]::before { content: ""; position: absolute; inset: 0; z-index: 1; background: repeating-linear-gradient(90deg, transparent 0 150px, rgba(255, 214, 120, .18) 150px 158px); animation: metro-lights 1s linear infinite; }
+        #metro-gallery[data-mode="bus"] { box-shadow: inset 0 0 0 10px #d8d2c2, inset 0 0 0 14px #6b665c; }
+        #metro-gallery.minimized { background: rgba(9, 12, 20, .55); }
+        #metro-gallery.minimized::before, #metro-gallery.minimized::after, #metro-gallery.minimized .metro-backdrop, #metro-gallery.minimized .metro-caption { display: none; }
         @keyframes metro-lights { to { background-position: 158px 0; } }
-        .metro-panel { position: relative; width: min(100%, 560px); box-sizing: border-box; pointer-events: auto; background: rgba(17, 24, 39, .94); border: 2px solid #c9a24b; border-radius: 14px; padding: 8px; color: #f8ead0; box-shadow: 0 18px 40px rgba(0, 0, 0, .55); }
-        #metro-gallery[data-mode="bus"] .metro-panel { border: 9px solid #d8d2c2; border-radius: 22px; }
-        .metro-frame { width: 100%; aspect-ratio: 16 / 9; max-height: 44vh; overflow: hidden; border-radius: 8px; background: #000; }
-        .metro-frame svg { display: block; width: 100%; height: 100%; }
-        .metro-frame.enter { animation: metro-card .6s ease-out; }
         @keyframes metro-card { from { opacity: 0; transform: scale(1.04); } }
-        .metro-caption { padding: 8px 4px 2px; font-size: 13px; line-height: 1.4; }
-        .metro-caption strong { display: block; color: #ffd98a; font-size: 15px; }
-        .metro-caption p { margin: 3px 0; }
-        .metro-caption small { display: block; color: #b9c3cf; font-size: 10px; }
-        .metro-panel-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; color: #d6c7a6; }
+        .metro-panel { position: relative; z-index: 2; width: min(100%, 480px); box-sizing: border-box; pointer-events: auto; background: rgba(17, 24, 39, .88); border: 2px solid #c9a24b; border-radius: 14px; padding: 10px; color: #f8ead0; box-shadow: 0 18px 40px rgba(0, 0, 0, .55); }
+        .metro-panel-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: #d6c7a6; }
         .metro-panel-bar button { min-height: 36px; padding: 4px 10px; border: 1px solid #c9a24b; border-radius: 8px; background: #1f2937; color: #fff; font-weight: 700; }
-        @media (max-height: 520px) { .metro-frame { max-height: 34vh; } .metro-caption small { display: none; } }
-        @media (prefers-reduced-motion: reduce) { #metro-gallery::before, .metro-frame.enter { animation: none; } }
+        .metro-timer { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 6px 0; }
+        .metro-timer span { font-size: 13px; color: #e6dcc6; }
+        .metro-timer strong { font: 900 34px/1 system-ui, sans-serif; color: #ffd36e; font-variant-numeric: tabular-nums; }
+        .metro-timer small { display: block; font-size: 11px; color: #b9c3cf; }
+        .metro-stops { display: flex; gap: 4px; margin: 0 0 6px; padding: 0; list-style: none; }
+        .metro-stops li { flex: 1; padding: 4px 2px; border-radius: 6px; background: #273244; color: #b9c3cf; text-align: center; font-size: 11px; font-weight: 800; }
+        .metro-stops li.passed { background: #3c4a33; color: #d9f0c4; }
+        .metro-stops li.next { background: #c9a24b; color: #1b1405; }
+        .metro-caption { font-size: 12px; line-height: 1.35; }
+        .metro-caption strong { display: block; color: #ffd98a; font-size: 14px; }
+        .metro-caption p { margin: 2px 0; }
+        .metro-caption small { display: block; color: #b9c3cf; font-size: 10px; }
+        @media (max-height: 560px) { .metro-caption p, .metro-caption small { display: none; } }
+        @media (max-aspect-ratio: 1/1) { #metro-gallery .metro-backdrop { position: relative; z-index: 2; flex: none; width: min(100%, 480px); aspect-ratio: 16 / 9; margin: auto 0; border: 2px solid #c9a24b; border-radius: 12px; overflow: hidden; } }
+        .gogo-player { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; margin: 0 0 12px; padding: 10px; border: 1px solid #c63838; border-radius: 12px; background: #1d1424; color: #f6e7d0; font-size: 12px; }
+        .gogo-player button { min-height: 40px; padding: 4px 12px; border-radius: 8px; border: 1px solid #ff7070; background: #4a1d26; color: #fff; font-weight: 800; }
+        .gogo-now { min-width: 0; } .gogo-now strong, .gogo-now small { display: block; overflow-wrap: anywhere; } .gogo-now small { color: #c8bfd3; }
+        .gogo-player label { display: flex; align-items: center; gap: 6px; } .gogo-player input[type=range] { flex: 1; min-width: 0; }
+        .gogo-player .gogo-auto { grid-column: 2; }
+        @media (max-width: 420px) { .gogo-player { grid-template-columns: 1fr; } .gogo-player .gogo-auto { grid-column: 1; } }
+        @media (prefers-reduced-motion: reduce) { #metro-gallery::before, .metro-backdrop.enter { animation: none; } }
         @media (prefers-reduced-motion: reduce) { .doc-icon, .doc-screen::after { animation: none; } .doc-progress span { transition: none; } }
         .library-reader .library-paragraph { max-width: 65ch; margin: 18px auto; font-size: 17px; line-height: 1.85; color: #e2e8f0; }
         @media (max-width: 380px) {
@@ -209,11 +223,14 @@
 
     <main class="relative flex-1 flex justify-center items-center overflow-hidden">
         <canvas id="gameCanvas" tabindex="0" aria-label="Game world" class="w-full h-full cursor-pointer"></canvas>
-        <section id="metro-gallery" aria-label="Metro ride gallery" hidden>
+        <section id="metro-gallery" aria-label="Transit trip timer and gallery" hidden>
+            <div id="metro-card-art" class="metro-backdrop"></div>
             <div class="metro-panel">
-                <div class="metro-panel-bar"><span id="metro-gallery-label">Now riding</span><button type="button" id="metro-gallery-toggle" aria-expanded="true" aria-controls="metro-card-art">Hide gallery</button></div>
-                <div id="metro-card-art" class="metro-frame"></div>
-                <div class="metro-caption" aria-live="polite"><strong id="metro-card-title"></strong><p id="metro-card-text"></p>
+                <div class="metro-panel-bar"><span id="metro-gallery-label">Now riding</span><button type="button" id="metro-gallery-toggle" aria-expanded="true" aria-controls="metro-card-art">Hide art</button></div>
+                <div class="metro-timer"><div><span id="metro-timer-label">Arriving in</span><small id="metro-arrival"></small></div><strong id="metro-countdown" aria-hidden="true">0s</strong></div>
+                <ol id="metro-stops" class="metro-stops" aria-label="Stops"></ol>
+                <p id="metro-stop-status" class="sr-only" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)"></p>
+                <div class="metro-caption"><strong id="metro-card-title"></strong><p id="metro-card-text"></p>
                     <small>Original illustrations and stylized tributes, not photos or endorsements.</small></div>
             </div>
         </section>
@@ -291,6 +308,7 @@
 
     <script src="city-art.js"></script>
     <script src="travel-art.js"></script>
+    <script src="gogo-music.js"></script>
     <script src="sportsbook.js"></script>
     <script src="casino-events.js"></script>
     <script src="casino.js"></script>
@@ -994,7 +1012,7 @@
             const mode = station.type === 'busstop' ? 'bus' : 'train', service = CityTransit.services[mode];
             modalEl.classList.remove('hidden');
             modalContent.innerHTML = `<div class="sports-game library-reader"><h2>${station.name}</h2>
-                <p>${service.label}: ${service.fare} star${service.fare === 1 ? '' : 's'} per trip. Speed: ${service.speed}× walking.
+                <p>${service.label}: ${service.fare} star${service.fare === 1 ? '' : 's'} per trip. One stop per quadrant on a one-way loop (NW → NE → SE → SW), ${(service.interval / 1000).toFixed(mode === 'bus' ? 0 : 1)}s between stops; times include the platform wait.
                 ${mode === 'train' ? 'Walk down into the underground Metro; trains stay below the map.' : 'Your bus arrives here after you choose a destination.'}</p>
                 <p>Balance: ${progress.stars} stars. Your parked ride stays in its current quadrant.</p>
                 <div class="sports-controls">${['NW', 'NE', 'SE', 'SW'].filter(q => q !== currentQuadrant).map(q =>
@@ -1020,7 +1038,8 @@
             if (!transitTrip) return;
             if (transitTrip.mode === 'taxi') { updateCityRide(); return; }
             const p = CityTransit.position(transitTrip, Date.now()), service = CityTransit.services[transitTrip.mode];
-            transitNotice(`${service.label} to ${transitTrip.destination} — ${Math.ceil((1 - p) * CityTransit.duration(transitTrip.mode, transitTrip.origin, transitTrip.destination) / 1000)}s remaining.`);
+            const st = CityTransit.status(transitTrip, Date.now());
+            transitNotice(`${service.label} to ${transitTrip.destination} — ${st.waiting ? `boarding in ${Math.ceil(st.boardIn / 1000)}s, ` : ''}arrives in ${Math.ceil(st.remaining / 1000)}s.`);
             if (p < 1) return;
             const trip = transitTrip;
             transitTrip = null;
@@ -1289,19 +1308,27 @@
             update();
         }
 
-        let metroCardId = null, metroTripStarted = null, metroGalleryMinimized = false;
+        let metroCardId = null, metroTripStarted = null, metroGalleryMinimized = false, metroStopText = '';
         function updateMetroGallery() {
             const el = document.getElementById('metro-gallery'), trip = transitTrip;
-            const show = !!trip && trip.mode !== 'taxi' && Date.now() - trip.started >= (trip.mode === 'train' ? 1000 : 5500);
-            if (!show) { if (!el.hidden) { el.hidden = true; metroCardId = null; } return; }
+            const show = !!trip && trip.mode !== 'taxi' && (trip.mode === 'bus' || Date.now() - trip.started >= 1000);
+            if (!show) { if (!el.hidden) { el.hidden = true; metroCardId = null; metroStopText = ''; } return; }
             if (metroTripStarted !== trip.started) { metroTripStarted = trip.started; metroGalleryMinimized = false; }
+            const now = Date.now(), st = CityTransit.status(trip, now), vehicle = trip.mode === 'train' ? 'Train' : 'Bus';
             el.hidden = false; el.dataset.mode = trip.mode;
             el.classList.toggle('minimized', metroGalleryMinimized);
             const toggle = document.getElementById('metro-gallery-toggle');
-            toggle.textContent = metroGalleryMinimized ? 'Show gallery' : 'Hide gallery';
+            toggle.textContent = metroGalleryMinimized ? 'Show art' : 'Hide art';
             toggle.setAttribute('aria-expanded', String(!metroGalleryMinimized));
-            document.getElementById('metro-gallery-label').textContent = trip.mode === 'train' ? `Underground to ${trip.destination}` : `Bus window to ${trip.destination}`;
-            const card = TravelArt.cardAt(trip, Date.now());
+            document.getElementById('metro-gallery-label').textContent = trip.mode === 'train' ? `Underground Metro · ${trip.origin} → ${trip.destination}` : `City bus · ${trip.origin} → ${trip.destination}`;
+            document.getElementById('metro-timer-label').textContent = st.waiting ? `${vehicle} arrives in ${Math.ceil(st.boardIn / 1000)}s · ${trip.destination} in` : `Next stop ${st.nextStop} · ${trip.destination} in`;
+            document.getElementById('metro-countdown').textContent = `${Math.ceil(st.remaining / 1000)}s`;
+            document.getElementById('metro-arrival').textContent = `Arrival ${new Date(st.arrivesAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}`;
+            const stopText = st.waiting ? `Waiting for the ${vehicle.toLowerCase()}. Arrival in ${trip.destination} in ${Math.ceil(st.remaining / 1000)} seconds.` : `Next stop: ${st.nextStop}.`;
+            if (stopText !== metroStopText && (st.waiting ? !metroStopText : true)) { metroStopText = stopText; document.getElementById('metro-stop-status').textContent = stopText; }
+            document.getElementById('metro-stops').innerHTML = st.stops.map((q, i) =>
+                `<li class="${!st.waiting && i < st.passed ? 'passed' : !st.waiting && i === st.passed ? 'next' : ''}">${q}${q === trip.destination ? ' ★' : ''}</li>`).join('');
+            const card = TravelArt.cardAt(trip, now);
             if (card.id === metroCardId) return;
             metroCardId = card.id;
             const frame = document.getElementById('metro-card-art');
@@ -2240,30 +2267,38 @@
         }
         loop();
 
-        // One shared AudioContext; short kick/conga pattern
-        let audioCtx = null;
+        const goGoPrefs = (() => {
+            try {
+                const saved = JSON.parse(localStorage.getItem('dmv-gogo') || '{}');
+                return { autoplay: saved.autoplay !== false, volume: Number.isFinite(saved.volume) ? Math.max(0, Math.min(1, saved.volume)) : .55 };
+            } catch (error) { return { autoplay: true, volume: .55 }; }
+        })();
+        const saveGoGoPrefs = () => { try { localStorage.setItem('dmv-gogo', JSON.stringify(goGoPrefs)); } catch (error) { console.error('Unable to save music settings:', error); } };
+        GoGoMusic.setVolume(goGoPrefs.volume);
+        GoGoMusic.loadPlaylist();
+        function renderGoGoPlayer(st = GoGoMusic.state()) {
+            const toggle = document.getElementById('gogo-toggle');
+            if (!toggle) return;
+            toggle.textContent = st.playing ? '⏸ Pause go-go' : '▶ Play go-go';
+            toggle.setAttribute('aria-pressed', String(st.playing));
+            document.getElementById('gogo-title').textContent = st.title;
+            document.getElementById('gogo-artist').textContent = st.licensed ? st.artist : `${st.artist} · original composition, not a band recording`;
+        }
+        GoGoMusic.onChange(renderGoGoPlayer);
+        function setupGoGoPlayer(autoplay) {
+            document.getElementById('gogo-toggle').addEventListener('click', playGoGoBeat);
+            const vol = document.getElementById('gogo-volume'), auto = document.getElementById('gogo-autoplay');
+            vol.value = Math.round(goGoPrefs.volume * 100); auto.checked = goGoPrefs.autoplay;
+            vol.addEventListener('input', () => { goGoPrefs.volume = vol.value / 100; GoGoMusic.setVolume(goGoPrefs.volume); saveGoGoPrefs(); });
+            auto.addEventListener('change', () => { goGoPrefs.autoplay = auto.checked; saveGoGoPrefs(); });
+            if (autoplay && goGoPrefs.autoplay) {
+                try { GoGoMusic.start(); } catch (error) { console.error('Unable to start go-go:', error); toast(error.message); }
+            }
+            renderGoGoPlayer();
+        }
         function playGoGoBeat() {
-            const AC = window.AudioContext || window.webkitAudioContext;
-            if (!AC) { toast("Audio not supported in this browser."); return; }
-            audioCtx = audioCtx || new AC();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const t0 = audioCtx.currentTime;
-            [0, 0.25, 0.5, 0.625, 0.875, 1.0, 1.25, 1.5].forEach((offset, i) => {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                const t = t0 + offset;
-                const kick = i % 2 === 0;
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(kick ? 150 : 320, t);
-                osc.frequency.exponentialRampToValueAtTime(kick ? 40 : 180, t + 0.2);
-                gain.gain.setValueAtTime(0.5, t);
-                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start(t);
-                osc.stop(t + 0.22);
-            });
-            toast("🥁 Playing Go-Go pocket conga beat!");
+            try { GoGoMusic.state().playing ? GoGoMusic.stop() : GoGoMusic.start(); }
+            catch (error) { console.error('Unable to play go-go:', error); toast(error.message); }
         }
 
         function toast(msg) {
@@ -2992,6 +3027,7 @@
             modalEl.removeAttribute('aria-labelledby');
             Minigames.stop();
             DMVMedia.stopAll();
+            GoGoMusic.stop();
             toast('');
             modalEl.classList.remove('hidden');
             for (const k in keys) keys[k] = false;
@@ -3000,7 +3036,13 @@
                 const c = 'bg-blue-950/80 hover:bg-blue-900 border border-blue-500';
                 content.innerHTML = `
                     <h2 class="text-2xl font-black text-blue-400 mb-2">${type === 'venue' ? '✨ The 202 Venue' : '🏀 Wizards Fan Lounge'}</h2>
-                    <p class="text-gray-300 text-sm mb-4">Experience authentic DC Go-Go rhythms, play lounge games, and test your DMV trivia knowledge!</p>
+                    <p class="text-gray-300 text-sm mb-4">${type === 'venue' ? 'The band is crankin\' — congas, cowbell, roto-toms and the pocket, in the spirit of DMV bands like BYB, TOB, CCB and New Impressions.' : 'Catch the go-go pocket, play lounge games, and test your DMV trivia knowledge!'}</p>
+                    <div id="gogo-player" class="gogo-player" role="group" aria-label="Go-go music player">
+                        <button type="button" id="gogo-toggle" aria-pressed="false">▶ Play go-go</button>
+                        <div class="gogo-now"><strong id="gogo-title"></strong><small id="gogo-artist"></small></div>
+                        <label>Volume <input type="range" id="gogo-volume" min="0" max="100" step="5"></label>
+                        <label class="gogo-auto"><input type="checkbox" id="gogo-autoplay"> Autoplay in The 202</label>
+                    </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <button onclick="playGoGoBeat()" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🎵 Go-Go Jukebox Synthesizer</button>
                         ${btn('🧠 DMV Culture Trivia', 'Starting DMV Culture & History Trivia!', c)}
@@ -3008,6 +3050,7 @@
                         <button onclick="openSportsGame('airhockey')" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🏒 Lounge Air Hockey</button>
                         <button onclick="openSportsGame('chess')" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">♟️ Lounge Chess Masters</button>
                     </div>`;
+                setupGoGoPlayer(type === 'venue');
             } else if (type === 'retail') {
                 const c = 'bg-amber-950/80 hover:bg-amber-900 border border-amber-500';
                 content.innerHTML = `
@@ -3169,6 +3212,8 @@
             const playButton = content.querySelector('[data-venue-play]');
             if (playButton) playButton.addEventListener('click', () => openSportsGame(type));
             VenueInteriors.mount(content, type, modalEl);
+            const goGoPlayer = document.getElementById('gogo-player');
+            if (goGoPlayer) content.querySelector('.venue-room > p').after(goGoPlayer);
             if (type === 'crib' && (pets.pet || pets.companion)) {
                 petButton.innerHTML = [pets.pet, pets.companion].filter(Boolean).map(Pets.portrait).join('') +
                     '<span>Pet habitat & companion care</span>';
@@ -3203,6 +3248,7 @@
         });
 
         function closeModal() {
+            GoGoMusic.stop();
             Minigames.stop();
             DMVMedia.stopAll();
             sportsGame = null;
