@@ -4,6 +4,7 @@
 // Minigames.register(name, env => game); the shell owns the canvas, input, effects and result flow.
 const Minigames = (() => {
     const W = 360, H = 560;
+    const TEST_LEVEL_ACCESS_MAX = 50; // Temporary access for test runs; progression remains unchanged.
     const art = typeof CityArt !== 'undefined' ? CityArt : require('./city-art.js');
     const games = {};
     let S = null;
@@ -202,20 +203,22 @@ const Minigames = (() => {
         if (!factory) return false;
         const campaign = api.campaign ? api.campaign.info() : null;
         const level = campaign ? selectedLevel === undefined ? campaign.unlocked : selectedLevel : 1;
-        if (!Number.isSafeInteger(level) || level < 1 || (campaign && level > campaign.unlocked)) {
+        if (!Number.isSafeInteger(level) || level < 1 ||
+            (campaign && level > campaign.unlocked && level > TEST_LEVEL_ACCESS_MAX)) {
             throw new Error('Level is locked');
         }
-        const first = Math.max(1, Math.min(level - 2, campaign ? campaign.unlocked - 4 : 1));
-        const levels = Array.from({ length: 5 }, (_, i) => first + i);
+        const levels = Array.from({ length: campaign ? TEST_LEVEL_ACCESS_MAX : 5 },
+            (_, i) => campaign ? i + 1 : Math.max(1, level - 2) + i);
+        if (campaign && level > levels.length) levels.push(level);
         host.innerHTML = `
             <div class="mg-wrap">
                 <div class="mg-title" id="mg-title"></div>
                 ${art.gallery(name)}
-                ${campaign ? `<div class="mg-levels" role="group" aria-label="Choose level">
-                    ${levels.map(n => `<button type="button" data-level="${n}"
-                        aria-pressed="${level === n}" ${n > campaign.unlocked ? 'disabled' : ''}>
-                        ${n}${n <= campaign.cleared ? ' ✓' : n > campaign.unlocked ? ' 🔒' : ''}</button>`).join('')}
-                </div><div class="mg-level-nav">
+                ${campaign ? `<div class="mg-level-nav">
+                    <label for="mg-level-select">Choose level</label>
+                    <select id="mg-level-select" aria-label="Choose game level">
+                        ${levels.map(n => `<option value="${n}" ${level === n ? 'selected' : ''}>Level ${n}${n <= campaign.cleared ? ' ✓' : ''}</option>`).join('')}
+                    </select>
                     <button type="button" id="mg-prev" ${level <= 1 ? 'disabled' : ''}>Previous</button>
                     <button type="button" id="mg-current">Latest unlocked: ${campaign.unlocked}</button>
                 </div><div class="mg-campaign-info" id="mg-campaign-info"></div>` : ''}
@@ -239,8 +242,8 @@ const Minigames = (() => {
         host.querySelector('#mg-title').textContent = S.game.title + (campaign ? ` · Level ${level}` : '');
         if (campaign) {
             updateCampaign();
-            host.querySelectorAll('[data-level]').forEach(button => button.addEventListener('click', () =>
-                open(name, host, api, Number(button.dataset.level))));
+            host.querySelector('#mg-level-select').addEventListener('change', event =>
+                open(name, host, api, Number(event.target.value)));
             host.querySelector('#mg-prev').addEventListener('click', () => open(name, host, api, level - 1));
             host.querySelector('#mg-current').addEventListener('click', () => open(name, host, api));
         }
@@ -264,15 +267,12 @@ const Minigames = (() => {
 
     function updateCampaign() {
         const status = S.api.campaign.info(), level = S.level;
-        const reward = level > status.cleared ? `First win: ${status.reward} stars` : 'Cleared level: practice only (0 stars)';
+        const testLevel = level > status.unlocked && level <= TEST_LEVEL_ACCESS_MAX;
+        const reward = testLevel ? 'Testing access: no reward or saved progress' :
+            level > status.cleared ? `First win: ${status.reward} stars` : 'Cleared level: practice only (0 stars)';
         S.host.querySelector('#mg-campaign-info').textContent =
-            `${S.game.goal} · ${reward}. Stars are earned once per level. Losses: 0.`;
+            `${S.game.goal} · ${reward}. Levels 1–${TEST_LEVEL_ACCESS_MAX} are temporarily open for testing.`;
         S.host.querySelector('#mg-current').textContent = `Latest unlocked: ${status.unlocked}`;
-        S.host.querySelectorAll('[data-level]').forEach(button => {
-            const n = Number(button.dataset.level);
-            button.disabled = n > status.unlocked;
-            button.textContent = `${n}${n <= status.cleared ? ' ✓' : n > status.unlocked ? ' 🔒' : ''}`;
-        });
     }
 
     function stop() {
@@ -335,11 +335,15 @@ const Minigames = (() => {
         if (!S || S.phase === 'over') return;
         S.phase = 'over';
         if (S.api.campaign) {
-            const payout = S.api.campaign.settle(S.level, result.win === true);
+            const status = S.api.campaign.info();
+            const testLevel = S.level > status.unlocked && S.level <= TEST_LEVEL_ACCESS_MAX;
+            const payout = testLevel
+                ? { stars: 0, message: 'Testing level: progress and rewards were not saved.' }
+                : S.api.campaign.settle(S.level, result.win === true);
             result = { ...result, stars: payout.stars, rewardMessage: payout.message };
             updateCampaign();
             const next = S.host.querySelector('#mg-next');
-            next.hidden = !result.win;
+            next.hidden = !result.win || (S.level === TEST_LEVEL_ACCESS_MAX && status.unlocked <= TEST_LEVEL_ACCESS_MAX);
             S.host.querySelector('#mg-again').textContent = result.win ? 'Replay' : 'Retry level';
         }
         S.result = result;

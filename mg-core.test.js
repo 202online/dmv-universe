@@ -16,19 +16,15 @@ function hostStub() {
         getContext: () => context,
         click() { if (!this.disabled) this.listeners.click(); }
     });
-    const nodes = {}, levels = [];
+    const nodes = {};
     return {
         set innerHTML(html) {
             for (const id of html.matchAll(/id="([^"]+)"/g)) nodes[`#${id[1]}`] = element();
-            levels.length = 0;
-            for (const match of html.matchAll(/data-level="(\d+)"/g)) {
-                const button = element();
-                button.dataset.level = match[1];
-                levels.push(button);
-            }
+            if (nodes['#mg-level-select'])
+                nodes['#mg-level-select'].options = [...html.matchAll(/<option value="(\d+)"/g)].map(match => ({ value: match[1] }));
         },
         querySelector: key => nodes[key],
-        querySelectorAll: () => levels
+        querySelectorAll: () => []
     };
 }
 
@@ -58,8 +54,14 @@ test('engine settles each round once, saves unlocks and balance together, and pr
     try {
         Minigames.open('soccer', host, api);
         assert.equal(seenLevel, 1);
-        assert.equal(host.querySelectorAll()[1].disabled, true);
-        assert.throws(() => Minigames.open('soccer', host, api, 2), /locked/);
+        assert.equal(host.querySelector('#mg-level-select').options.length, 50);
+        assert.equal(host.querySelector('#mg-level-select').options.at(-1).value, '50');
+        assert.doesNotThrow(() => Minigames.open('soccer', host, api, 50));
+        assert.equal(seenLevel, 50);
+        assert.match(host.querySelector('#mg-campaign-info').textContent, /Testing access/);
+        finish({ win: true, head: 'Test level', lines: [] });
+        assert.equal(balance, 12, 'testing an unopened level does not reward stars');
+        assert.equal(state.cleared.soccer, 0, 'testing an unopened level does not unlock progression');
         Minigames.open('soccer', host, api);
         Minigames._pointer('down', 1, 180, 300, 0);
         finish({ win: false, head: 'Loss', lines: [], stars: 9999 });
@@ -72,7 +74,6 @@ test('engine settles each round once, saves unlocks and balance together, and pr
         assert.equal(balance, 15);
         assert.equal(state.cleared.soccer, 1);
         assert.deepEqual(JSON.parse(saved), { state, balance });
-        assert.equal(host.querySelectorAll()[1].disabled, false);
         assert.equal(host.querySelector('#mg-next').hidden, false);
         host.querySelector('#mg-again').click();
         assert.equal(seenLevel, 1, 'replay does not silently advance');
@@ -89,8 +90,8 @@ test('engine settles each round once, saves unlocks and balance together, and pr
         state.cleared.soccer = 1000;
         Minigames.open('soccer', host, api);
         assert.equal(seenLevel, 1001);
-        assert.equal(host.querySelectorAll().length, 5, 'level picker remains constant size');
-        assert.equal(host.querySelectorAll()[4].dataset.level, '1001');
+        assert.equal(host.querySelector('#mg-level-select').options.length, 51, 'picker remains bounded while retaining a high saved level');
+        assert.equal(host.querySelector('#mg-level-select').options.at(-1).value, '1001');
         assert.match(host.querySelector('#mg-campaign-info').textContent, /12 stars/);
         finish({ win: true, head: 'Win', lines: [], stars: 9999 });
         assert.equal(balance, 32);
