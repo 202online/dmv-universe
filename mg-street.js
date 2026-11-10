@@ -80,14 +80,31 @@
             U.glow(c, 180, 200, 150, '#6d28d9', .5);
             U.shadow(c, 180, 268, 125, 14);
             c.save(); c.translate(60, 170);
-            c.fillStyle = '#f1f5f9'; U.rr(c, 0, 30, 240, 56, 20); c.fill();
-            c.fillStyle = '#a78bfa';
+            c.fillStyle = U.vgrad(c, 48, 86, [[0, '#fafaf9'], [.55, '#e7e5e4'], [1, '#a8a29e']]); U.rr(c, 0, 30, 240, 56, 20); c.fill();
+            c.fillStyle = U.vgrad(c, -15, 66, [[0, '#c4b5fd'], [.6, '#9174d3'], [1, '#5b3e92']]);
             c.beginPath(); c.moveTo(20, 33); c.lineTo(45, -15); c.lineTo(100, 0); c.lineTo(180, 25); c.lineTo(225, 34); c.lineTo(225, 65); c.lineTo(12, 65); c.closePath(); c.fill();
             c.fillStyle = '#4c1d95'; c.fillRect(14, 67, 213, 8);
+            c.strokeStyle = '#6b7280'; c.lineWidth = 1;
+            for (let i = 0; i < 23; i++) {
+                c.beginPath(); c.moveTo(14 + i * 9, 78); c.lineTo(19 + i * 9, 84); c.stroke();
+            }
+            c.fillStyle = '#74608e'; c.beginPath(); c.ellipse(59, 7, 32, 13, -.15, 0, Math.PI * 2); c.fill();
+            c.fillStyle = '#30283e'; c.beginPath(); c.ellipse(60, 6, 22, 8, -.15, 0, Math.PI * 2); c.fill();
+            c.strokeStyle = '#d9cced'; c.lineWidth = 2;
+            c.beginPath(); c.moveTo(22, 47); c.quadraticCurveTo(54, 57, 91, 49); c.lineTo(135, 23); c.stroke();
+            c.beginPath(); c.moveTo(142, 31); c.quadraticCurveTo(174, 28, 193, 49); c.stroke();
+            c.setLineDash([2, 4]); c.lineWidth = 1;
+            c.beginPath(); c.moveTo(19, 58); c.quadraticCurveTo(111, 66, 218, 58); c.stroke(); c.setLineDash([]);
+            c.fillStyle = '#d9cef3';
+            for (let i = 0; i < 14; i++) { c.beginPath(); c.arc(174 + i % 5 * 9, 42 + Math.floor(i / 5) * 6, .9, 0, Math.PI * 2); c.fill(); }
             for (let i = 0; i < 4; i++) {
+                c.fillStyle = '#4b386b'; c.beginPath(); c.arc(85 + i * 18, 8 + i * 3, 3.5, 0, Math.PI * 2); c.fill();
                 c.strokeStyle = '#fff'; c.lineWidth = 3; c.beginPath();
                 c.moveTo(85 + i * 18, 8 + i * 3); c.lineTo(72 + i * 18, 32 + i * 3); c.stroke();
             }
+            c.strokeStyle = '#e9ddff'; c.lineWidth = 2; c.beginPath(); c.moveTo(117, 18); c.lineTo(132, 9); c.lineTo(142, 23); c.stroke();
+            c.fillStyle = '#f3e8ff'; U.rr(c, 118, 2, 36, 17, 3); c.fill();
+            U.text(c, '202', 136, 11, { size: 10, color: '#4c1d95' });
             c.restore();
             U.text(c, `Ask $${ticket.price} | Reference resale $${ticket.value}`, 180, 294, { size: 14, color: '#fde047' });
             specs.forEach((name, i) => control(c, U, 14 + i * 114, 324, 104, name, tab === i));

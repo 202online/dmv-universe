@@ -1,0 +1,40 @@
+#modal-overlay[data-interior] { background: linear-gradient(160deg, var(--room-wall), #080d18 80%); }
+#modal-overlay[data-interior] > div { background: linear-gradient(150deg, color-mix(in srgb, var(--room-wall) 45%, #111827), #111827 70%); }
+.venue-room { color: #f1f5f9; margin-bottom: 20px; }
+.venue-room h2 { margin: 0 32px 5px 0; font-size: 19px; }
+.venue-room > p { font-size: 13px; margin: 5px 0 10px; }
+.venue-room-stage { position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 48px 10px 20px; min-height: 180px; border: 2px solid #b5c3cb; border-radius: 12px; overflow: hidden; background: linear-gradient(var(--room-wall) 0 44%, #b2a08c 44% 46%, var(--room-floor) 46%); box-shadow: inset 0 0 35px #0f172a80; }
+.venue-room-stage::after { content: ''; position: absolute; z-index: -1; inset: 46% 0 0; background: repeating-linear-gradient(0deg, transparent 0 36px, #141b2940 37px 39px), repeating-linear-gradient(100deg, transparent 0 76px, #141b2940 77px 79px); }
+.venue-room-stage:has(> .venue-object:only-of-type) { grid-template-columns: minmax(0, 1fr); }
+.venue-room-stage > .venue-object { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 5px; min-height: 145px; padding: 8px; border: 1px solid transparent; border-radius: 12px; background: #0f172a26; color: white; font: 700 13px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
+.venue-object svg { display: block; width: min(100%, 170px); max-height: 130px; filter: drop-shadow(0 8px 3px #0005); }
+.venue-object span { padding: 7px 8px; background: #071321ed; border: 1px solid #8cc4cd; border-radius: 7px; }
+.venue-object:hover, .venue-object:focus-visible { background: #ffffff20; outline: 3px solid #67e8f9; outline-offset: -3px; }
+.venue-room-decor { position: absolute; z-index: -1; inset: 0; pointer-events: none; }
+.room-window { position: absolute; right: 12%; top: 10px; width: 23%; height: 75px; background: linear-gradient(#182b50, #60a5a0); border: 6px solid #c1b19b; box-shadow: inset 0 0 0 2px #1e293b; }
+.room-window::after { content: ''; position: absolute; inset: 0 46%; background: #c1b19b; }
+.room-sofa { position: absolute; left: 18%; bottom: 8px; width: 64%; height: 60px; border: 10px solid #375c70; border-radius: 20px 20px 8px 8px; background: #6592a3; box-shadow: 0 5px #1a2e3c; }
+.room-rug { position: absolute; left: 12%; bottom: 14%; width: 76%; height: 30%; border: 6px double #c2a678; border-radius: 50%; background: #674d4c77; }
+.room-scoreboard { position: absolute; top: 12px; left: 15%; width: 70%; text-align: center; font: 900 14px system-ui; color: #fde68a; background: #111827; border: 3px solid #c3b4a4; padding: 8px 0; }
+.room-court { position: absolute; left: 9%; right: 9%; top: 36%; bottom: 9%; border: 3px solid #fef3c7; border-radius: 50%; background: repeating-linear-gradient(90deg, #c89556 0 16px, #b37b44 17px 32px); }
+.room-court::after { content: ''; position: absolute; left: 35%; right: 35%; top: 8%; bottom: 8%; border: 3px solid white; border-radius: 50%; }
+.room-seats { position: absolute; left: 0; right: 0; top: 20%; height: 22%; background: radial-gradient(ellipse, #c6b8aa 0 3px, transparent 4px) 0 0 / 18px 16px; }
+.room-film-screen { position: absolute; left: 10%; right: 10%; top: 20px; height: 85px; border: 8px solid #35263b; background: linear-gradient(140deg, #a5b9c9, #e1dfca); color: #23384e; text-align: center; padding-top: 20px; font: 900 14px system-ui; }
+.room-theater-seats { position: absolute; left: 6%; right: 6%; top: 65%; bottom: 8%; background: radial-gradient(ellipse at 50% 80%, #a34a62 0 55%, #552c40 58% 70%, transparent 72%) 0 0 / 40px 30px; }
+.room-tiles { position: absolute; inset: 0 0 30%; background: repeating-linear-gradient(0deg, #d2d5cf 0 22px, #647477 23px 25px); opacity: .7; }
+.room-vent { position: absolute; top: 7%; left: 22%; right: 22%; height: 24px; border: 6px solid #b9c4c5; background: repeating-linear-gradient(0deg, #526571 0 3px, #a5b0b4 4px 6px); }
+.room-lockers { position: absolute; top: 7%; left: 6%; width: 58%; height: 85px; border: 3px solid #8e9ca8; background: repeating-linear-gradient(90deg, #607c8b 0 25px, #293e53 26px 29px); }
+.room-punchbag { position: absolute; top: 30%; right: 10%; height: 80px; width: 30px; border-radius: 12px; background: linear-gradient(90deg, #44252c, #ab4b4c, #44252c); box-shadow: 0 -45px 0 -13px #cbd5e1; }
+.room-club-lights { position: absolute; inset: 0; background: conic-gradient(from 155deg at 20% 0, transparent, #db74fc55 14deg, transparent 28deg), conic-gradient(from 164deg at 80% 0, transparent, #73d4f955 14deg, transparent 28deg); }
+.room-service-desk { position: absolute; left: 8%; right: 8%; top: 15%; height: 54px; padding-top: 20px; background: #d3b58a; border: 6px solid #98acba; color: #1b334d; text-align: center; font: 800 14px system-ui; }
+.room-display-shelves { position: absolute; inset: 8% 5% 30%; border: 4px solid #b6a48a; background: repeating-linear-gradient(0deg, transparent 0 35px, #a88d6f 36px 40px), repeating-linear-gradient(90deg, #627f92 0 16px, #b37d6e 17px 30px, #d5b77c 31px 48px); opacity: .55; }
+.sportsbook #book-lesson { display: block; box-sizing: border-box; width: 100%; margin: 10px 0 16px; min-height: 44px; padding: 10px; background: #17233a; color: white; border: 1px solid #94a3b8; border-radius: 8px; font-size: 15px; }
+.sportsbook #book-lesson-content { line-height: 1.65; }
+.sportsbook #book-lesson-content dd { margin: 4px 0 14px; color: #cbd5e1; }
+#book-learning:focus { outline: 2px solid #7dd3fc; outline-offset: 3px; }
+@media (max-width: 360px) {
+    #modal-overlay[data-interior]:not(.mg-mode) { padding: 8px; }
+    #modal-overlay[data-interior]:not(.mg-mode) > div { padding: 14px; }
+    .venue-room-stage { gap: 6px; padding-left: 5px; padding-right: 5px; }
+    .venue-room-stage > .venue-object { padding: 4px; min-height: 130px; font-size: 12px; }
+}

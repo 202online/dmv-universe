@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DMV 2.5D Isometric Open-World Arcade & Lounge</title>
+    <link rel="stylesheet" href="interiors.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #0d0f18; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; touch-action: none; }
@@ -252,10 +253,12 @@
     <script src="investing.js"></script>
     <script src="library.js"></script>
     <script src="library-data.js"></script>
+    <script src="library-features.js"></script>
     <script src="media.js"></script>
     <script src="learning-data.js"></script>
     <script src="learning.js"></script>
     <script src="city-layout.js"></script>
+    <script src="interiors.js"></script>
     <script src="mg-progression.js"></script>
     <script src="mg-core.js"></script>
     <script src="mg-basketball.js"></script>
@@ -402,7 +405,7 @@
                 lot: ['#29423c', '#304b42'], hoodie: '#AB0003', accent: '#ffffff',
                 identity: 'Waterfront, apartment neighborhoods and restaurants',
                 buildings: [
-                    { name: "Waterfront Sports Arena", x: 90, y: 170, w: 260, d: 170, h: 110, color: '#566b76', trim: '#d8b8a0', neon: '#ffffff', style: 'arena', type: 'arena' },
+                    { name: "Waterfront Sports Arena", x: 90, y: 170, w: 260, d: 170, h: 110, color: '#566b76', trim: '#d8b8a0', neon: '#ffffff', style: 'arena', shape: 'oval', type: 'arena' },
                     { name: "Nationals Park Fan Hub", x: 650, y: 240, w: 170, d: 110, h: 120, color: '#803e43', trim: '#e2c8a9', neon: '#bfdbfe', style: 'fanhub', type: 'sports' }
                 ],
                 cars: [{ x: 660, y: 380, w: 90, d: 40, color: '#0C2340', trim: '#AB0003' }],
@@ -862,7 +865,7 @@
         const modalContent = document.getElementById('modal-content');
         new MutationObserver(records => {
             if (!records.some(r => r.target === modalContent) || !modalOpen()) return;
-            if (!modalContent.querySelector('.library-reader')) {
+            if (!modalContent.querySelector('.library-reader, .venue-room')) {
                 modalEl.removeAttribute('aria-labelledby');
                 return;
             }
@@ -877,7 +880,7 @@
             modalContent.parentElement.scrollTop = 0;
         }).observe(modalContent, { childList: true });
         modalEl.addEventListener('keydown', e => {
-            if (e.key !== 'Tab' || !modalContent.querySelector('.library-reader')) return;
+            if (e.key !== 'Tab' || !modalContent.querySelector('.library-reader, .venue-room')) return;
             const controls = [...modalEl.querySelectorAll('button:not(:disabled), input:not(:disabled), summary, a[href]')]
                 .filter(el => el.getClientRects().length > 0);
             const first = controls[0], last = controls[controls.length - 1];
@@ -905,7 +908,8 @@
                 return;
             }
             if (!activeBuilding) return;
-            if (quadrants[currentQuadrant].activities.includes(activeBuilding)) openSportsGame(activeBuilding.type);
+            if (activeBuilding.type === 'boxing') openBuildingModal('boxing');
+            else if (quadrants[currentQuadrant].activities.includes(activeBuilding)) openSportsGame(activeBuilding.type);
             else openBuildingModal(activeBuilding.type);
         }
         document.getElementById('interaction-btn').addEventListener('click', checkInteraction);
@@ -1307,8 +1311,49 @@
             }
         }
 
+        function drawOvalArena(b, active, t) {
+            const { x, y, w, d, h } = b, count = 64;
+            const point = (i, z, scale = 1) => {
+                const a = i / count * Math.PI * 2;
+                return P(x + w / 2 + Math.cos(a) * w / 2 * scale,
+                    y + d / 2 + Math.sin(a) * d / 2 * scale, z);
+            };
+            const ring = (z, scale) => Array.from({ length: count }, (_, i) => point(i, z, scale));
+            poly(ring(0, 1.06), '#35414a', '#9cabb2');
+            const segments = Array.from({ length: count }, (_, i) => i).sort((a, b) => {
+                const depth = i => w * Math.cos((i + .5) / count * Math.PI * 2) + d * Math.sin((i + .5) / count * Math.PI * 2);
+                return depth(a) - depth(b);
+            });
+            for (const i of segments) {
+                const light = .72 + .25 * Math.sin(i / count * Math.PI * 2);
+                poly([point(i, 0), point(i + 1, 0), point(i + 1, h), point(i, h)], shade(b.color, light));
+                poly([point(i, 18), point(i + 1, 18), point(i + 1, h * .64), point(i, h * .64)], i % 4 === 0 ? '#a9cad2' : '#244d68', '#7799a6', .6);
+                if (i % 3 === 0) poly([point(i, 6), point(i + .38, 6), point(i + .38, h), point(i, h)], b.trim);
+            }
+            poly(ring(h, 1.02), '#bccbd2', '#eff6ff', 2);
+            poly(ring(h + 9, .88), '#829ba8', '#d2e2e8', 2);
+            poly(ring(h + 12, .68), '#344e65', '#e3edf3', 2);
+            for (let i = 0; i < count; i += 4) {
+                ctx.beginPath(); ctx.moveTo(...point(i, h, 1)); ctx.lineTo(...point(i, h + 12, .68));
+                ctx.strokeStyle = '#d8e6eb'; ctx.lineWidth = 1.5; ctx.stroke();
+            }
+            poly(ring(h + 13, .52), '#1f3549', '#7795b1', 2);
+            for (const i of [8, 14, 20]) {
+                poly([point(i - 1, 0, 1.015), point(i + 1, 0, 1.015), point(i + 1, 29, 1.015), point(i - 1, 29, 1.015)], '#101f32', '#c4e6f4');
+                poly([point(i - 2, 31, 1.08), point(i + 2, 31, 1.08), point(i + 2, 36, 1), point(i - 2, 36, 1)], '#b85055', '#efd0ba');
+            }
+            const [sx, sy] = P(x + w / 2, y + d / 2, h + 18);
+            ctx.save(); ctx.font = '900 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fef3c7';
+            ctx.fillText('WATERFRONT ARENA', sx, sy); ctx.restore();
+            if (active) {
+                const [ax, ay] = P(x + w / 2, y + d + 8, 45 + Math.sin(t * 5) * 3);
+                poly([[ax - 8, ay - 10], [ax + 8, ay - 10], [ax, ay]], '#34d399');
+            }
+        }
+
         function drawBuilding(b, active, t) {
             const { x, y, w, d, h } = b, Y = y + d;
+            if (b.shape === 'oval') { drawOvalArena(b, active, t); return; }
             if (b.style === 'stand') {
                 poly([P(x + 4, y + 4), P(x + w + 8, y + 4), P(x + w + 8, Y + 8), P(x + 4, Y + 8)], 'rgba(0,0,0,.3)');
                 box(x, y, 0, w, d, 24, b.color, 'rgba(0,0,0,.45)');
@@ -1610,6 +1655,7 @@
         }
 
         function drawAvatar(ctx, sx, sy, appearance, features, shirtColor, bob, sw, fx, fy) {
+            ctx.save();
             const line = (x1, y1, x2, y2, col, w) => {
                 ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
                 ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.stroke();
@@ -1621,9 +1667,15 @@
             // legs + sneakers
             line(sx - 3, sy - 16 - bob, sx - 3 + sw * 0.6, sy - 2, '#31527b', 5);
             line(sx + 3, sy - 16 - bob, sx + 3 - sw * 0.6, sy - 2, '#31527b', 5);
+            line(sx - 4, sy - 16 - bob, sx - 4 + sw * .6, sy - 5, '#567da4', 1);
+            line(sx + 2, sy - 16 - bob, sx + 2 - sw * .6, sy - 5, '#567da4', 1);
             ctx.fillStyle = '#f8fafc';
             ctx.beginPath(); ctx.ellipse(sx - 3 + sw * 0.6, sy - 1, 4.5, 2.5, 0, 0, 7); ctx.fill();
             ctx.beginPath(); ctx.ellipse(sx + 3 - sw * 0.6, sy - 1, 4.5, 2.5, 0, 0, 7); ctx.fill();
+            for (const foot of [sx - 3 + sw * .6, sx + 3 - sw * .6]) {
+                line(foot - 3, sy + .5, foot + 3, sy + .5, '#9aafbf', .8);
+                line(foot - 1, sy - 2, foot + 1, sy - 1.5, shirtColor, 1);
+            }
 
             // Short sleeves and visible arms
             line(sx - 9, sy - 30 - bob, sx - 11, sy - 19 - bob + sw * 0.5, skin, 4);
@@ -1641,6 +1693,14 @@
             ctx.fill(); ctx.stroke();
             line(sx - 7, sy - 34 - bob, sx - 10, sy - 29 - bob, shirtColor, 5);
             line(sx + 7, sy - 34 - bob, sx + 10, sy - 29 - bob, shirtColor, 5);
+            line(sx - 5, sy - 36 - bob, sx, sy - 33.5 - bob, shade(shirtColor, .65), 1.3);
+            line(sx, sy - 33.5 - bob, sx + 5, sy - 36 - bob, shade(shirtColor, .65), 1.3);
+            line(sx - 6, sy - 17 - bob, sx + 6, sy - 17 - bob, shade(shirtColor, .7), .9);
+            line(sx + 5, sy - 30 - bob, sx + 6, sy - 21 - bob, shade(shirtColor, .75), .8);
+            line(sx - 6, sy - 28 - bob, sx - 5, sy - 21 - bob, shade(shirtColor, 1.2), .8);
+            ctx.fillStyle = '#f1ead6';
+            ctx.beginPath(); ctx.roundRect(sx - 4, sy - 29 - bob, 5, 4, 1); ctx.fill();
+            line(sx - 3, sy - 27 - bob, sx, sy - 27 - bob, '#253b54', .6);
 
             const hy = sy - 45 - bob;
             if (features.hair === 'long') {
@@ -1648,17 +1708,33 @@
                 ctx.beginPath(); ctx.roundRect(sx - 9, hy - 6, 4, 20, 2); ctx.fill();
                 ctx.beginPath(); ctx.roundRect(sx + 5, hy - 6, 4, 20, 2); ctx.fill();
             }
+            ctx.fillStyle = shade(skin, .8);
+            ctx.beginPath(); ctx.ellipse(sx - 7, hy + 1, 1.8, 2.4, 0, 0, 7); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(sx + 7, hy + 1, 1.8, 2.4, 0, 0, 7); ctx.fill();
             ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(sx, hy, 7, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = shade(skin, 1.12);
+            ctx.beginPath(); ctx.ellipse(sx - 2, hy - 1, 3.8, 4.8, -.3, 0, 7); ctx.fill();
             if (fy >= 0) {
-                ctx.fillStyle = '#111';
-                ctx.fillRect(sx - 3 + fx * 1.5, hy - 1, 2, 2);
-                ctx.fillRect(sx + 1 + fx * 1.5, hy - 1, 2, 2);
+                for (const eye of [-2.7, 2.3]) {
+                    const ex = sx + eye + fx * 1.2;
+                    ctx.fillStyle = '#f7ede3'; ctx.beginPath(); ctx.ellipse(ex, hy -.4, 1.7, 1.3, 0, 0, 7); ctx.fill();
+                    ctx.fillStyle = '#30241d'; ctx.beginPath(); ctx.arc(ex + fx * .3, hy -.3, .95, 0, 7); ctx.fill();
+                    ctx.fillStyle = '#fff'; ctx.fillRect(ex - .3, hy -.8, .55, .55);
+                    line(ex - 1.5, hy - 2.7, ex + 1.1, hy - 2.9, hair, .8);
+                }
+                line(sx + fx, hy + .5, sx + fx + .7, hy + 2.2, shade(skin, .7), .7);
+                line(sx - 1.6, hy + 4.1, sx + 1.7, hy + 4.1, '#704539', .7);
                 if (features.facial === 'beard') {
                     ctx.fillStyle = hair;
-                    ctx.beginPath(); ctx.arc(sx, hy + 2, 5, 0, Math.PI); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(sx - 5.7, hy + 1.5); ctx.lineTo(sx - 4.5, hy + 5);
+                    ctx.quadraticCurveTo(sx, hy + 9, sx + 4.5, hy + 5); ctx.lineTo(sx + 5.7, hy + 1.5);
+                    ctx.lineTo(sx + 2.3, hy + 3); ctx.lineTo(sx - 2.3, hy + 3); ctx.closePath(); ctx.fill();
+                    for (let i = -3; i <= 3; i += 1.5)
+                        line(sx + i, hy + 4, sx + i * .8, hy + 6, shade(hair, 1.4), .5);
                 }
                 if (features.facial !== 'none') {
-                    line(sx - 3, hy + 3, sx + 3, hy + 3, hair, 1.5);
+                    line(sx, hy + 2.7, sx - 3.1, hy + 3.5, hair, 1.3);
+                    line(sx, hy + 2.7, sx + 3.1, hy + 3.5, hair, 1.3);
                 }
             }
             ctx.fillStyle = hair;
@@ -1666,12 +1742,23 @@
             if (features.hair === 'curly') {
                 for (const [ox, oy] of [[-6, -6], [-3, -9], [1, -10], [5, -8], [7, -5]]) {
                     ctx.beginPath(); ctx.arc(sx + ox, hy + oy, 3, 0, Math.PI * 2); ctx.fill();
+                    line(sx + ox - 1, hy + oy - 1, sx + ox + .6, hy + oy - 1.4, shade(hair, 1.7), .6);
                 }
             }
             if (features.hair === 'long') {
                 ctx.fillRect(sx - 9, hy - 3, 3, 13);
                 ctx.fillRect(sx + 6, hy - 3, 3, 13);
+                for (const side of [-1, 1])
+                    for (let strand = 0; strand < 2; strand++)
+                        line(sx + side * (6.6 + strand), hy - 4, sx + side * (6.6 + strand), hy + 9, shade(hair, 1.45), .5);
             }
+            if (features.hair === 'short') {
+                for (let i = -4; i <= 4; i += 2)
+                    line(sx + i, hy - 6, sx + i + 1, hy - 4.2, shade(hair, 1.65), .6);
+                line(sx - 6, hy - 2.5, sx - 6, hy + .5, hair, 1.6);
+                line(sx + 6, hy - 2.5, sx + 6, hy + .5, hair, 1.6);
+            }
+            ctx.restore();
         }
 
         function drawPlayer() {
@@ -1893,6 +1980,7 @@
 
         function openSportsGame(type) {
             modalEl.classList.remove('hidden');
+            modalEl.removeAttribute('aria-labelledby');
             if (Minigames.open(type, document.getElementById('modal-content'), {
                 overlay: modalEl, isOpen: () => !modalEl.classList.contains('hidden'), close: closeModal,
                 campaign: {
@@ -2356,6 +2444,7 @@
             const content = document.getElementById('modal-content');
             if (!modalOpen()) learningReturnFocus = document.activeElement;
             modalEl.removeAttribute('aria-labelledby');
+            Minigames.stop();
             DMVMedia.stopAll();
             toast('');
             modalEl.classList.remove('hidden');
@@ -2384,8 +2473,12 @@
                         <button type="button" onclick="openSportsGame('resale')" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">👟 Resell Hub (Spot the Fake)</button>
                         <button type="button" onclick="openSportsGame('courier')" class="p-3 ${c} rounded-xl text-left font-bold text-sm text-white">🛵 Courier Lane Sprint</button>
                     </div>`;
-            } else if (['carryout', 'subshop', 'lemonade', 'resale', 'courier'].includes(type)) {
-                openSportsGame(type);
+            } else if (['carryout', 'subshop', 'lemonade', 'resale', 'courier', 'boxing'].includes(type)) {
+                const names = { carryout: 'Carryout Craze', subshop: 'Sub Shop', lemonade: 'Lemonade Stand',
+                    resale: 'Resell Hub', courier: 'Courier Dispatch', boxing: 'SE Boxing Gym' };
+                content.innerHTML = `<div class="sports-game"><h2>${names[type]}</h2>
+                    <p>Explore the space, then tap the equipment to begin. Your saved campaign continues where you left off.</p>
+                    <button type="button" data-venue-play>Play ${names[type]}</button></div>`;
             } else if (type === 'fashion') {
                 renderShirtShop(true, true);
             } else if (type === 'library') {
@@ -2393,15 +2486,19 @@
                     <p>Bookshelves, a movie room, career study guides and free public computers. Your investing portfolio and quiz scores are shared with your computer at home.</p>
                     <div class="sports-controls library-menu"><button type="button" id="open-library-shelves">📚 Bookshelves — Chocolate City, history & news</button>
                     <button type="button" id="open-modern-news">🎤 Modern entertainment — music, sports, TV & film</button>
+                    <button type="button" id="open-library-gaming">🎮 Video games — history, development & featured reads</button>
+                    <button type="button" id="open-library-gossip">🗞️ Fictional gossip magazines — comedy rack</button>
                     <button type="button" id="open-library-docs">🎞️ Movie room — short documentaries</button>
                     <button type="button" id="open-library-careers">🧰 Trades & careers shelf</button>
                     <button type="button" id="open-library-reads">📖 Short stories (original fiction)</button>
                     <button type="button" id="open-personal-computer">💻 Use a public computer</button></div></div>`;
             } else if (type === 'theater') {
                 DMVMedia.renderTheater(content, closeModal);
+                VenueInteriors.mount(content, type, modalEl);
                 return;
             } else if (type === 'dmv') {
                 Learning.renderDMV(content, () => learning, next => { learning = next; saveProgress(); }, closeModal);
+                VenueInteriors.mount(content, type, modalEl);
                 return;
             } else if (type === 'crib') {
                 const c = 'bg-blue-950/80 hover:bg-blue-900 border border-blue-400';
@@ -2440,6 +2537,11 @@
             const modernNewsButton = document.getElementById('open-modern-news');
             if (modernNewsButton) modernNewsButton.addEventListener('click', () =>
                 CommunityLibrary.renderShelves(content, libraryBack, 'modern-entertainment'));
+            const gamingButton = document.getElementById('open-library-gaming');
+            if (gamingButton) gamingButton.addEventListener('click', () =>
+                LibraryFeatures.renderGaming(content, libraryBack, () => CommunityLibrary.renderShelves(content, libraryBack, 'video-games')));
+            const gossipButton = document.getElementById('open-library-gossip');
+            if (gossipButton) gossipButton.addEventListener('click', () => LibraryFeatures.renderGossip(content, libraryBack));
             const docsButton = document.getElementById('open-library-docs');
             if (docsButton) docsButton.addEventListener('click', () => DMVMedia.renderDocumentaries(content, libraryBack));
             const careersButton = document.getElementById('open-library-careers');
@@ -2457,6 +2559,9 @@
             if (vehicleShopButton) vehicleShopButton.addEventListener('click', () => { toast(''); renderVehicleShop(true); });
             const vehicleGarageButton = document.getElementById('open-vehicle-garage');
             if (vehicleGarageButton) vehicleGarageButton.addEventListener('click', () => { toast(''); renderVehicleShop(false); });
+            const playButton = content.querySelector('[data-venue-play]');
+            if (playButton) playButton.addEventListener('click', () => openSportsGame(type));
+            VenueInteriors.mount(content, type, modalEl);
         }
 
         function openComputer(location) {
@@ -2493,6 +2598,9 @@
             mapQuadrant = null;
             for (const k in keys) keys[k] = false;
             modalEl.classList.add('hidden');
+            delete modalEl.dataset.interior;
+            modalEl.style.removeProperty('--room-wall');
+            modalEl.style.removeProperty('--room-floor');
             modalEl.removeAttribute('aria-labelledby');
             if (learningReturnFocus?.isConnected) learningReturnFocus.focus({ preventScroll: true });
             learningReturnFocus = null;

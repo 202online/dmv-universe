@@ -69,6 +69,59 @@ function advance(h, seconds) {
     for (let t = 0; t < seconds && !h.result; t += 1 / 60) h.step(1 / 60);
 }
 
+test('air hockey has a slower fallible CPU, larger target and guarded touch controls at every level', () => {
+    for (const level of [1, 5, 1000000]) {
+        const h = harness('airhockey', 1, level), s = h.game._state();
+        assert.ok(s.cpuSpeed < 200);
+        assert.ok(s.maxSpeed < 560);
+        assert.ok(s.goalWidth >= s.playerGoalWidth * 1.7);
+        const p = { id: 1, x: 290, y: 440 };
+        h.game.down(p); h.step(.033);
+        assert.ok(h.game._state().pm.x > 180);
+        p.cancelled = true; h.game.up(p);
+        assert.equal(h.game._state().holdId, null);
+        h.game._set({ puck: { x: 70, y: 380, vx: 0, vy: 150 } });
+        const before = h.game._state().pm.x;
+        advance(h, .2);
+        assert.ok(h.game._state().pm.x < before, 'Released mallet automatically guards toward the puck');
+        advance(h, .6);
+        const player = h.game._state().pm;
+        h.game._set({ puck: { x: player.x, y: player.y - 36, vx: 0, vy: 200 } });
+        h.step(.016);
+        const puck = h.game._state().puck;
+        assert.ok(puck.vy < 0, 'Gentle stationary contact returns the puck');
+        assert.ok(Math.hypot(puck.vx, puck.vy) <= s.maxSpeed);
+    }
+});
+
+test('beginner air hockey can be won with ordinary drag input and scores only once', () => {
+    const h = harness('airhockey'), p = { id: 1, x: 180, y: 440 };
+    h.game.down(p);
+    for (let frame = 0; frame < 180 * 60 && !h.result; frame++) {
+        const s = h.game._state();
+        const direction = s.om.x > 180 ? -1 : 1;
+        p.x = s.puck.x - direction * 22;
+        p.y = s.puck.y > 300 ? s.puck.y + 35 : 454;
+        h.game.move(p); h.step();
+    }
+    assert.ok(h.result, 'Match finishes with a simple touch strategy');
+    assert.equal(h.result.win, true);
+    assert.equal(h.awards, 1);
+    assert.equal(h.result.stars, 0);
+    h.game.update(.1);
+    assert.equal(h.awards, 1);
+});
+
+test('air hockey resolves fast puck crossings without tunneling through a guarding mallet', () => {
+    const h = harness('airhockey');
+    advance(h, .7);
+    const { pm } = h.game._state();
+    h.game._set({ puck: { x: pm.x, y: pm.y - 47, vx: 0, vy: 550 } });
+    h.step(.033);
+    assert.ok(h.game._state().puck.vy < 0);
+    assert.equal(h.game._state().cpu, 0);
+});
+
 test('lemonade recipes, canceled pours, restocking and profit goals work at beginner and extreme levels', () => {
     for (const level of [1, 5, 1000000]) {
         const h = harness('lemonade', 1, level);

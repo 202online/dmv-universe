@@ -10,6 +10,10 @@ chess, Lemonade Stand, Sub Shop, Carryout Craze, Resell Hub and Courier Lane Spr
 have endless numbered levels. Win a level to unlock the next; select a cleared
 level to practice. The panel above each game shows its clear goal and reward.
 Tennis retains automatic movement, serving and hitting, with optional swipe aiming.
+Air hockey now uses a slower, delayed-reaction CPU, a larger opponent goal,
+a larger player mallet, bounded puck speed and automatic goal guarding when
+you release the controls. Tap or drag in your half; a gentle contact returns
+the puck without a fast flick. Later levels remain harder but keep these assists.
 
 - First clears pay **3, 5, 7, 9 and 12 stars** at levels 1–5, then **12 stars**
   at every later level, once per level per game.
@@ -62,6 +66,10 @@ and return with the result, leaving more room for touch controls.
 - **Courier Lane Sprint**: steer between three lanes, pick up parcels, avoid
   cones and deliver at green zones. Three bumps end the route.
 
+Food and resale graphics include shaded lemonade glasses with liquid and ice,
+sliced lemons, layered seeded subs, textured wings with fries, ingredient
+previews and detailed fictional sneakers with stitching, laces and soles.
+
 This is a local, client-side economy, not a tamper-proof online wallet. Clearing
 browser storage resets progress; editing saves or the device clock cannot be
 securely prevented without server-side accounts and reward validation.
@@ -80,6 +88,23 @@ Neighborhood homes open the same saved home/computer/TV menu as The Crib.
 The city map shows the local streets, tan home markers, blue neighborhood-shop
 markers and numbered venues, with descriptions of each district.
 
+## Interactive interiors and appearance
+
+Entering a building changes the backdrop and opens a themed room. Tap the
+illustrated objects or use keyboard Tab/Enter; these are the same working
+activity buttons, not decorative screenshots. Home has a TV, computer, wardrobe
+and garage. The library has books, a public computer, movies and a gaming shelf.
+The club has a stage, pool, air hockey and chess; the mall has merchandise and
+dispatch counters. Food businesses and the boxing gym open an interior before
+you start their game. The arena has a concourse and a practice-lab terminal.
+Other public venues retain their existing activities inside themed surroundings.
+
+The waterfront arena has an oval exterior with segmented glass, a curved roof
+and entrance canopies. Collision and street clearances still use its existing
+rectangular footprint, so visual corners do not become new shortcuts.
+Avatars retain their saved choices, with additional hair texture, facial-hair
+shaping, eyes, eyebrows, skin shading, clothing seams and sneaker details.
+
 ## Betting Practice Lab
 
 Open an arena’s **Betting Practice Lab** to learn with a separate 1,000-credit
@@ -92,8 +117,13 @@ slip separates stake, net profit, total return, full loss risk and price-implied
 probability. Select one pick per game; two games make a parlay, while independent
 singles can be placed separately. Stakes remain entered when switching screens.
 
-**Learn basics** includes a guided example (no automatic spending), odds and
-settlement lessons, real-app rule differences and short knowledge checks.
+The simulator stays above the educational material. **Learning sections**
+jumps to an index below it: start here, odds, price-implied chance/house edge,
+bet types, singles/parlays/pushes, stake/profit/risk and real-app differences.
+Only one short lesson appears at a time; a selector switches topics without
+clearing picks or the stake. A separate glossary defines common words, and
+the quick quiz shows one question at a time. The guided example spends no
+credits until the player explicitly places the ticket.
 **Tickets** shows pending stakes, simulated scores and numerical explanations of
 wins, losses and pushes. Existing simulator balances and tickets are retained.
 Resetting practice data does not affect city progress. Practice results are not
@@ -137,7 +167,7 @@ existing balances, purchases or minigame clears.
 
 ## Library shelves, documentaries, TV, theater and the DMV
 
-`library-data.js` holds 129 short, neutral **fact cards**, each with a source
+`library-data.js` holds 141 short, neutral **fact cards**, each with a source
 link. Generated content only selects and orders those cards; it never writes new
 historical claims. To add content, add a cited card and reuse an existing
 category.
@@ -147,7 +177,7 @@ still needs a complete editorial fact-check; its in-game notice says so. Study
 current agency manuals for driving, licensing and safety rules. Historical
 summaries are not current news, professional training or legal advice.
 
-- **Bookshelves** (SE Library) have five aisles:
+- **Bookshelves** (SE Library) have six aisles:
   - **Chocolate City Collection**: go-go; art, style and scenes; the hard years,
     with a content note; sports; entertainment; Black politics.
   - **Early-2000s DC News Archive**: headlines and entertainment, presented as
@@ -159,11 +189,24 @@ summaries are not current news, professional training or legal advice.
     shelves with 18 dated events from **2021–2024**. This curated archive
     includes original summaries and source links, not current headlines,
     a live feed or automatic news fetching.
+  - **Video Games: History & Development**: early interactive experiments,
+    arcades, home consoles, 3D and independent games, plus prototypes, game
+    loops, visual art, audio, testing and accessibility.
 
   Each shelf rotates deterministic editions every Monday at 00:00 UTC. Books
   contain 400–800 words (2–4 minutes at 200 words/minute), including active-recall
   and source-evaluation prompts, and list their sources. This is a finite
   catalog: chapters can repeat between editions.
+- **Video Games Reading Room**: four original, approximately one-minute briefs
+  about dated 2023–2025 launches, design and accessibility. Each links to further
+  reading. These are newly added summaries of archived events, not live 2026
+  reporting or copied publisher articles. Current source sites could not be
+  fetched during this pass; editorial verification is still pending.
+- **Fictional Gossip Magazine Rack**: six original short comedy stories from
+  invented magazines, with absurd appliance, raccoon, elevator, fruit, sneaker
+  and game-character drama. Every screen labels the stories as fictional satire,
+  not real celebrity gossip. Both racks feature two entries each UTC week
+  from a finite catalog; the complete catalog remains available.
 - **Movie room** (SE Library): nine original 2–4 minute documentaries are rebuilt
   weekly as narrated scene slides, with optional browser text-to-speech. A
   real-film guide offers original summaries and source links; nothing is streamed.

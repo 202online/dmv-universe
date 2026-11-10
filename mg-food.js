@@ -43,6 +43,45 @@
             up(p) { if (p.foodTap && !p.cancelled && p.len < 24) action(p); }
         };
     }
+    function sandwich(c, U, x, y, scale, layers) {
+        c.save(); c.translate(x, y); c.scale(scale, scale);
+        c.fillStyle = '#e5ddd0'; c.beginPath(); c.ellipse(0, 23, 118, 24, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = U.vgrad(c, 5, 28, [[0, '#f3bd63'], [1, '#ac612c']]);
+        U.rr(c, -104, 0, 208, 29, 14); c.fill();
+        layers.forEach((i, n) => {
+            const yy = -3 - n * 4;
+            c.fillStyle = ingredients[i].color;
+            c.beginPath(); c.moveTo(-98, yy);
+            for (let xx = -98; xx <= 98; xx += 12) c.lineTo(xx, yy + Math.sin(xx + n) * 3);
+            c.lineTo(98, yy + 7); c.lineTo(-98, yy + 7); c.closePath(); c.fill();
+        });
+        const top = -11 - layers.length * 4;
+        c.fillStyle = U.vgrad(c, top - 27, top + 8, [[0, '#ffe0a2'], [.55, '#eab45f'], [1, '#ba702d']]);
+        c.beginPath(); c.moveTo(-104, top + 13); c.bezierCurveTo(-106, top - 23, -52, top - 31, 0, top - 29);
+        c.bezierCurveTo(53, top - 31, 106, top - 23, 104, top + 13); c.closePath(); c.fill();
+        c.strokeStyle = '#fff0bd'; c.lineWidth = 2.5;
+        for (let i = 0; i < 15; i++) {
+            const xx = -81 + (i % 8) * 23, yy = top - 9 + Math.floor(i / 8) * 11;
+            c.beginPath(); c.moveTo(xx, yy); c.lineTo(xx + 3, yy - 3); c.stroke();
+        }
+        c.restore();
+    }
+
+    function wing(c, U, x, y, rotation, sauce, cooked) {
+        c.save(); c.translate(x, y); c.rotate(rotation);
+        U.shadow(c, 2, 13, 23, 7, .22);
+        c.fillStyle = U.vgrad(c, -15, 16, [[0, cooked ? '#ffd483' : '#f1ccac'], [.5, sauce || '#d88a30'], [1, sauce ? '#8a381c' : '#9d4c20']]);
+        c.beginPath(); c.moveTo(-23, 2); c.bezierCurveTo(-24, -12, -9, -18, 3, -9);
+        c.bezierCurveTo(12, -17, 26, -8, 24, 4); c.bezierCurveTo(20, 20, 7, 16, 0, 12);
+        c.bezierCurveTo(-11, 19, -25, 16, -23, 2); c.fill();
+        c.strokeStyle = sauce ? '#ffb35a' : '#f7d391'; c.lineWidth = 2;
+        c.beginPath(); c.moveTo(-15, -3); c.quadraticCurveTo(-6, -9, 0, -2); c.stroke();
+        c.fillStyle = '#8b4526';
+        for (let i = 0; i < 7; i++) {
+            c.beginPath(); c.arc(-15 + i * 5, Math.sin(i * 3) * 7 + 4, .9, 0, Math.PI * 2); c.fill();
+        }
+        c.restore();
+    }
 
     Minigames.register('lemonade', env => {
         const { U, end } = env, rank = U.challenge(env.level);
@@ -116,13 +155,37 @@
         function draw(c) {
             scene(c, env, 'FRESH LEMONADE', '#fde047', `${Math.ceil(time)}s  |  ${sold}/${target} cups  |  Profit $${revenue - expenses}/$${profitGoal}`,
                 customer ? `Customer wants lemonade: $${price}` : 'Next customer on the way', customer ? patience / waitLimit() : 1);
-            const cx = 180, cy = 215;
-            c.fillStyle = '#fef08a'; c.beginPath(); c.ellipse(70, cy + 10, 28, 19, -.3, 0, Math.PI * 2); c.fill();
-            c.fillStyle = '#166534'; c.beginPath(); c.ellipse(89, cy - 6, 12, 5, -.8, 0, Math.PI * 2); c.fill();
-            c.fillStyle = '#94a3b8'; U.rr(c, cx - 28, cy - 30, 56, 70, 5); c.fill();
-            c.fillStyle = '#fef08a'; c.fillRect(cx - 24, cy + 35 - 58 * Math.min(1, fill), 48, 58 * Math.min(1, fill));
-            c.strokeStyle = '#10b981'; c.lineWidth = 4;
-            c.beginPath(); c.moveTo(cx - 30, cy + 35 - 58 * .7); c.lineTo(cx + 30, cy + 35 - 58 * .7); c.stroke();
+            const cx = 174, cy = 215;
+            U.shadow(c, 80, 252, 43, 9, .18);
+            c.fillStyle = U.vgrad(c, 202, 244, [[0, '#fff2a1'], [.5, '#eccd3b'], [1, '#d39424']]);
+            c.beginPath(); c.ellipse(68, 229, 30, 20, -.3, 0, Math.PI * 2); c.fill();
+            c.fillStyle = '#39824c'; c.beginPath(); c.ellipse(91, 207, 13, 5, -.7, 0, Math.PI * 2); c.fill();
+            c.fillStyle = '#fff3b1'; c.beginPath(); c.arc(107, 238, 21, 0, Math.PI * 2); c.fill();
+            c.strokeStyle = '#e5b832'; c.lineWidth = 2;
+            c.beginPath(); c.arc(107, 238, 17, 0, Math.PI * 2); c.stroke();
+            for (let i = 0; i < 8; i++) {
+                const a = i * Math.PI / 4;
+                c.beginPath(); c.moveTo(107, 238); c.lineTo(107 + Math.cos(a) * 17, 238 + Math.sin(a) * 17); c.stroke();
+            }
+            U.shadow(c, cx, 259, 29, 6, .2);
+            c.fillStyle = '#c9e6ef77';
+            c.beginPath(); c.moveTo(cx - 28, cy - 31); c.lineTo(cx + 28, cy - 31);
+            c.lineTo(cx + 22, cy + 40); c.quadraticCurveTo(cx, cy + 48, cx - 22, cy + 40); c.closePath(); c.fill();
+            c.save(); c.clip();
+            const liquid = Math.min(1, fill), surface = cy + 39 - liquid * 65;
+            c.fillStyle = U.vgrad(c, surface, cy + 42, [[0, '#fff28a'], [1, '#e8b52a']]);
+            c.fillRect(cx - 28, surface, 56, cy + 44 - surface);
+            if (liquid > .1) {
+                c.fillStyle = '#ffffd1'; c.beginPath(); c.ellipse(cx, surface + 1, 26, 4, 0, 0, Math.PI * 2); c.fill();
+                for (let i = 0; i < 3; i++) {
+                    c.fillStyle = '#f1fbffbb'; U.rr(c, cx - 19 + i * 13, surface + 8 + i % 2 * 11, 12, 11, 3); c.fill();
+                }
+            }
+            c.restore();
+            c.strokeStyle = '#d7f0f9'; c.lineWidth = 2; c.beginPath(); c.ellipse(cx, cy - 31, 28, 5, 0, 0, Math.PI * 2); c.stroke();
+            c.strokeStyle = '#ffffff88'; c.lineWidth = 3; c.beginPath(); c.moveTo(cx - 20, cy - 20); c.lineTo(cx - 17, cy + 30); c.stroke();
+            c.strokeStyle = '#059669'; c.lineWidth = 3;
+            c.beginPath(); c.moveTo(cx - 30, cy + 39 - 65 * .7); c.lineTo(cx + 30, cy + 39 - 65 * .7); c.stroke();
             U.text(c, `Cash $${cash}`, 280, 207, { color: '#14532d', size: 14 });
             U.text(c, `${stock} supply kits`, 280, 232, { color: '#78350f', size: 13 });
             for (let i = 0; i < 3; i++) button(c, U, 18 + i * 110, 318, 104, 42, `$${i + 2} / cup`, price === i + 2);
@@ -192,10 +255,23 @@
             const words = order.map(i => ingredients[i].name);
             U.text(c, words.slice(0, 3).join(' + '), 180, 190, { size: 15, color: '#78350f' });
             U.text(c, words.slice(3).join(' + ') || 'No extra toppings', 180, 214, { size: 14, color: '#78350f' });
-            const layers = [...selected];
-            U.rr(c, 69, 303 - layers.length * 3, 222, 15, 7); c.fillStyle = '#fbbf24'; c.fill();
-            layers.forEach((i, n) => { c.fillStyle = ingredients[i].color; c.fillRect(76, 297 - n * 4, 208, 4); });
-            ingredients.forEach((item, i) => button(c, U, 16 + (i % 4) * 86, 328 + Math.floor(i / 4) * 64, 70, 54, item.name, selected.has(i)));
+            sandwich(c, U, 180, 283, .65, [...selected]);
+            ingredients.forEach((item, i) => {
+                const x = 16 + i % 4 * 86, y = 328 + Math.floor(i / 4) * 64;
+                button(c, U, x, y, 70, 54, '', selected.has(i));
+                c.fillStyle = item.color; c.strokeStyle = '#fff6'; c.lineWidth = 1;
+                if (i === 4 || i === 7) {
+                    for (let n = -1; n <= 1; n++) {
+                        c.beginPath(); c.ellipse(x + 35 + n * 9, y + 15, 9, 7, n * .3, 0, Math.PI * 2); c.fill(); c.stroke();
+                        c.fillStyle = i === 4 ? '#fbbf24' : '#d9f99d';
+                        c.fillRect(x + 33 + n * 9, y + 12, 3, 4); c.fillStyle = item.color;
+                    }
+                } else {
+                    U.rr(c, x + 17, y + 8, 36, 16, i < 2 ? 7 : 3); c.fill();
+                    c.strokeStyle = '#fff8'; c.beginPath(); c.moveTo(x + 21, y + 12); c.lineTo(x + 48, y + 19); c.stroke();
+                }
+                U.text(c, item.name, x + 35, y + 40, { size: 12, color: '#f8fafc' });
+            });
             U.text(c, 'Tap again to remove an ingredient', 180, 459, { size: 13, color: '#fde68a' });
             button(c, U, 18, 478, 140, 56, 'Clear tray');
             button(c, U, 176, 478, 166, 56, 'SERVE SUB', selected.size > 0);
@@ -262,15 +338,21 @@
         function draw(c) {
             scene(c, env, 'MAMBO SAUCE RUSH', '#fb923c', `${Math.ceil(time)}s  |  ${served}/${target} boxes  |  ${burnt} burnt`,
                 cooldown > 0 ? 'Order served!' : `Wings + ${sauces[wanted]}${wanted === 2 ? ' (no sauce)' : ' sauce'}`, patience / limit);
-            c.fillStyle = '#d1d5db'; U.rr(c, 55, 187, 250, 62, 12); c.fill();
+            c.fillStyle = '#e6d9bb'; U.rr(c, 36, 183, 288, 80, 10); c.fill();
+            c.strokeStyle = '#b9a784'; c.lineWidth = 2; c.stroke();
+            c.fillStyle = '#f8f2e5'; U.rr(c, 43, 188, 274, 69, 7); c.fill();
             for (let i = 0; i < 5; i++) {
-                const x = 89 + i * 44, y = 212 + Math.sin(i * 2) * 9;
-                c.fillStyle = stage === 3 && sauce !== 2 ? (sauce === 0 ? '#ea580c' : '#78350f') : stage >= 2 ? '#f59e0b' : '#fcd34d';
-                c.beginPath(); c.ellipse(x, y, 20, 12, -.3, 0, Math.PI * 2); c.fill();
+                const x = 69 + i * 42, y = 215 + Math.sin(i * 2) * 10;
+                wing(c, U, x, y, -.4 + i * .15, stage === 3 && sauce !== 2 ? (sauce === 0 ? '#d34a1e' : '#78350f') : null, stage >= 2);
                 if (stage === 1) {
                     c.strokeStyle = '#fef3c7'; c.lineWidth = 2; c.beginPath();
                     c.moveTo(x, y - 16); c.quadraticCurveTo(x + 7, y - 25, x, y - 35 - Math.sin(env.time() * 5 + i) * 4); c.stroke();
                 }
+            }
+            c.fillStyle = '#e9b64d';
+            for (let i = 0; i < 7; i++) {
+                c.save(); c.translate(276 + i % 3 * 7, 200 + i % 2 * 6); c.rotate(-.25 + i * .08);
+                c.fillRect(0, 0, 5, 34); c.fillStyle = '#ffe3a0'; c.fillRect(0, 0, 2, 31); c.fillStyle = '#e9b64d'; c.restore();
             }
             c.fillStyle = '#475569'; c.fillRect(28, 288, 304, 14);
             c.fillStyle = '#22c55e'; c.fillRect(28 + (.65 - window) * 304, 288, window * 2 * 304, 14);

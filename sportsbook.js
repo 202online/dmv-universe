@@ -145,8 +145,65 @@ const Sportsbook = (() => {
             return `${g.away} ${r.away} - ${g.home} ${r.home}; ${g.player}: ${r.prop} ${g.stat}.`;
         });
     }
+    const lessons = [
+        { id: 'start', title: 'Start here', summary: 'One ticket, step by step.', paragraphs: [
+            '1. Pick a team or result. 2. Choose a stake: the credits you can lose. 3. Read the slip. 4. Place the practice ticket. 5. Simulate the result.',
+            'Start small in this pretend-money lab. Nothing here predicts real games or proves you can make money.'
+        ] },
+        { id: 'odds', title: 'Odds made simple', summary: 'What +150 and -200 mean.', paragraphs: [
+            'Odds are a price, not a promise. The plus or minus sign does not change the game score.',
+            '+150: stake 10 credits. A win earns 15 profit. You get 25 back in total: your 10 plus 15.',
+            '-200: stake 10 credits. A win earns 5 profit. You get 15 back in total: your 10 plus 5.',
+            'Decimal 2.50 means 10 × 2.50 = 25 total back. Subtract the 10 stake to find 15 profit.',
+            'A loss returns zero. A bigger advertised payout usually comes with a lower price-implied chance, not a better deal.'
+        ] },
+        { id: 'chance', title: 'Chance & the house edge', summary: 'A price is not a forecast.', paragraphs: [
+            'Implied probability means the chance suggested by a price. Divide 100 by decimal odds: 2.50 suggests 40%.',
+            '-200 suggests about 66.7%. A favorite can still lose. These prices do not measure the true chance of winning.',
+            'The bookmaker adds a margin, also called vig. That is why the two sides can add up to more than 100%.',
+            'A losing streak does not make your next pick more likely to win. Do not chase losses.'
+        ] },
+        { id: 'markets', title: 'Types of bets', summary: 'Winner, spread, totals and player stats.', paragraphs: [
+            'Moneyline: choose who wins. The winning margin does not matter.',
+            'Spread: add the handicap to your team’s score. Buffalo +1.5 loses 24–23: 23 + 1.5 = 24.5, so the pick covers.',
+            'Total: add both teams’ scores. Over means above the line; under means below it. The winning team does not matter.',
+            'Player prop: choose above or below one player’s statistic line. A team win does not guarantee a prop win.'
+        ] },
+        { id: 'tickets', title: 'Singles, parlays & pushes', summary: 'How a ticket wins or gets refunded.', paragraphs: [
+            'A single is one pick on its own ticket. Its result does not depend on a separate single.',
+            'A parlay puts several picks on one ticket. Every non-push pick must win. One loss loses the entire stake.',
+            'A push is an exact tie against the line. A single refunds the stake. A parlay removes that leg from its odds; if every leg pushes, the stake is returned.',
+            'A half-point line cannot push when scores are whole numbers. This lab allows one pick per game and no same-game parlays.',
+            'All pending tickets use the same simulated game day. Repeating the same pick does not create independent results.'
+        ] },
+        { id: 'money', title: 'Stake, profit & risk', summary: 'Know what can leave your balance.', paragraphs: [
+            'Bankroll: your available practice credits. Stake: the amount you commit and can lose.',
+            'Profit is the gain above your stake. Total return includes the stake. Example: 10 staked + 15 profit = 25 returned.',
+            'When you place a ticket, the stake leaves your available balance. A win adds the total return. A loss adds nothing.',
+            'There is no guaranteed safe real-money stake. Increasing stakes after a loss can make losses grow quickly.'
+        ] },
+        { id: 'rules', title: 'Real-app differences', summary: 'Why practice is not real betting.', paragraphs: [
+            'Real apps can change prices before confirmation, suspend markets, and have different overtime, tie, void and player-participation rules.',
+            'Read the market rules and confirmed ticket. A player not taking part may be treated differently across apps.',
+            'This lab uses fixed examples and generated scores, not live odds or forecasts. It accepts no deposits, pays no prizes and never converts credits to stars.',
+            'Practice results do not show you can profit with real money. Follow local age and legal restrictions.'
+        ] }
+    ];
+    const glossary = [
+        ['Bankroll', 'Available practice credits.'], ['Stake', 'Credits you commit and can lose.'],
+        ['Odds', 'The price used to calculate a payout.'], ['Favorite', 'The side priced as more likely; it can still lose.'],
+        ['Underdog', 'The side priced as less likely; it can still win.'], ['Moneyline', 'A pick on who wins.'],
+        ['Spread / cover', 'A score handicap / beating that handicap.'], ['Total', 'The combined score of both teams.'],
+        ['Prop', 'A pick about a particular statistic.'], ['Single', 'One pick on its own ticket.'],
+        ['Parlay / leg', 'A combined ticket / one pick inside it.'], ['Push', 'A tie against the line, with a refund or adjusted parlay.'],
+        ['Profit / net', 'The gain or loss after counting the stake.'], ['Total return', 'Everything returned on a win, including the stake.'],
+        ['Implied probability', 'The chance suggested by the price, not a reliable forecast.'], ['Vig / margin', 'The bookmaker’s edge built into prices.'],
+        ['Void', 'A canceled selection under the app’s rules; not modeled here.']
+    ];
+
     function render(content, state, save, back) {
         let slip = [], view = 'practice', gameId = games[0].id, marketId = 'moneyline', stakeValue = '10';
+        let lessonId = 'index';
         let quizFeedback = '';
         const quizzes = [
             { question: 'A 10-credit stake at +150 wins. What is the total return, including your stake?',
@@ -163,9 +220,9 @@ const Sportsbook = (() => {
         function practice() {
             const game = games.find(g => g.id === gameId), market = markets.find(m => m.id === marketId);
             return `
-                ${slip.length ? '' : `<section class="book-card"><h3>First time placing a bet?</h3>
-                    <p>Prepare an example, review what can happen, then decide whether to place it. No credits are spent just by opening the example.</p>
+                ${slip.length ? '' : `<section class="book-card"><h3>Practice simulator</h3>
                     <button type="button" id="book-guide" class="book-primary">Start guided example</button>
+                    <small>Prepares a ticket without spending credits.</small>
                 </section>`}
                 <section class="book-card">
                     <h3><span class="book-step">1</span> Choose a matchup</h3>
@@ -204,44 +261,25 @@ const Sportsbook = (() => {
         }
         function learn() {
             const q = quizzes[quizIndex];
-            return `
-                <section class="book-card">
-                    <h3>New here? Follow one example</h3>
-                    <p>Pick a winner → enter a stake → review the possible outcomes → place a practice ticket → simulate the result.</p>
-                    <button type="button" id="book-guide" class="book-primary">Try a guided 10-credit example</button>
-                    <p class="book-muted">This prepares a Kansas City moneyline pick. It does not place a bet or spend credits.</p>
-                </section>
-                <section class="book-card">
-                    <h3>Read the odds, not just the payout</h3>
-                    <p><strong>+150:</strong> A 10-credit stake can earn 15 profit and return 25 total.</p>
-                    <p><strong>-200:</strong> A 10-credit stake can earn 5 profit and return 15 total. The minus sign is a price, not a deduction from the score.</p>
-                    <p><strong>Decimal 2.50:</strong> Multiply the stake by 2.50 for total return. Profit is total return minus stake.</p>
-                    <p><strong>Implied probability:</strong> 100 ÷ decimal odds. +150 implies 40%; -200 implies 66.7%. These are price-based percentages, not a reliable forecast.</p>
-                    <p class="book-muted">Sportsbooks build a margin (vig) into prices, so the two sides’ implied percentages can add up to more than 100%. A favorite can still lose.</p>
-                </section>
-                <section class="book-card"><h3>Know what your ticket needs</h3>
-                    ${markets.map(m => `<details><summary>${m.name} — ${m.hint}</summary><p>${m.lesson}</p>
-                        <button type="button" data-try-market="${m.id}">Practice ${m.name.toLowerCase()}</button></details>`).join('')}
-                    <details><summary>Singles, parlays and pushes</summary>
-                        <p>A single stands alone. A parlay combines picks into one ticket: every non-push pick must win, and any loss loses the entire stake.</p>
-                        <p>A push is an exact tie against the line. A single refunds its stake; a parlay removes the pushed leg from its odds. If all legs push, the stake is returned.</p>
-                        <p>Half-point lines cannot push with integer scores. This simulator allows one pick per game and no same-game parlays.</p>
-                    </details>
-                    <details><summary>Bankroll, stake, profit and return</summary>
-                        <p>Your bankroll is your available practice balance. Stake is what you commit and can lose.
-                            Profit excludes your original stake; total return includes it. A losing ticket returns zero.</p>
-                        <p>A large stake risks more of your balance. There is no guaranteed safe stake, and a past loss does not make the next ticket more likely to win. Do not chase losses.</p>
-                    </details>
-                    <details><summary>How this differs from a real betting app</summary>
-                        <p>Real apps can change prices before confirmation, suspend markets, and apply different overtime, tie, void and player-participation rules. Check the market’s rules and confirmed ticket, not just the team names.</p>
-                        <p>These are fixed example prices and generated results, not current odds, live games or real-world predictions. Practice performance is not evidence you can profit with real money. Follow local age and legal restrictions; this simulator accepts no deposits.</p>
-                    </details>
-                </section>
-                <section class="book-card"><h3>Check your understanding</h3>
+            const lesson = lessons.find(l => l.id === lessonId);
+            const index = [['index', 'Learning index'], ...lessons.map(l => [l.id, l.title]), ['glossary', 'Glossary'], ['quiz', 'Quick quiz']];
+            const article = lesson ? `<h3>${lesson.title}</h3>${lesson.paragraphs.map(p => `<p>${escape(p)}</p>`).join('')}
+                ${lessonId === 'markets' ? markets.map(m => `<button type="button" data-try-market="${m.id}">Try ${m.name}</button>`).join(' ') : ''}` :
+                lessonId === 'glossary' ? `<h3>Glossary: look up a word</h3><dl>${glossary.map(([word, meaning]) =>
+                    `<dt><strong>${word}</strong></dt><dd>${meaning}</dd>`).join('')}</dl>` :
+                lessonId === 'quiz' ? `<h3>One question at a time</h3>
                     <p>${q.question}</p><div class="book-quiz">${q.answers.map((answer, i) => `<button type="button" data-answer="${i}">${answer}</button>`).join('')}</div>
                     <p role="status" id="book-quiz-feedback">${escape(quizFeedback)}</p>
-                    <button type="button" id="book-next-question">Next question</button>
-                </section>`;
+                    <button type="button" id="book-next-question">Next question</button>` :
+                    `<h3>Pick one short topic</h3><p>You do not need to read everything at once.</p>
+                    ${lessons.map(l => `<p><button type="button" data-lesson="${l.id}">${l.title}</button><small>${l.summary}</small></p>`).join('')}
+                    <p><button type="button" data-lesson="glossary">Glossary</button> <button type="button" data-lesson="quiz">Quick quiz</button></p>`;
+            return `<section id="book-learning" class="book-card" tabindex="-1"><h2>Learn in small steps</h2>
+                <label for="book-lesson">Choose a learning section</label>
+                <select id="book-lesson">${index.map(([id, title]) => `<option value="${id}" ${id === lessonId ? 'selected' : ''}>${title}</option>`).join('')}</select>
+                <article id="book-lesson-content">${article}</article>
+                ${lessonId !== 'index' ? '<button type="button" data-lesson="index">Back to learning index</button>' : ''}
+                <button type="button" id="book-top">Back to simulator</button></section>`;
         }
         function tickets() {
             return `
@@ -271,15 +309,21 @@ const Sportsbook = (() => {
                         <span>Pending stakes<strong>${format(state.pending.reduce((sum, t) => sum + t.stake, 0))}</strong></span></div>
                     <p class="book-muted"><strong>Simulation only.</strong> No real money, prizes or conversion to city stars. Fixed examples, not live odds or betting advice.</p>
                     <nav class="book-tabs" aria-label="Betting practice sections">${[
-                        ['practice', 'Practice'], ['learn', 'Learn basics'], ['tickets', `Tickets (${state.pending.length})`]
+                        ['practice', 'Simulator'], ['learn', 'Learning sections'], ['tickets', `Tickets (${state.pending.length})`]
                     ].map(([id, label]) => `<button type="button" data-view="${id}" aria-pressed="${view === id}">${label}</button>`).join('')}</nav>
                     <p class="game-result" id="book-message" role="status" tabindex="-1">${escape(message)}</p>
-                    ${view === 'practice' ? practice() : view === 'learn' ? learn() : tickets()}
+                    ${view === 'tickets' ? tickets() : practice() + learn()}
                     <button type="button" id="book-back">Back to arena</button>
                 </div>`;
             content.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
-                view = button.dataset.view; draw('', `[data-view="${view}"]`);
+                view = button.dataset.view; draw('', view === 'learn' ? '#book-learning' : `[data-view="${view}"]`);
             }));
+            const showLesson = id => { lessonId = id; draw('', '#book-learning'); };
+            const lessonSelect = content.querySelector('#book-lesson');
+            if (lessonSelect) lessonSelect.addEventListener('change', () => showLesson(lessonSelect.value));
+            content.querySelectorAll('[data-lesson]').forEach(button => button.addEventListener('click', () => showLesson(button.dataset.lesson)));
+            const top = content.querySelector('#book-top');
+            if (top) top.addEventListener('click', () => content.querySelector('[data-view="practice"]').focus());
             content.querySelectorAll('[data-game]').forEach(button => button.addEventListener('click', () => {
                 gameId = button.dataset.game; draw('', `[data-game="${gameId}"]`);
             }));
@@ -361,7 +405,7 @@ const Sportsbook = (() => {
         }
         draw();
     }
-    return { games, selections, markets, initial, valid, decimal, outcome, settle, render, parseStake, quote, place, requirement, evidence };
+    return { games, selections, markets, lessons, glossary, initial, valid, decimal, outcome, settle, render, parseStake, quote, place, requirement, evidence };
 })();
 
 if (typeof module !== 'undefined') module.exports = Sportsbook;

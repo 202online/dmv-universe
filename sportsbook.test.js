@@ -4,6 +4,18 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const book = require('./sportsbook.js');
 
+test('betting education uses short indexed sections and a plain-language glossary', () => {
+    assert.deepEqual(book.lessons.map(l => l.id), ['start', 'odds', 'chance', 'markets', 'tickets', 'money', 'rules']);
+    for (const lesson of book.lessons) {
+        assert.ok(lesson.title && lesson.summary);
+        assert.ok(lesson.paragraphs.join(' ').split(/\s+/).length <= 150, `${lesson.id} stays bite-sized`);
+    }
+    const odds = book.lessons.find(l => l.id === 'odds').paragraphs.join(' ');
+    assert.match(odds, /\+150/); assert.match(odds, /-200/); assert.match(odds, /25/);
+    for (const term of ['Stake', 'Odds', 'Parlay / leg', 'Total return', 'Implied probability'])
+        assert.ok(book.glossary.some(([word]) => word === term), term);
+    assert.match(book.lessons.find(l => l.id === 'chance').paragraphs.join(' '), /Do not chase losses/);
+});
 test('odds, moneyline, spread, totals and player props', () => {
     assert.equal(book.decimal(140), 2.4);
     assert.equal(book.decimal(-110), 1 + 100 / 110);

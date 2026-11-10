@@ -1,15 +1,18 @@
 'use strict';
 
-// Neon Slide: lounge air hockey. Drag your mallet anywhere in your half. First to 5 against a CPU that speeds up.
+// Neon Slide: assisted touch controls with bounded puck speed and a fallible CPU.
 Minigames.register('airhockey', env => {
     const { W, H, U, sfx, buzz, fx, banner, end } = env;
-    const L = 36, R = 324, T = 86, B = 514, MID = (T + B) / 2, GW = 110, PR = 13, MR = 26, WIN = 5;
+    const L = 36, R = 324, T = 86, B = 514, MID = (T + B) / 2, PR = 13, MR = 30, WIN = 5;
     const rank = U.challenge(env.level);
+    const opponentRadius = 23, goalWidth = 154 - rank * 2, playerGoalWidth = 78;
+    const maxSpeed = 460 + rank * 12, cpuSpeed = 100 + rank * 12;
 
-    let me, cpu, puck, pm, om, holdId, serveT, goalT, rallyV, ptX, ptY;
+    let me, cpu, puck, pm, om, holdId, serveT, goalT, rallyV, ptX, ptY, reaction, cpuTarget, slowT, finished;
 
     function start() {
-        me = 0; cpu = 0; holdId = null; ptX = 180; ptY = B - 60;
+        me = 0; cpu = 0; holdId = null; ptX = 180; ptY = B - 60; finished = false;
+        reaction = 0; cpuTarget = { x: 180, y: T + 54 };
         pm = { x: 180, y: B - 60, vx: 0, vy: 0, px: 180, py: B - 60 };
         om = { x: 180, y: T + 60, vx: 0, vy: 0 };
         serve('p');
@@ -17,27 +20,34 @@ Minigames.register('airhockey', env => {
 
     function serve(who) {
         puck = { x: 180, y: who === 'p' ? MID + 70 : MID - 70, vx: 0, vy: 0 };
-        serveT = .5; goalT = 0; rallyV = 0;
+        serveT = .65; goalT = 0; rallyV = 0; slowT = 0;
     }
 
     function down(p) {
         if (holdId === null && p.y > MID - 30) { holdId = p.id; p.role = 'mallet'; ptX = p.x; ptY = p.y; }
     }
     function move(p) { if (p.role === 'mallet' && holdId === p.id) { ptX = p.x; ptY = p.y; } }
-    function up(p) { if (p.role === 'mallet') holdId = null; }
+    function up(p) { if (p.role === 'mallet' && holdId === p.id) holdId = null; }
 
     const level = () => U.clamp((me + cpu) / 8 + cpu * .04, 0, 1);
 
     function malletHit(m, isPlayer) {
         const dx = puck.x - m.x, dy = puck.y - m.y, d = Math.hypot(dx, dy);
-        if (d > 0 && d < PR + MR) {
-            const nx = dx / d, ny = dy / d;
-            puck.x = m.x + nx * (PR + MR + .5); puck.y = m.y + ny * (PR + MR + .5);
+        const radius = isPlayer ? MR : opponentRadius;
+        if (d < PR + radius) {
+            const nx = d > .001 ? dx / d : 0, ny = d > .001 ? dy / d : isPlayer ? -1 : 1;
+            puck.x = m.x + nx * (PR + radius + .5); puck.y = m.y + ny * (PR + radius + .5);
             const rel = (puck.vx - m.vx) * nx + (puck.vy - m.vy) * ny;
-            if (rel < 0) { puck.vx -= 1.85 * rel * nx; puck.vy -= 1.85 * rel * ny; }
-            puck.vx += m.vx * .45; puck.vy += m.vy * .45;
+            if (isPlayer && dy <= radius * .7) {
+                // A gentle contact is enough to return the puck; flicking is optional.
+                puck.vx = U.clamp(dx * 5 + m.vx * .16, -220, 220);
+                puck.vy = -Math.max(300, Math.abs(puck.vy) * .85 + Math.max(0, -m.vy) * .2);
+            } else {
+                if (rel < 0) { puck.vx -= 1.6 * rel * nx; puck.vy -= 1.6 * rel * ny; }
+                puck.vx += m.vx * .18; puck.vy += m.vy * .18;
+            }
             const sp = Math.hypot(puck.vx, puck.vy);
-            if (sp > 980) { puck.vx *= 980 / sp; puck.vy *= 980 / sp; }
+            if (sp > maxSpeed) { puck.vx *= maxSpeed / sp; puck.vy *= maxSpeed / sp; }
             sfx('tap'); if (isPlayer) buzz(10);
             fx.burst(puck.x, puck.y, { n: 6, colors: isPlayer ? ['#7dd3fc', '#fff'] : ['#f0abfc', '#fff'], speed: 110, life: .25, g: 0 });
         }
@@ -52,7 +62,8 @@ Minigames.register('airhockey', env => {
         fx.shake(4, .25);
     }
 
-    function update(dt) {
+    function tick(dt) {
+        if (finished) return;
         if (goalT > 0) {
             goalT -= dt;
             if (goalT <= 0) {
@@ -62,48 +73,59 @@ Minigames.register('airhockey', env => {
             return;
         }
         serveT = Math.max(0, serveT - dt);
-        // player mallet follows the active pointer
-        if (holdId !== null) {
-            const tx = U.clamp(ptX, L + MR, R - MR), ty = U.clamp(ptY, MID + MR * .4, B - MR);
-            pm.vx = (tx - pm.x) / Math.max(dt, .001); pm.vy = (ty - pm.y) / Math.max(dt, .001);
-            const vcap = 1600, vs = Math.hypot(pm.vx, pm.vy);
-            if (vs > vcap) { pm.vx *= vcap / vs; pm.vy *= vcap / vs; }
-            pm.x = tx; pm.y = ty;
-        } else { pm.vx *= .7; pm.vy *= .7; }
+        const tx = U.clamp(holdId !== null ? ptX : puck.x, L + MR, R - MR);
+        const ty = U.clamp(holdId !== null ? ptY : B - 55, MID + MR * .4, B - MR);
+        const pd = Math.hypot(tx - pm.x, ty - pm.y) || 1;
+        const movement = Math.min(pd, (holdId !== null ? 900 : 210) * dt);
+        pm.vx = (tx - pm.x) / pd * movement / Math.max(dt, .001);
+        pm.vy = (ty - pm.y) / pd * movement / Math.max(dt, .001);
+        pm.x += pm.vx * dt; pm.y += pm.vy * dt;
         // CPU mallet
-        const spd = (240 + level() * 260 + rank * 70) * dt;
-        let gx = 180, gy = T + 54;
-        if (puck.y < MID + 40 && puck.vy < 200) {
-            gx = puck.x; gy = Math.min(puck.y - 6, MID - 34);
-            if (puck.y < T + 150 && Math.abs(puck.x - om.x) < 50) gy = puck.y + 4; // attack push
-        } else { gx = U.lerp(180, puck.x, Math.min(.95, .35 + rank * .1)); }
+        const spd = (cpuSpeed + level() * 25) * dt;
+        reaction -= dt;
+        if (reaction <= 0) {
+            reaction = .30 - rank * .012;
+            const error = Math.sin(env.time() * 2.3) * (34 - rank * 2);
+            cpuTarget.x = puck.y < MID ? puck.x + error : U.lerp(180, puck.x, .25);
+            cpuTarget.y = puck.y < MID && puck.vy < 100 ? Math.min(puck.y + 12, MID - 36) : T + 54;
+        }
+        const gx = cpuTarget.x, gy = cpuTarget.y;
         const odx = gx - om.x, ody = gy - om.y, od = Math.hypot(odx, ody) || 1;
         const step = Math.min(od, spd);
         om.vx = odx / od * step / Math.max(dt, .001); om.vy = ody / od * step / Math.max(dt, .001);
         om.x += odx / od * step; om.y += ody / od * step;
-        om.x = U.clamp(om.x, L + MR, R - MR); om.y = U.clamp(om.y, T + MR, MID - MR * .4);
+        om.x = U.clamp(om.x, L + opponentRadius, R - opponentRadius);
+        om.y = U.clamp(om.y, T + opponentRadius, MID - opponentRadius);
         // puck
         if (serveT <= 0) {
             puck.x += puck.vx * dt; puck.y += puck.vy * dt;
-            const fr = Math.pow(.32, dt);
+            const fr = Math.pow(.88, dt);
             puck.vx *= fr; puck.vy *= fr;
+            slowT = Math.hypot(puck.vx, puck.vy) < 45 ? slowT + dt : 0;
+            if (slowT > 2.5) { puck.vx = (180 - puck.x) * .35; puck.vy = 120; slowT = 0; }
         }
-        const inGoalX = Math.abs(puck.x - 180) < GW / 2;
         if (puck.x < L + PR) { puck.x = L + PR; puck.vx = Math.abs(puck.vx) * .92; sfx('thud'); }
         if (puck.x > R - PR) { puck.x = R - PR; puck.vx = -Math.abs(puck.vx) * .92; sfx('thud'); }
-        if (puck.y < T + PR) { if (inGoalX) { goal('p'); return; } puck.y = T + PR; puck.vy = Math.abs(puck.vy) * .92; sfx('thud'); }
-        if (puck.y > B - PR) { if (inGoalX) { goal('o'); return; } puck.y = B - PR; puck.vy = -Math.abs(puck.vy) * .92; sfx('thud'); }
+        if (puck.y < T + PR) { if (Math.abs(puck.x - 180) < goalWidth / 2) { goal('p'); return; } puck.y = T + PR; puck.vy = Math.abs(puck.vy) * .92; sfx('thud'); }
+        if (puck.y > B - PR) { if (Math.abs(puck.x - 180) < playerGoalWidth / 2) { goal('o'); return; } puck.y = B - PR; puck.vy = -Math.abs(puck.vy) * .92; sfx('thud'); }
         malletHit(pm, true);
         malletHit(om, false);
         rallyV = Math.hypot(puck.vx, puck.vy);
     }
 
+    function update(dt) {
+        const steps = Math.max(1, Math.ceil(dt / .008));
+        for (let i = 0; i < steps && !finished; i++) tick(dt / steps);
+    }
+
     function finish() {
+        if (finished) return;
+        finished = true;
         const win = me > cpu;
         end({
             win, head: win ? 'TABLE CHAMP!' : 'CPU TAKES IT',
-            lines: [`Final score ${me} – ${cpu}`, win ? 'Ice cold under the neon.' : 'Flick through the puck for power shots', 'Defend your goal mouth!'],
-            stars: Math.max(1, me + (win ? 2 : 0))
+            lines: [`Final score ${me} – ${cpu}`, 'Tap or drag to meet the puck; gentle hits return it', 'Release to let auto-guard help defend'],
+            stars: 0
         });
     }
 
@@ -123,21 +145,21 @@ Minigames.register('airhockey', env => {
         c.strokeStyle = 'rgba(232,121,249,.35)';
         c.beginPath(); c.arc(180, MID, 30, 0, 7); c.stroke();
         // goals
-        for (const [gy, col] of [[T - 4, '#f0abfc'], [B + 4, '#7dd3fc']]) {
+        for (const [gy, col, width] of [[T - 4, '#f0abfc', goalWidth], [B + 4, '#7dd3fc', playerGoalWidth]]) {
             U.glow(c, 180, gy, 60, col === '#7dd3fc' ? 'rgba(125,211,252,.25)' : 'rgba(240,171,252,.25)');
             c.strokeStyle = col; c.lineWidth = 5; c.lineCap = 'round';
-            c.beginPath(); c.moveTo(180 - GW / 2, gy); c.lineTo(180 + GW / 2, gy); c.stroke();
+            c.beginPath(); c.moveTo(180 - width / 2, gy); c.lineTo(180 + width / 2, gy); c.stroke();
         }
         c.lineCap = 'butt';
     }
 
-    function mallet(c, m, col, glow) {
-        U.glow(c, m.x, m.y, MR * 1.7, glow);
-        U.shadow(c, m.x, m.y + MR - 4, MR, 6, .35);
-        const g = c.createRadialGradient(m.x - 6, m.y - 8, 4, m.x, m.y, MR);
+    function mallet(c, m, col, glow, radius = MR) {
+        U.glow(c, m.x, m.y, radius * 1.7, glow);
+        U.shadow(c, m.x, m.y + radius - 4, radius, 6, .35);
+        const g = c.createRadialGradient(m.x - 6, m.y - 8, 4, m.x, m.y, radius);
         g.addColorStop(0, '#fff'); g.addColorStop(.3, col); g.addColorStop(1, 'rgba(0,0,0,.5)');
-        c.fillStyle = g; c.beginPath(); c.arc(m.x, m.y, MR, 0, 7); c.fill();
-        c.fillStyle = col; c.beginPath(); c.arc(m.x, m.y, MR * .45, 0, 7); c.fill();
+        c.fillStyle = g; c.beginPath(); c.arc(m.x, m.y, radius, 0, 7); c.fill();
+        c.fillStyle = col; c.beginPath(); c.arc(m.x, m.y, radius * .45, 0, 7); c.fill();
         c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.arc(m.x - 4, m.y - 5, 4, 0, 7); c.fill();
     }
 
@@ -160,12 +182,12 @@ Minigames.register('airhockey', env => {
         U.text(c, `${cpu}`, 268, 26, { size: 20, color: '#fff' });
         U.text(c, 'CPU', 310, 26, { size: 12, color: '#f0abfc' });
         U.text(c, `FIRST TO ${WIN}`, 180, 62, { size: 10, color: 'rgba(255,255,255,.5)' });
-        if (me + cpu === 0 && holdId === null) U.text(c, 'DRAG IN YOUR HALF TO MOVE THE MALLET', 180, H - 18, { size: 11, color: '#fff', alpha: .55 + .35 * Math.sin(env.time() * 4), stroke: 'rgba(0,0,0,.7)', lw: 3 });
+        U.text(c, holdId === null ? 'AUTO-GUARD ON - TAP OR DRAG TO ATTACK' : 'GENTLE CONTACT RETURNS THE PUCK', 180, H - 18, { size: 10, color: '#fff' });
     }
 
     function draw(c) {
         drawTable(c);
-        mallet(c, om, '#e879f9', 'rgba(232,121,249,.3)');
+        mallet(c, om, '#e879f9', 'rgba(232,121,249,.3)', opponentRadius);
         drawPuck(c);
         mallet(c, pm, '#38bdf8', 'rgba(56,189,248,.3)');
         drawHud(c);
@@ -174,9 +196,9 @@ Minigames.register('airhockey', env => {
     return {
         title: '🏒 Neon Slide',
         goal: 'Beat the CPU to 5 goals',
-        intro: { head: 'NEON SLIDE', lines: ['Drag in your half to move the mallet', 'Flick through the puck for power shots', `First to ${WIN} wins the table`] },
+        intro: { head: 'NEON SLIDE', lines: ['Tap or drag anywhere in your half', 'A gentle hit sends the puck forward', 'Release for automatic goal guarding', `Larger target goal - first to ${WIN}`] },
         init: start, start, update, draw, down, move, up, idle() { },
-        _state: () => ({ me, cpu, puck, pm, om }),
+        _state: () => ({ me, cpu, puck, pm, om, cpuSpeed, maxSpeed, goalWidth, playerGoalWidth, holdId, finished }),
         _set: o => { if (o.puck) Object.assign(puck, o.puck); }
     };
 });
