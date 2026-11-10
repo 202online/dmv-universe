@@ -18,8 +18,8 @@ const walkable = (q,x,y) => !q.solids.some(s => CityLayout.polygonsOverlap(
 
 test('browser global scripts share the same residential geometry without requiring a window property', () => {
     const env = { VehicleArt: context.VehicleArt };
-    vm.runInNewContext(`${fs.readFileSync(`${__dirname}/residential-art.js`, 'utf8')}
-        ${fs.readFileSync(`${__dirname}/city-layout.js`, 'utf8')}
+    vm.runInNewContext(`${fs.readFileSync(`${__dirname}/city-layout.js`, 'utf8')}
+        ${fs.readFileSync(`${__dirname}/residential-art.js`, 'utf8')}
         globalThis.layout = CityLayout.residentialPlan({kind:'apartment',x:0,y:0,w:160,d:110,h:140});`, env);
     assert.equal(env.layout.parking.spaces, 4);
 });
@@ -70,6 +70,7 @@ test('detailed parking, waterfront and trees render finite scalable scenery with
     vm.runInNewContext(`${ground}\n${tree}\nglobalThis.ground=drawGround;globalThis.tree=drawTree;globalThis.planting=drawPlanting;`, env);
     const before = JSON.stringify(context.city.SW);
     env.ground(context.city.SW);
+    assert.ok(polygons.some(p=>p.fill==='#d0d5aa0d'),'natural ground has subtle blade texture rather than alternating green tiles');
     assert.ok(polygons.filter(p => p.fill === '#b4e1d04d').length > 100, 'waterfront has layered wave highlights');
     assert.ok(polygons.some(p => p.fill === '#26333b'), 'attached lots include storm drains');
     assert.ok(polygons.some(p => p.fill === '#a5abaa'), 'waterfront has a paved urban promenade');
@@ -85,10 +86,27 @@ test('detailed parking, waterfront and trees render finite scalable scenery with
     env.tree({ x: 120, y: 210 });
     ellipses.forEach((args, i) => assert.ok(Math.abs(args[2] - normal[i] * 2) < 1e-8, 'foliage scales with map zoom'));
     env.box=(...args)=>args.slice(0,6).forEach(n=>assert.ok(Number.isFinite(n)));
-    for(const setting of ['lawn','pit','raised','berm']) env.tree({x:120,y:210,setting});
+    for(const setting of ['lawn','pit','raised','berm']) {
+        const start=polygons.length;
+        env.tree({x:120,y:210,setting});
+        if(setting==='lawn' || setting==='berm')
+            assert.equal(polygons[start].fill,CityLayout.grassColor,'tree turf blends with the surrounding lawn');
+    }
     for(const q of Object.values(context.city)) for(const bed of q.plantings) env.planting(bed);
     assert.ok(polygons.some(p=>p.fill==='#4e3e30'),'urban trees have an exposed soil opening');
     assert.ok(polygons.some(p=>p.fill==='#574330'),'root flares anchor tree trunks to the soil');
+    for(const color of ['#526240','#81926a','#596f47','#59734b','#63845322'])
+        assert.ok(!polygons.some(p=>p.fill===color),'no contrasting grass disks, bed borders or lawn strips');
+});
+
+test('all quadrants and natural districts use the unchanged residential lawn color', () => {
+    assert.equal(CityLayout.grassColor,'#55754c');
+    assert.equal(CityLayout.grassColor,ResidentialArt.grassColor);
+    for(const q of Object.values(context.city)) {
+        assert.deepEqual([...q.lot],[CityLayout.grassColor,CityLayout.grassColor],'ground and map no longer use quadrant-specific checkerboards');
+        for(const district of q.districts.filter(d=>d.grass))
+            assert.equal(district.color,CityLayout.grassColor,'district grass matches neighboring lawns');
+    }
 });
 
 test('trees match their ground surface and planted gardens keep property access and parking clear', () => {
@@ -155,7 +173,7 @@ test('single-family houses line up with small side yards and generous grassy fro
                 'each house faces its street across the front lawn, never a rear or side service road');
         }
     }
-    assert.match(html, /streetRect\(r, CityLayout.halfWidth, '#c3c6c5'\)/);
+    assert.match(html, /for\(const r of CityLayout.streetBounds\(q\)\) compassRect\(r.e0,r.e1,r.s0,r.s1,'#c3c6c5'\)/);
     assert.match(html, /q.approaches.filter\(a => !a.pedestrian\)/, 'only vehicle approaches cut through sidewalks; no paths to front doors');
     assert.ok(!html.includes('leaveStreetGap'), 'parking entrances must not be clipped away from streets');
 });
@@ -258,7 +276,7 @@ for (const [id, q] of Object.entries(context.city)) {
         const objects = CityLayout.targets(q);
         assert.ok(q.neighborhood.buildings.filter(b => b.type === 'crib').length >= 5);
         assert.ok(q.districts.length >= 2);
-        assert.equal(q.roadAccess.length, objects.length);
+        assert.equal(q.roadAccess.length, objects.length+(q.parkingLot?1:0));
         for (const street of q.neighborhood.streets) {
             for (const b of [...objects, ...(q.parkingLot ? [q.parkingLot] : [])])
                 assert.equal(CityLayout.intersects(street, b), false, `Full street surface clears ${b.name || b.kind}`);
@@ -267,9 +285,9 @@ for (const [id, q] of Object.entries(context.city)) {
             assert.ok(walkable(q,...world(...p)), 'Quadrant crossings stay open');
         for (const [i, b] of objects.entries()) {
             const f=CityLayout.footprint(b);
-            assert.ok(f.e1 <= -120 || f.e0 >= 120,
+            assert.ok(f.e1 <= -CityLayout.halfWidth || f.e0 >= CityLayout.halfWidth,
                 `${b.name || b.kind} clears the full north-south road`);
-            assert.ok(f.s1 <= WORLD - 165 || f.s0 >= WORLD + 165,
+            assert.ok(f.s1 <= WORLD-CityLayout.halfWidth || f.s0 >= WORLD+CityLayout.halfWidth,
                 `${b.name || b.kind} clears the full east-west road`);
             for (const [x, y] of f.corners) {
                 assert.ok(Math.abs(x - y) <= WORLD && x + y >= 0 && x + y <= 2 * WORLD, `${b.name || b.kind} in bounds`);
@@ -281,7 +299,7 @@ for (const [id, q] of Object.entries(context.city)) {
         for (const access of q.roadAccess) {
             assert.ok(access.path.length);
             const end = access.path.at(-1), key = end.join(',');
-            assert.ok(Math.abs(end[0]) <= 60 || Math.abs(end[1] - WORLD) <= 100 || joined.has(key),
+            assert.ok(Math.abs(end[0]) <= CityLayout.roadHalfWidth || Math.abs(end[1]-WORLD) <= CityLayout.roadHalfWidth || joined.has(key),
                 `${access.building.name} joins main or connected street`);
             for (let i = 0; i < access.path.length; i++) {
                 const p = access.path[i], [x, y] = world(...p);
@@ -296,7 +314,7 @@ for (const [id, q] of Object.entries(context.city)) {
             }
             const [x, y] = world(...access.path[0]), b = access.building;
             const distance = CityLayout.distanceTo(b,x,y);
-            assert.ok(distance <= 80, `${b.name} has an adjacent approach`);
+            assert.ok(distance <= 110, `${b.name} has an adjacent approach beyond the wider sidewalk`);
             const [lx,ly]=CityLayout.point(b,x,y,true);
             const [tx,ty]=CityLayout.point(b,Math.max(b.x,Math.min(lx,b.x+b.w)),Math.max(b.y,Math.min(ly,b.y+b.d)));
             assert.ok(walkable(q,tx + (x - tx) / distance * 40, ty + (y - ty) / distance * 40),
@@ -423,6 +441,72 @@ test('cars without a parking pass use public lots while bicycles need no garage'
     assert.equal(env.carBlocked(cx,cy,'SE',garage.heading,env.vehicles.impala), false, 'valid pass permits garage entry');
 });
 
+test('main and side streets share two pickup-sized lanes in rendering, routing and the map', () => {
+    const half=CityLayout.roadHalfWidth,sidewalk=CityLayout.halfWidth,truck=context.VehicleArt.sizes.truck;
+    assert.equal(half,44);
+    assert.ok(half/Math.SQRT2 >= truck.d+14,'each lane has at least fourteen world units beyond pickup width');
+    assert.ok(half*Math.SQRT2 < truck.w*2,'street stays proportional to two vehicles rather than a highway');
+    assert.ok(sidewalk>half);
+    assert.match(html,/const roads = CityLayout.streets\(q\)/,'map uses the same street network');
+    assert.doesNotMatch(html,/r\.main \? 24 : 14/,'map no longer exaggerates main roads');
+    const env=rideWorld();
+    env.setRidePacked(true);
+    for(const [id,q] of Object.entries(env.quadrants)) {
+        const roads=CityLayout.streets(q),bounds=CityLayout.streetBounds(q,0,true),outer=CityLayout.streetBounds(q);
+        for(const [i,road] of roads.entries()) {
+            const vertical=road.a[0]===road.b[0],axis=vertical?'e':'s',f=bounds[i],g=outer[i];
+            assert.equal(f[axis+'1']-f[axis+'0'],2*half,`${id} road ${i}: same asphalt width`);
+            assert.equal(g[axis+'1']-g[axis+'0'],2*sidewalk,`${id} road ${i}: same sidewalks`);
+            const length=Math.hypot(road.b[0]-road.a[0],road.b[1]-road.a[1]);
+            const heading=vertical?[Math.SQRT1_2,Math.SQRT1_2]:[Math.SQRT1_2,-Math.SQRT1_2];
+            for(let t=0;t<=length;t+=12) {
+                const e=road.a[0]+(vertical?0:Math.sign(road.b[0]-road.a[0])*t);
+                const s=road.a[1]+(vertical?Math.sign(road.b[1]-road.a[1])*t:0);
+                const vehicles=[];
+                for(const side of [-1,1]) {
+                    const center=world(e+(vertical?side*CityLayout.laneOffset:0),s+(vertical?0:side*CityLayout.laneOffset));
+                    const corners=CityLayout.vehicleCorners(...center,heading,truck);
+                    assert.ok(corners.every(([x,y])=>x-y>=f.e0 && x-y<=f.e1 && x+y>=f.s0 && x+y<=f.s1),'pickup fits wholly on asphalt in its lane');
+                    assert.equal(env.carBlocked(...center,id,heading,truck),false,`${id} road ${i} pickup lane stays clear`);
+                    vehicles.push(corners);
+                }
+                assert.equal(CityLayout.polygonsOverlap(...vehicles),false,'opposing pickups pass without overlapping');
+            }
+        }
+        for(const access of q.roadAccess) for(let i=1;i<access.path.length-1;i++) {
+            const a=access.path[i-1],p=access.path[i],b=access.path[i+1];
+            if((a[0]===p[0])===(p[0]===b[0]))continue;
+            const center=world(...p);
+            for(let angle=0;angle<Math.PI*2;angle+=Math.PI/12) {
+                const heading=[Math.cos(angle),Math.sin(angle)];
+                assert.equal(env.carBlocked(...center,id,heading,truck),false,`${id} pickup can turn at side-street corners`);
+            }
+        }
+    }
+});
+
+test('pickups can drive from the resized streets through every parking entrance', () => {
+    const env=rideWorld(),truck=env.vehicles.truck;
+    env.setRidePacked(true);
+    for(const [id,q] of Object.entries(env.quadrants)) for(const apron of q.approaches.filter(a=>a.vehicleEntrance)) {
+        let start,end;
+        if(apron.polygon) {
+            const p=apron.polygon;
+            start=[(p[0][0]+p[3][0])/2,(p[0][1]+p[3][1])/2];
+            end=[(p[1][0]+p[2][0])/2,(p[1][1]+p[2][1])/2];
+        } else {
+            const across=apron.heading[0]*apron.heading[1]<0;
+            start=CityLayout.point(apron,apron.x+(across?0:apron.w/2),apron.y+(across?apron.d/2:0));
+            end=CityLayout.point(apron,apron.x+(across?apron.w:apron.w/2),apron.y+(across?apron.d/2:apron.d));
+        }
+        const dx=end[0]-start[0],dy=end[1]-start[1],length=Math.hypot(dx,dy),heading=[dx/length,dy/length];
+        for(let distance=0;distance<=length;distance+=2) {
+            const x=start[0]+heading[0]*distance,y=start[1]+heading[1]*distance;
+            assert.equal(env.carBlocked(x,y,id,heading,truck),false,`${id} ${apron.destination.name||apron.destination.kind}: pickup entrance stays clear at ${distance}/${length}`);
+        }
+    }
+});
+
 test('attached lots and residential driveways keep their pedestrian approaches clear of parked pickups', () => {
     for (const q of Object.values(context.city)) for (const approach of q.approaches) {
         for (const b of CityLayout.targets(q).filter(b => b !== approach.destination))
@@ -439,14 +523,8 @@ test('attached lots and residential driveways keep their pedestrian approaches c
 
 test('parking entrances overlap both lot pavement and street asphalt instead of stopping at sidewalks', () => {
     for (const q of Object.values(context.city)) {
-        const streetPolygons = q.neighborhood.streets.map(r => {
-            const e0 = Math.min(r.a[0],r.b[0])-30, e1 = Math.max(r.a[0],r.b[0])+30;
-            const s0 = Math.min(r.a[1],r.b[1])-30, s1 = Math.max(r.a[1],r.b[1])+30;
-            return [[e0,s0],[e1,s0],[e1,s1],[e0,s1]].map(p=>world(...p));
-        }).concat([
-            [[-70,0],[70,0],[70,3200],[-70,3200]].map(p=>world(...p)),
-            [[-1600,1500],[1600,1500],[1600,1700],[-1600,1700]].map(p=>world(...p))
-        ]);
+        const streetPolygons = CityLayout.streetBounds(q,0,true).map(({e0,e1,s0,s1})=>
+            [[e0,s0],[e1,s0],[e1,s1],[e0,s1]].map(p=>world(...p)));
         for (const area of q.parkingAreas.filter(a=>!CityLayout.residentialPlan(a.destination))) {
             const entrances = q.approaches.filter(a=>a.vehicleEntrance && a.destination===area.destination);
             assert.ok(entrances.some(a=>{
@@ -487,8 +565,8 @@ test('opaque buildings are repositioned so projected roofs clear roads, parking 
             f.corners.flat().forEach(n=>assert.ok(Number.isFinite(n)));
             for(const r of q.neighborhood.streets)
                 assert.equal(CityLayout.intersects(r,visual),false,`${b.name||b.type} roof stays off local streets`);
-            assert.ok(f.e1<=-120 || f.e0>=120,`${b.name} roof stays off main north-south street`);
-            assert.ok(f.s1<=WORLD-165 || f.s0>=WORLD+165,`${b.name} roof stays off main east-west street`);
+            assert.ok(f.e1<=-CityLayout.halfWidth || f.e0>=CityLayout.halfWidth,`${b.name} roof stays off main north-south street`);
+            assert.ok(f.s1<=WORLD-CityLayout.halfWidth || f.s0>=WORLD+CityLayout.halfWidth,`${b.name} roof stays off main east-west street`);
             for(const bay of q.playerParking)
                 assert.equal(CityLayout.overlaps(visual,bay),false,`${b.name} cannot obscure a parking bay`);
             for(const other of CityLayout.targets(q).filter(other=>other!==b))

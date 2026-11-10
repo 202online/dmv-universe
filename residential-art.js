@@ -2,6 +2,7 @@
 
 const ResidentialArt = (() => {
     const vehicles = typeof module !== 'undefined' && module.exports ? require('./vehicle-art.js') : VehicleArt;
+    const grassColor = (typeof module !== 'undefined' && module.exports ? require('./city-layout.js') : CityLayout).grassColor;
     function listing(b) {
         const kind = b.kind || b.style, variant = b.variant ?? (b.kind ? 0 : 1);
         if (b.garage || !['house', 'apartment', 'condo'].includes(kind)) return null;
@@ -85,7 +86,7 @@ const ResidentialArt = (() => {
             c.beginPath(); points.forEach(([x, y, z], i) => { const p = P(x, y, z); i ? c.lineTo(...p) : c.moveTo(...p); });
             c.strokeStyle = color; c.lineWidth = width; c.stroke();
         };
-        plane(b.x, b.y, b.w, b.d, 0, layout.kind === 'apartment' ? '#6d7768' : '#55754c', layout.kind === 'house' ? null : '#9c9b7a');
+        plane(b.x, b.y, b.w, b.d, 0, grassColor);
         if (entrances.length) {
             c.save();
             plane(b.x,b.y,b.w,b.d,0,null,null); c.clip();
@@ -280,7 +281,7 @@ const ResidentialArt = (() => {
             poly([[sx - 7, sy - 10], [sx + 7, sy - 10], [sx, sy]], '#34d399', '#15392d');
         }
     }
-    return { plan, listing, draw, drawGarage };
+    return { plan, listing, draw, drawGarage, grassColor };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = ResidentialArt;

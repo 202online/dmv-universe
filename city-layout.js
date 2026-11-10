@@ -1,7 +1,8 @@
 (function (root) {
     'use strict';
-    const STEP = 20, HALF = 44, SCALE = 1.6, WORLD = 1600;
+    const STEP = 20, ROAD = 44, HALF = 76, SCALE = 1.6, WORLD = 1600;
     const projection = Object.freeze({ x: .87, y: .5 });
+    const grassColor = '#55754c';
     const world = (e, s) => [(s + e) / 2, (s - e) / 2];
     const center = (b, e, s) => {
         const [x, y] = world(e, s);
@@ -14,7 +15,7 @@
                 [300, 150, 'house'], [540, 150, 'condo'], [780, 150, 'apartment']],
             colors: ['#a16c55', '#b49779', '#827e73'],
             districts: [
-                { name: 'Uptown Rowhouses', e: -940, s: 40, w: 1880, d: 300, color: '#36543c', grass: true },
+                { name: 'Uptown Rowhouses', e: -940, s: 40, w: 1880, d: 300, color: grassColor, grass: true },
                 { name: 'U Street Arts District', e: -940, s: 1200, w: 1880, d: 650, color: '#3e4144' }
             ]
         },
@@ -34,8 +35,8 @@
                 [-280, 1750, 'house'], [320, 1320, 'condo'], [760, 1320, 'apartment'], [-80, 1750, 'house']],
             colors: ['#956e5d', '#a27d65', '#87685b'],
             districts: [
-                { name: 'Library Commons', e: -940, s: 1210, w: 1880, d: 410, color: '#426752', grass: true },
-                { name: 'Garden Apartment Courts', e: -940, s: 1630, w: 1880, d: 360, color: '#526b45', grass: true }
+                { name: 'Library Commons', e: -940, s: 1210, w: 1880, d: 410, color: grassColor, grass: true },
+                { name: 'Garden Apartment Courts', e: -940, s: 1630, w: 1880, d: 360, color: grassColor, grass: true }
             ]
         },
         SW: {
@@ -46,7 +47,7 @@
             districts: [
                 { name: 'Waterfront Neighborhood', e: -950, s: 1370, w: 230, d: 600, color: '#8a806a' },
                 { name: 'Civic & Arena District', e: 160, s: 150, w: 780, d: 650, color: '#56636b' },
-                { name: 'Harbor Homes', e: 180, s: 1740, w: 720, d: 240, color: '#647665', grass: true }
+                { name: 'Harbor Homes', e: 180, s: 1740, w: 720, d: 240, color: grassColor, grass: true }
             ]
         }
     };
@@ -169,7 +170,7 @@
             groups.push(group);
         }
         const reserved=q.parkingLot?[q.parkingLot]:[];
-        const mainRoads=[compassArea(-132,132,0,2*WORLD),compassArea(-WORLD,WORLD,WORLD-177,WORLD+177)];
+        const mainRoads=[compassArea(-HALF-12,HALF+12,0,2*WORLD),compassArea(-WORLD,WORLD,WORLD-HALF-12,WORLD+HALF+12)];
         const offsets=[];
         for(let de=-1000;de<=1000;de+=20) for(let ds=-1000;ds<=1000;ds+=20)
             offsets.push({de,ds,distance:de*de+ds*ds});
@@ -186,7 +187,7 @@
                     return {building:b,lot};
                 });
                 surfaces.push(...lots.map(a=>a.lot));
-                const frontages=group.map(b=>region(b,{x:b.x,y:b.y+b.d,w:b.w+(!residentialPlan(b)&&!b.garage?90:0),d:112}));
+                const frontages=group.map(b=>region(b,{x:b.x,y:b.y+b.d,w:b.w+(!residentialPlan(b)&&!b.garage?90:0),d:160}));
                 if(surfaces.some(s=>{
                     const f=footprint(s);
                     return f.e0<-WORLD+8 || f.e1>WORLD-8 || f.s0<8 || f.s1>2*WORLD-8 ||
@@ -215,11 +216,7 @@
 
     function nearRoad(q, x, y, margin = 0) {
         const e = x - y, s = x + y;
-        return Math.abs(e) <= 120 + margin || Math.abs(s - WORLD) <= 165 + margin ||
-            q.neighborhood.streets.some(r => e >= Math.min(r.a[0], r.b[0]) - HALF - margin &&
-                e <= Math.max(r.a[0], r.b[0]) + HALF + margin &&
-                s >= Math.min(r.a[1], r.b[1]) - HALF - margin &&
-                s <= Math.max(r.a[1], r.b[1]) + HALF + margin);
+        return streetBounds(q,margin).some(r=>e>=r.e0 && e<=r.e1 && s>=r.s0 && s<=r.s1);
     }
 
     function intersects(r, b) {
@@ -249,26 +246,28 @@
             if (!edgeCache.has(k)) edgeCache.set(k, !obstacles.some(o => intersects({ a, b }, o)));
             return edgeCache.get(k);
         };
-        for (let e = -WORLD + 60; e <= WORLD - 60; e += STEP) {
-            for (let s = 60; s <= 2 * WORLD - 60; s += STEP) {
+        for (let e = -WORLD + 80; e <= WORLD - 80; e += STEP) {
+            for (let s = 80; s <= 2 * WORLD - 80; s += STEP) {
                 if (obstacles.some(b => intersects({ a: [e, s], b: [e, s] }, b))) continue;
                 const k = key(e, s);
                 free.add(k);
-                if (Math.abs(e) <= 60 || Math.abs(s - WORLD) <= 100) network.add(k);
+                if (Math.abs(e) <= ROAD || Math.abs(s - WORLD) <= ROAD) network.add(k);
             }
         }
         q.neighborhood.streets = [];
         q.roadAccess = [];
-        for (const b of objects) {
+        for (const b of [...objects,...(q.parkingLot?[q.parkingLot]:[])]) {
             // Prefer a front-door approach; other sides serve tightly packed courts.
-            const candidates = [
-                ...(b.garage ? [[b.x + b.w - 72, b.y + b.d + 64]] : []),
-                ...(b.siteParking ? [[b.x+b.w+40,b.y+b.d+52]] : []),
-                [b.x + b.w / 2, b.y + b.d + 64],
-                [b.x - 64, b.y + b.d / 2],
-                [b.x + b.w + 64, b.y + b.d / 2],
-                [b.x + b.w / 2, b.y - 64]
-            ].map(([x, y]) => point(b, x, y))
+            const candidates = (b===q.parkingLot ? [
+                [b.x+b.w/2,b.y+b.d+90],[b.x+b.w/2,b.y-90]
+            ] : [
+                ...(b.garage ? [[b.x + b.w - 72, b.y + b.d + 90]] : []),
+                ...(b.siteParking ? [[b.x+b.w+40,b.y+b.d+80]] : []),
+                [b.x + b.w / 2, b.y + b.d + 90],
+                [b.x - 90, b.y + b.d / 2],
+                [b.x + b.w + 90, b.y + b.d / 2],
+                [b.x + b.w / 2, b.y - 90]
+            ]).map(([x, y]) => point(b, x, y))
                 .map(([x, y]) => [Math.round((x - y) / STEP) * STEP, Math.round((x + y) / STEP) * STEP])
                 .filter(([e, s]) => free.has(key(e, s)));
             let path;
@@ -376,8 +375,8 @@
         const row = candidates.find(({e,s}) => houses.every((b,i) => {
             center(b, e + i * spacing, s);
             const f = footprint(b);
-            const frontage = region(b, { x: b.x - 6, y: b.y + b.d, w: b.w + 12, d: 112 });
-            return (f.e1 < -140 || f.e0 > 140) && (f.s1 < WORLD - 185 || f.s0 > WORLD + 185) &&
+            const frontage = region(b, { x: b.x - 6, y: b.y + b.d, w: b.w + 12, d: 160 });
+            return (f.e1 < -HALF-20 || f.e0 > HALF+20) && (f.s1 < WORLD-HALF-20 || f.s0 > WORLD+HALF+20) &&
                 !obstacles.some(o => overlaps(b,o,16) || overlaps(frontage,o,8));
         }));
         if (!row) throw new Error('No safe single-family residential row');
@@ -388,6 +387,8 @@
     function assignParking(q) {
         q.playerParking = [];
         q.parkingAreas = q.parkingLot ? [{ ...q.parkingLot, destination: q.buildings[0], kind: 'overflow' }] : [];
+        if(q.parkingLot) q.parkingAreas[0].lane=region(q.parkingLot,{
+            x:q.parkingLot.x+46,y:q.parkingLot.y+2,w:q.parkingLot.w-92,d:q.parkingLot.d-4});
         q.approaches = [];
         const addBay = (destination, area, bay) => q.playerParking.push({ ...bay, destination, area });
         for (const destination of targets(q)) {
@@ -434,15 +435,20 @@
         addParkingAprons(q);
     }
 
-    function streetBounds(q, margin = 0) {
+    function streets(q) {
         return [
-            { e0: -120-margin, e1: 120+margin, s0: 0, s1: 2*WORLD },
-            { e0: -WORLD, e1: WORLD, s0: WORLD-165-margin, s1: WORLD+165+margin },
-            ...q.neighborhood.streets.map(r => ({
-                e0: Math.min(r.a[0],r.b[0])-HALF-margin, e1: Math.max(r.a[0],r.b[0])+HALF+margin,
-                s0: Math.min(r.a[1],r.b[1])-HALF-margin, s1: Math.max(r.a[1],r.b[1])+HALF+margin
-            }))
+            {a:[0,0],b:[0,2*WORLD]},
+            {a:[-WORLD,WORLD],b:[WORLD,WORLD]},
+            ...q.neighborhood.streets
         ];
+    }
+
+    function streetBounds(q, margin = 0, asphalt = false) {
+        const half=(asphalt?ROAD:HALF)+margin;
+        return streets(q).map(r=>({
+            e0:Math.min(r.a[0],r.b[0])-half,e1:Math.max(r.a[0],r.b[0])+half,
+            s0:Math.min(r.a[1],r.b[1])-half,s1:Math.max(r.a[1],r.b[1])+half
+        }));
     }
 
     function grassAt(q,x,y) {
@@ -472,7 +478,7 @@
             q.approaches.some(a=>a.polygon ? polygonsOverlap(footprint(area).corners,a.polygon) : overlaps(area,a,8));
         for(const side of [-1,1]) for(let s=300;s<2*WORLD-150;s+=360) {
             if(Math.abs(s-WORLD)<220) continue;
-            const [x,y]=world(side*96,s), area={x:x-8,y:y-8,w:16,d:16,roadAligned:true};
+            const [x,y]=world(side*(ROAD+HALF)/2,s), area={x:x-10,y:y-10,w:20,d:20,roadAligned:true};
             if(!blocked(area) && !q.neighborhood.streets.some(r=>intersects(r,area)) &&
                 !q.lamps.some(l=>Math.hypot(l.x-x,l.y-y)<30) &&
                 !q.trees.some(t=>Math.hypot(t.x-x,t.y-y)<40)) q.trees.push({x,y,scale:.82});
@@ -511,20 +517,17 @@
     }
 
     function addParkingAprons(q) {
-        const roads = [
-            { e0: -70, e1: 70, s0: 0, s1: 2 * WORLD },
-            { e0: -WORLD, e1: WORLD, s0: WORLD - 100, s1: WORLD + 100 },
-            ...q.neighborhood.streets.map(r => ({
-                e0: Math.min(r.a[0],r.b[0]) - 30, e1: Math.max(r.a[0],r.b[0]) + 30,
-                s0: Math.min(r.a[1],r.b[1]) - 30, s1: Math.max(r.a[1],r.b[1]) + 30
-            }))
-        ];
+        const roads = streetBounds(q,0,true);
+        const vehicleLength=(typeof module !== 'undefined' && module.exports ? require('./vehicle-art.js') : VehicleArt).sizes.truck.w;
         const obstacles = [...q.buildings.filter(b => !b.garage), ...q.neighborhood.buildings,
-            ...q.activities.filter(b => b.type === 'boxing')].flatMap(buildingSolids).concat(q.parkingSolids);
+            ...q.activities.filter(b => b.type === 'boxing')].flatMap(buildingSolids).concat(q.parkingSolids,
+                q.parkingLot?[5,q.parkingLot.w-41].map(offset=>
+                    footprint(region(q.parkingLot,{x:q.parkingLot.x+offset,y:q.parkingLot.y,w:36,d:q.parkingLot.d}))):[]);
         for (const area of q.parkingAreas) {
             const lot = footprint(area.lane || area), candidates = [];
             const blocked = obstacles.concat(targets(q).filter(b => b !== area.destination).map(footprint),
-                targets(q).flatMap(visualSolids).map(footprint));
+                targets(q).flatMap(visualSolids).map(footprint),
+                q.playerParking.filter(b=>b.area!==area || area.lane).map(footprint));
             for (const road of roads) for (const axis of ['e','s']) {
                 const cross = axis === 'e' ? 's' : 'e';
                 const lo = Math.max(lot[`${cross}0`],road[`${cross}0`]);
@@ -547,8 +550,10 @@
                 const [cx,cy] = world((e0+e1)/2,(s0+s1)/2);
                 const w = (e1-e0) * Math.SQRT1_2, d = (s1-s0) * Math.SQRT1_2;
                 const apron = { x: cx-w/2, y: cy-d/2, w, d, roadAligned: true,
+                    heading:axis==='e'?[Math.SQRT1_2,-Math.SQRT1_2]:[Math.SQRT1_2,Math.SQRT1_2],
                     destination: area.destination, pedestrian: false, vehicleEntrance: true };
-                const corners = footprint(apron).corners;
+                const corners = footprint({...apron,x:apron.x-(axis==='e'?vehicleLength/2:0),y:apron.y-(axis==='s'?vehicleLength/2:0),
+                    w:w+(axis==='e'?vehicleLength:0),d:d+(axis==='s'?vehicleLength:0)}).corners;
                 if (blocked.some(s => polygonsOverlap(corners,s.corners))) continue;
                 candidates.push({ apron, length: end-start });
             }
@@ -562,11 +567,14 @@
                 const nx = -dy / length * 12, ny = dx / length * 12;
                 const corners = [[start[0]+nx,start[1]+ny],[end[0]+nx,end[1]+ny],
                     [end[0]-nx,end[1]-ny],[start[0]-nx,start[1]-ny]];
-                if (blocked.some(o => polygonsOverlap(corners,o.corners))) continue;
+                const swept=corners.map(([x,y],i)=>[x+dx/length*(i===0||i===3?-vehicleLength/2:vehicleLength/2),
+                    y+dy/length*(i===0||i===3?-vehicleLength/2:vehicleLength/2)]);
+                if (blocked.some(o => polygonsOverlap(swept,o.corners))) continue;
                 const xs = corners.map(p=>p[0]), ys = corners.map(p=>p[1]);
                 const x = Math.min(...xs), y = Math.min(...ys);
                 candidates.push({ length, apron: { x, y, w: Math.max(...xs)-x, d: Math.max(...ys)-y,
-                    polygon: corners, destination: area.destination, pedestrian: false, vehicleEntrance: true } });
+                    polygon: corners, heading:[dx/length,dy/length],
+                    destination: area.destination, pedestrian: false, vehicleEntrance: true } });
             }
             candidates.sort((a,b) => a.length-b.length);
             if (!candidates.length) throw new Error(`No clear parking entrance for ${area.destination.name || area.destination.type || area.kind}`);
@@ -575,8 +583,8 @@
     }
 
     const api = { apply, targets, nearRoad, intersects, designs, point, footprint, overlaps, distanceTo, front, polygonsOverlap,
-        residentialPlan, region, vehicleCorners, contains, buildingSolids, visualSolids, streetBounds, grassAt, landscape,
-        halfWidth: HALF, world: WORLD, scale: SCALE, projection };
+        residentialPlan, region, vehicleCorners, contains, buildingSolids, visualSolids, streets, streetBounds, grassAt, landscape,
+        halfWidth: HALF, roadHalfWidth: ROAD, laneOffset: ROAD/2, world: WORLD, scale: SCALE, projection, grassColor };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     root.CityLayout = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

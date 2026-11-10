@@ -168,6 +168,15 @@ matching rooflines and separate front parking.
 Buildings, arenas, fields and parking run parallel to the existing compass
 street grid. Artwork, collision polygons, entrances, garage attachments,
 parking orientation and map footprints share the same rotation.
+Main and side streets use the same two-lane dimensions: 88 compass units of
+asphalt (about 62 world units), giving each lane about 31 units of width for
+the 16-unit-wide pickup. Sidewalks add about 23 world units on each side.
+Rendering, map widths, street routing, building setbacks, vehicle entrances,
+crosswalks and roadside placements all use these shared dimensions.
+Natural ground in every quadrant, residential lawns, grassy districts and tree-base
+turf use the existing lawn color so adjacent surfaces blend without contrasting
+green blocks. Sparse grass-blade details replace the old ground checkerboard;
+soil, bark, planter rims and paved districts keep their distinct materials.
 Neighborhood homes open the same saved home/computer/TV menu as The Crib.
 Each residential type now has three distinct silhouettes: bay-front, L-shaped
 and porch/setback houses; L-wing, stepped-tower and courtyard condos; slab,

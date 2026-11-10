@@ -23,6 +23,20 @@ test('nine residential silhouettes reserve bounded driveways or apartment parkin
     assert.equal(forms.size, 9);
 });
 
+test('houses, condos and apartments share one borderless lawn color', () => {
+    for(const kind of ['house','condo','apartment']) {
+        const planes=[];
+        Art.draw({x:0,y:0,w:170,d:130,h:125,kind,variant:0,color:'#976b53',trim:'#e3ceb0'},{
+            ctx:new Proxy({}, {get:()=>()=>{}}),
+            P:(x,y,z=0)=>[x-y,(x+y)/2-z],
+            poly(points,fill,stroke){planes.push({points,fill,stroke});},
+            box(){},shade:c=>c
+        });
+        assert.equal(planes[0].fill,Art.grassColor);
+        assert.equal(planes[0].stroke,undefined,'no visible plot outline divides matching lawns');
+    }
+});
+
 test('roofs, balconies, driveways, garages and apartment spaces draw within each property boundary', () => {
     for (const [w, d] of [[80, 60], [140, 100], [160, 110], [170, 130]]) {
         const b = { x: 100, y: 200, w, d, h: 125, color: '#976b53', trim: '#e3ceb0' };

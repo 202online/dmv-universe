@@ -438,7 +438,7 @@
 
         // Base layout coordinates are expanded by CityLayout; the main crossroads is at south = WORLD.
         const fromCompass = (east, south) => [(south + east) / 2, (south - east) / 2];
-        const ROAD_CLEAR_E = 130, ROAD_CLEAR_S = [WORLD - 170, WORLD + 170];
+        const ROAD_CLEAR_E = CityLayout.halfWidth, ROAD_CLEAR_S = [WORLD-CityLayout.halfWidth,WORLD+CityLayout.halfWidth];
         const commonTrees = [];
         for (let east = -900; east <= 900; east += 150) {
             for (let south = 120; south <= 1900; south += 150) {
@@ -449,7 +449,7 @@
         const quadrants = {
             NW: {
                 name: "NW: Uptown",
-                lot: ['#234633', '#294e38'], hoodie: '#002B49', accent: '#E31837',
+                lot: [CityLayout.grassColor, CityLayout.grassColor], hoodie: '#002B49', accent: '#E31837',
                 identity: 'Fashion, leafy neighborhoods, parks, recreation and nightlife',
                 parkingLot: { x: 320, y: 145, w: 130, d: 195 },
                 buildings: [
@@ -464,7 +464,7 @@
             },
             NE: {
                 name: "NE: Norf Eatz",
-                lot: ['#343b32', '#3a4034'], hoodie: '#5A1414', accent: '#FFB612',
+                lot: [CityLayout.grassColor, CityLayout.grassColor], hoodie: '#5A1414', accent: '#FFB612',
                 identity: 'Food, culture and recreation with an artistic street vibe',
                 buildings: [
                     { name: "Capital Centre Mall", x: 100, y: 190, w: 240, d: 150, h: 120, color: '#b59a7d', trim: '#71483e', neon: '#fcd34d', style: 'mall', type: 'retail' },
@@ -480,7 +480,7 @@
             },
             SE: {
                 name: "SE: Souf East",
-                lot: ['#344435', '#3a4938'], hoodie: '#1d4ed8', accent: '#ef4444',
+                lot: [CityLayout.grassColor, CityLayout.grassColor], hoodie: '#1d4ed8', accent: '#ef4444',
                 identity: 'Neighborhood life, community and recreation with an urban street vibe',
                 buildings: [
                     { name: "The Crib (Apartment)", x: 120, y: 210, w: 170, d: 130, h: 175, color: '#9b6653', trim: '#e3b997', neon: '#fca5a5', style: 'apartment', type: 'crib' },
@@ -494,7 +494,7 @@
             },
             SW: {
                 name: "SW: Souf West",
-                lot: ['#29423c', '#304b42'], hoodie: '#AB0003', accent: '#ffffff',
+                lot: [CityLayout.grassColor, CityLayout.grassColor], hoodie: '#AB0003', accent: '#ffffff',
                 identity: 'Waterfront, apartment neighborhoods and restaurants',
                 buildings: [
                     { name: "Waterfront Sports Arena", x: 90, y: 170, w: 260, d: 170, h: 110, color: '#566b76', trim: '#d8b8a0', neon: '#ffffff', style: 'arena', shape: 'oval', type: 'arena' },
@@ -639,12 +639,16 @@
                 .filter(([x, y]) => !CityLayout.nearRoad(q, x, y, 24))
                 .map(([x, y]) => ({ x, y }));
             q.lamps = [];
+            const sidewalkCenter=(CityLayout.roadHalfWidth+CityLayout.halfWidth)/2;
             for (const side of [-1, 1]) {
                 for (let s = 180; s < 2 * WORLD; s += 240)
-                    if (Math.abs(s - WORLD) > 200) { const [x, y] = fromCompass(side * 112, s); q.lamps.push({ x, y }); }
+                    if (Math.abs(s - WORLD) > CityLayout.halfWidth+35) { const [x, y] = fromCompass(side*sidewalkCenter,s); q.lamps.push({ x, y }); }
                 for (let e = -WORLD + 180; e < WORLD; e += 240)
-                    if (Math.abs(e) > 160) { const [x, y] = fromCompass(e, WORLD + side * 145); q.lamps.push({ x, y }); }
+                    if (Math.abs(e) > CityLayout.halfWidth+35) { const [x, y] = fromCompass(e,WORLD+side*sidewalkCenter); q.lamps.push({ x, y }); }
             }
+            q.lamps=q.lamps.filter(l=>!CityLayout.streetBounds(q,6,true).some(r=>
+                l.x-l.y>=r.e0 && l.x-l.y<=r.e1 && l.x+l.y>=r.s0 && l.x+l.y<=r.s1) &&
+                !near(q.parkingAreas,l.x,l.y,8) && !near(q.approaches,l.x,l.y,8));
             const billboardSpots = [];
             CityLayout.landscape(q);
             for (const side of [1, -1]) {
@@ -1517,56 +1521,41 @@
                     if (screenX < -TILE || screenX > W + TILE || screenY < -TILE || screenY > H + TILE) continue;
                     const col = q.lot[(tx + ty) & 1];
                     poly([P(x, y), P(x + TILE, y), P(x + TILE, y + TILE), P(x, y + TILE)], col, col, 0.6);
+                    for(let i=0;i<5;i++) {
+                        const gx=x+8+((tx*17+ty*31+i*23)%80+80)%80;
+                        const gy=y+8+((tx*29+ty*11+i*37)%80+80)%80;
+                        poly([P(gx,gy),P(gx+1,gy-3),P(gx+2,gy)],'#d0d5aa0d');
+                    }
                 }
             }
             // Compass-aligned rectangles appear as straight horizontal and vertical bands on screen.
             const compassRect = (e0, e1, s0, s1, fill, stroke) => poly(
                 [[e0, s0], [e1, s0], [e1, s1], [e0, s1]].map(([e, s]) => P(...fromCompass(e, s))), fill, stroke);
-            for (const district of q.districts)
+            for (const district of q.districts.filter(d=>!d.grass))
                 compassRect(district.e, district.e + district.w, district.s, district.s + district.d, district.color);
             for (const yard of q.houseYards || []) roadAligned(yard, () => {
-                groundRect(yard.x, yard.y, yard.w, yard.d, '#55754c');
-                for (let x = yard.x; x < yard.x + yard.w; x += 16)
-                    groundRect(x, yard.y, Math.min(8, yard.x + yard.w - x), yard.d, '#63845322');
+                groundRect(yard.x, yard.y, yard.w, yard.d, CityLayout.grassColor);
             });
-            const streetRect = (r, half, color) => compassRect(
-                Math.min(r.a[0], r.b[0]) - half, Math.max(r.a[0], r.b[0]) + half,
-                Math.min(r.a[1], r.b[1]) - half, Math.max(r.a[1], r.b[1]) + half, color);
-            q.neighborhood.streets.forEach(r => streetRect(r, CityLayout.halfWidth, '#c3c6c5'));
-            compassRect(-120, 120, 0, 2 * WORLD, '#c3c6c5', '#a8acab');
-            compassRect(-WORLD, WORLD, WORLD - 165, WORLD + 165, '#c3c6c5', '#a8acab');
-            q.neighborhood.streets.forEach(r => streetRect(r, 30, '#2e3340'));
-            compassRect(-70, 70, 0, 2 * WORLD, '#2e3340');
-            compassRect(-WORLD, WORLD, WORLD - 100, WORLD + 100, '#2e3340');
-            for (const r of q.neighborhood.streets) {
+            const roads=CityLayout.streets(q), asphalt=CityLayout.streetBounds(q,0,true), half=CityLayout.roadHalfWidth;
+            for(const r of CityLayout.streetBounds(q)) compassRect(r.e0,r.e1,r.s0,r.s1,'#c3c6c5');
+            for(const r of asphalt) compassRect(r.e0,r.e1,r.s0,r.s1,'#2e3340');
+            for (const [index,r] of roads.entries()) {
                 const vertical = r.a[0] === r.b[0], axis = vertical ? 1 : 0;
                 const start = Math.min(r.a[axis], r.b[axis]), end = Math.max(r.a[axis], r.b[axis]);
                 for (let n = Math.ceil(start / 60) * 60; n + 20 < end; n += 60) {
                     const e = vertical ? r.a[0] : n, s = vertical ? n : r.a[1];
-                    if (Math.abs(e) < 80 || Math.abs(s - WORLD) < 110) continue;
+                    if(asphalt.some((other,i)=>i!==index && (roads[i].a[0]===roads[i].b[0])!==vertical &&
+                        e+20>=other.e0 && e<=other.e1 && s+20>=other.s0 && s<=other.s1)) continue;
                     compassRect(e - (vertical ? 2 : 0), e + (vertical ? 2 : 20),
                         s - (vertical ? 0 : 2), s + (vertical ? 20 : 2), '#fbbf24');
                 }
             }
-            // Lane dashes
-            for (let s = 30; s < 2 * WORLD; s += 100) {
-                if (s + 40 > WORLD - 110 && s < WORLD + 110) continue;
-                compassRect(-3, 3, s, s + 40, '#fbbf24');
-            }
-            for (let e = -WORLD + 30; e < WORLD; e += 100) {
-                if (e + 40 > -80 && e < 80) continue;
-                compassRect(e, e + 40, WORLD - 3, WORLD + 3, '#fbbf24');
-            }
-            // Crosswalks at the four sides of the intersection
-            for (let i = 0; i < 6; i++) {
-                const o = -60 + i * 22;
-                compassRect(o, o + 10, WORLD + 105, WORLD + 160, 'rgba(255,255,255,.65)');
-                compassRect(o, o + 10, WORLD - 160, WORLD - 105, 'rgba(255,255,255,.65)');
-            }
-            for (let i = 0; i < 4; i++) {
-                const o = WORLD - 94 + i * 24;
-                compassRect(75, 118, o, o + 12, 'rgba(255,255,255,.65)');
-                compassRect(-118, -75, o, o + 12, 'rgba(255,255,255,.65)');
+            for(let o=-half+5;o+10<half;o+=20) {
+                for(const side of [-1,1]) {
+                    const a=side*(half+10),b=side*(half+26);
+                    compassRect(o,o+10,WORLD+Math.min(a,b),WORLD+Math.max(a,b),'rgba(255,255,255,.65)');
+                    compassRect(Math.min(a,b),Math.max(a,b),WORLD+o,WORLD+o+10,'rgba(255,255,255,.65)');
+                }
             }
             if (currentQuadrant === 'SW') {
                 compassRect(-WORLD - 1600, -WORLD, 250, 2 * WORLD - 250, '#203e49');
@@ -1635,7 +1624,8 @@
                 }
             }
             // Small cocoa-toned utility covers along the sidewalks.
-            [[95, 500], [-95, 1500], [-95, 400], [95, 1650], [400, 1135], [-400, 865]].forEach(([e, s]) => {
+            const sidewalk=(CityLayout.roadHalfWidth+CityLayout.halfWidth)/2;
+            [[sidewalk,500],[-sidewalk,1000],[-sidewalk,400],[sidewalk,2100],[400,WORLD+sidewalk],[-400,WORLD-sidewalk]].forEach(([e,s])=>{
                 const [x, y] = fromCompass(e, s);
                 groundRect(x - 9, y - 9, 18, 18, '#59443e', '#79615a');
                 groundRect(x - 6, y - 1, 12, 2, '#8a6c5e');
@@ -2163,7 +2153,7 @@
             roadAligned(bed,()=>{
                 const z=bed.raised?3:0;
                 if(bed.raised) box(bed.x,bed.y,0,bed.w,bed.d,z,'#8e8170','#c3b9a2');
-                groundRect(bed.x-1,bed.y-1,bed.w+2,bed.d+2,bed.raised?'#8a806b':'#59734b');
+                groundRect(bed.x-1,bed.y-1,bed.w+2,bed.d+2,bed.raised?'#8a806b':CityLayout.grassColor);
                 poly([[bed.x,bed.y],[bed.x+bed.w,bed.y],[bed.x+bed.w,bed.y+bed.d],[bed.x,bed.y+bed.d]]
                     .map(p=>P(...p,z+.2)),'#48382e','#8d7860',.7);
                 const [ox,oy]=P(bed.x,bed.y),[px,py]=P(bed.x+1,bed.y);
@@ -2207,8 +2197,8 @@
                         .map(p=>P(...p,base+.2)),'#4e3e30','#716b52',.8);
                 });
             } else {
-                if(t.setting==='berm') {ring(14,0,'#81926a');ring(12,1,'#596f47');}
-                ring(t.setting==='berm'?9:7,base+.15,'#526240');
+                if(t.setting==='berm') {ring(14,0,CityLayout.grassColor);ring(12,1,CityLayout.grassColor);}
+                ring(t.setting==='berm'?9:7,base+.15,CityLayout.grassColor);
                 ring(5,base+.3,'#6a5340');
             }
             const [sx, sy] = P(t.x, t.y,base), [px, py] = P(t.x + 1, t.y,base);
@@ -2529,7 +2519,7 @@
                 }
                 if (elapsed >= 2) {
                     const p = elapsed - 2;
-                    const e = (player.x-player.y)*(1-p)+55*p;
+                    const e = (player.x-player.y)*(1-p)+CityLayout.laneOffset*p;
                     const s = (player.x+player.y)*(1-p)+(station.x+station.y+(station.w+station.d)/2)*p;
                     const [sx, sy] = P(...fromCompass(e, s));
                     drawAvatar(ctx, sx, sy, player.appearance, player.features, shirts[progress.shirt].color, 0, 0, -1, 0);
@@ -2567,7 +2557,7 @@
                 const elapsed = Math.max(0, (Date.now() - transitTrip.started) / 1000);
                 const offset = elapsed < 2 ? -220 * (1 - elapsed / 2) : elapsed > 3 ? 150 * (elapsed - 3) : 0;
                 const [, south] = [station.x - station.y, station.x + station.y + (station.w + station.d) / 2];
-                const [cx, cy] = fromCompass(55, south + offset);
+                const [cx, cy] = fromCompass(CityLayout.laneOffset, south + offset);
                 objs.push({ x0: cx - 25, y0: cy - 25, x1: cx + 25, y1: cy + 25, draw: () => drawTransitBus(cx, cy) });
             }
             if (pets.companion && player.appearance && !driving.active && !modalOpen()) {
@@ -2594,7 +2584,8 @@
             q.plantings.forEach(bed=>objs.push({...CityLayout.footprint(bed),draw:()=>drawPlanting(bed)}));
             const sg = NEIGHBORS[currentQuadrant];
             Object.keys(sg).forEach(e => {
-                const [x, y] = fromCompass(...{ E: [WORLD - 70, WORLD + 135], W: [-WORLD + 70, WORLD + 135], S: [95, 2 * WORLD - 60], N: [95, 60] }[e]);
+                const sidewalk=(CityLayout.roadHalfWidth+CityLayout.halfWidth)/2;
+                const [x, y] = fromCompass(...{ E: [WORLD - 70,WORLD+sidewalk], W: [-WORLD + 70,WORLD+sidewalk], S: [sidewalk,2*WORLD-60], N: [sidewalk,60] }[e]);
                 objs.push({ x0: x - 2, y0: y - 2, x1: x + 2, y1: y + 2, draw: () => drawEdgeSign(e, x, y) });
             });
             q.lamps.forEach(l => objs.push({ x0: l.x - 2, y0: l.y - 2, x1: l.x + 2, y1: l.y + 2, draw: () => drawLamp(l) }));
@@ -2696,15 +2687,12 @@
             mapCtx.fillText('S', 180, 355);
             mapCtx.fillText('W', 10, 184);
             mapCtx.fillText('E', 350, 184);
-            const roads = [
-                { a: [0, 0], b: [0, 2 * WORLD], main: true },
-                { a: [-WORLD, WORLD], b: [WORLD, WORLD], main: true },
-                ...q.neighborhood.streets
-            ];
+            const roads = CityLayout.streets(q);
             for (const color of ['#948f8c', '#2e3340']) {
                 mapCtx.strokeStyle = color;
                 for (const r of roads) {
-                    mapCtx.lineWidth = ((r.main ? 24 : 14) - (color === '#2e3340' ? 5 : 0)) / CityLayout.scale;
+                    mapCtx.lineWidth = 2*(color==='#2e3340'?CityLayout.roadHalfWidth:CityLayout.halfWidth)*320/(2*WORLD);
+                    mapCtx.lineCap='square';
                     const start = project(...fromCompass(...r.a)), end = project(...fromCompass(...r.b));
                     mapCtx.beginPath(); mapCtx.moveTo(...start); mapCtx.lineTo(...end); mapCtx.stroke();
                 }
