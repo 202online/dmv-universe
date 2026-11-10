@@ -6,7 +6,7 @@ const Catalog = require('./clothing-catalog.js');
 
 const colorIds = ['red', 'yellow', 'blue', 'green', 'black', 'pink', 'purple', 'orange'];
 
-test('catalog has 8 tees, sweatpants, shoes, zip hoodies and fitted caps plus black jeans', () => {
+test('catalog has 8 tees, sweatpants, shorts, shoes, zip hoodies and fitted caps plus black jeans', () => {
     assert.deepStrictEqual(Object.keys(Catalog.colors), colorIds);
     const count = style => Catalog.items.filter(i => i.style === style).length;
     assert.strictEqual(count('tshirt'), 8);
@@ -16,11 +16,16 @@ test('catalog has 8 tees, sweatpants, shoes, zip hoodies and fitted caps plus bl
     assert.strictEqual(Catalog.get('black-jeans').name, 'Generic Black Jeans');
     assert.strictEqual(count('hoodie'), 8);
     assert.strictEqual(count('fittedcap'), 8);
-    assert.strictEqual(Catalog.items.length, 41);
+    assert.strictEqual(count('shorts'), 8);
+    assert.strictEqual(Catalog.items.length, 49);
     assert.strictEqual(Catalog.get('pink-hoodie').name, 'Generic Pink Zip Hoodie');
     assert.strictEqual(Catalog.get('blue-fittedcap').name, 'Generic Blue Fitted Cap');
-    for (const style of ['tshirt', 'sweatpants', 'sneakers', 'hoodie', 'fittedcap'])
+    for (const style of ['tshirt', 'sweatpants', 'shorts', 'sneakers', 'hoodie', 'fittedcap'])
         assert.deepStrictEqual(Catalog.items.filter(i => i.style === style).map(i => i.color), colorIds);
+    for (const color of colorIds) {
+        assert.strictEqual(Catalog.get(`${color}-shorts`).hex, Catalog.get(`${color}-tshirt`).hex);
+        assert.strictEqual(Catalog.get(`${color}-shorts`).hex, Catalog.get(`${color}-sweatpants`).hex);
+    }
 });
 
 test('items have unique ids, valid colors and correct slots', () => {
@@ -32,7 +37,7 @@ test('items have unique ids, valid colors and correct slots', () => {
         assert.ok(Object.isFrozen(i));
     }
     assert.strictEqual(Catalog.bySlot('top').length, 8);
-    assert.strictEqual(Catalog.bySlot('bottom').length, 9);
+    assert.strictEqual(Catalog.bySlot('bottom').length, 17);
     assert.strictEqual(Catalog.bySlot('shoes').length, 8);
     assert.strictEqual(Catalog.bySlot('outerwear').length, 8);
     assert.strictEqual(Catalog.bySlot('hat').length, 8);
@@ -106,7 +111,7 @@ test('drawWorn renders hoodies and caps in every direction and rejects wrong ite
 test('every catalog item can be worn with every hair style, facing and walk frame', () => {
     const ctx = new Proxy({}, { get: (t, k) => k in t ? t[k] : (...a) => a.filter(n => typeof n === 'number').forEach(n => assert.ok(Number.isFinite(n), `${String(k)} ${n}`)),
         set: (t, k, v) => (t[k] = v, true) });
-    const slotFor = { tshirt: 'top', sweatpants: 'bottom', jeans: 'bottom', sneakers: 'shoes', hoodie: 'hoodie', fittedcap: 'cap' };
+    const slotFor = { tshirt: 'top', sweatpants: 'bottom', shorts: 'bottom', jeans: 'bottom', sneakers: 'shoes', hoodie: 'hoodie', fittedcap: 'cap' };
     for (const i of Catalog.items) for (const hair of ['short', 'curly', 'long']) for (const [fx, fy] of [[0, 1], [1, 0], [0, -1], [-1, 0]])
         for (const [bob, sw] of [[0, 0], [2, 5], [1, -5], [-.35, 0]])
             Catalog.drawWorn(ctx, { [slotFor[i.style]]: i.id }, { sx: 40, sy: 80, bob, sw, fx, fy, hair });

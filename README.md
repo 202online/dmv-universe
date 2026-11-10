@@ -55,8 +55,8 @@ Every ride has six colors, including white and black. Bikes and scooters start i
 paint existed get a random two-wheeler color and the default car colors.
 
 `clothing-catalog.js` defines the clothing catalog in eight colors (red, yellow,
-blue, green, black, pink, purple and orange): generic T-shirts, sweatpants and
-shoes, plus black jeans, solid zip hoodies and fitted caps. All 41 items have no
+blue, green, black, pink, purple and orange): generic T-shirts, sweatpants,
+matching knee-length shorts and shoes, plus black jeans, solid zip hoodies and fitted caps. All 49 items have no
 price (`price: null`), are not listed (`listed: false`), and are not loaded by
 the game or sold in any shop yet.
 

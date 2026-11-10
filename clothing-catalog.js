@@ -17,6 +17,7 @@ const ClothingCatalog = (() => {
     const styles = {
         tshirt: { slot: 'top', label: 'T-shirt' },
         sweatpants: { slot: 'bottom', label: 'Sweatpants' },
+        shorts: { slot: 'bottom', label: 'Shorts' },
         jeans: { slot: 'bottom', label: 'Jeans' },
         sneakers: { slot: 'shoes', label: 'Shoes' },
         hoodie: { slot: 'outerwear', label: 'Zip Hoodie', wearStates: ['zip', 'hood'] },
@@ -32,6 +33,7 @@ const ClothingCatalog = (() => {
         ...colorIds.map(c => item('tshirt', c)),
         item('jeans', 'black', { name: 'Generic Black Jeans', hex: '#202024', trim: '#5b5b66' }),
         ...colorIds.map(c => item('sweatpants', c)),
+        ...colorIds.map(c => item('shorts', c)),
         ...colorIds.map(c => item('sneakers', c)),
         ...colorIds.map(c => item('hoodie', c)),
         ...colorIds.map(c => item('fittedcap', c))
@@ -55,6 +57,7 @@ const ClothingCatalog = (() => {
         const art = {
             tshirt: `<path d="M30 14l12-6q8 6 16 0l12 6 14 14-10 10-6-5v45H32V33l-6 5-10-10z" fill="${c}" stroke="${t}" stroke-width="2"/><path d="M42 8q8 8 16 0" fill="none" stroke="${t}" stroke-width="2"/>`,
             sweatpants: `<path d="M30 10h40l4 74H54L50 36l-4 48H26z" fill="${c}" stroke="${t}" stroke-width="2"/><path d="M30 16h40" stroke="${t}" stroke-width="3"/><path d="M48 16v8m4-8v8" stroke="#f3f4f6" stroke-width="1.5"/><path d="M27 76h18m10 0h18" stroke="${t}" stroke-width="5"/>`,
+            shorts: `<path d="M28 10h44l3 48H54L50 32l-4 26H25z" fill="${c}" stroke="${t}" stroke-width="2"/><path d="M28 16h44m-46 38h20m8 0h20" stroke="${t}" stroke-width="3"/><path d="M48 16v8m4-8v8" stroke="#f3f4f6" stroke-width="1.5"/><path d="M34 22l-5 12m37-12l5 12" stroke="${t}" stroke-width="1.5"/>`,
             jeans: `<path d="M30 10h40l4 76H55L50 36l-5 50H26z" fill="${c}" stroke="${t}" stroke-width="2"/><path d="M30 17h40" stroke="${t}" stroke-width="2"/><path d="M36 17q2 9 10 9m18-9q-2 9-10 9" fill="none" stroke="#a88d5a" stroke-width="1.2" stroke-dasharray="2 2"/><path d="M50 17v18" stroke="${t}"/>`,
             hoodie: `<path d="M50 ${18 - hood * 8}q${-17 - hood * 3} ${-1 - hood * 6} ${-16 - hood * 4} ${12 + hood * 4}q${6 + hood * 2} ${5 + hood * 8} 16 ${4 + hood * 3}q${10 - hood * 2} ${1 + hood * 5} 16 ${-4 - hood * 8}q1 ${-13 - hood * 2} -16 ${-12 - hood * 4}z" fill="${t}" stroke="${t}"/>` +
                 `<path d="M50 ${26 - hood * 6}q-8 ${-4 - hood * 4} -9 ${4 + hood * 2}q4 4 9 3q5 1 9 -3q-1 ${-8 - hood * 2} -9 ${-4 - hood * 4}z" fill="#111827" opacity="${.35 + hood * .45}"/>` +
@@ -95,7 +98,7 @@ const ClothingCatalog = (() => {
     const toggleWear = (state, part, now) => setWear(state, part, state[part].to < .5, now);
     const animating = (state, now) => Object.keys(ANIM_MS).some(p => now - state[p].start < ANIM_MS[p]);
 
-    const OUTFIT_SLOTS = { top: ['tshirt'], bottom: ['sweatpants', 'jeans'], shoes: ['sneakers'], hoodie: ['hoodie'], cap: ['fittedcap'] };
+    const OUTFIT_SLOTS = { top: ['tshirt'], bottom: ['sweatpants', 'jeans', 'shorts'], shoes: ['sneakers'], hoodie: ['hoodie'], cap: ['fittedcap'] };
     const SLOT_LABEL = { top: 'T-shirt', bottom: 'bottom', shoes: 'pair of shoes', hoodie: 'hoodie', cap: 'fitted cap' };
     function outfitItems(outfit) {
         const worn = {};
@@ -137,6 +140,16 @@ const ClothingCatalog = (() => {
             ctx.beginPath(); ctx.rect(sx - 20, sy - 15 - bob, 40, 40); ctx.clip();
             for (const side of [-1, 1]) {
                 const x0 = sx + side * 3, x1 = x0 - side * sw * .6;
+                if (pants.style === 'shorts') {
+                    // Cover the base avatar's trousers with bare legs, then dress the upper legs.
+                    line(x0, hip, x1, sy - 2, skin, 5);
+                    line(x0 - 1, hip, x1 - 1, sy - 5, skin, 1.2);
+                    const kneeY = sy - 9 - bob * .45, kneeX = lerp(x0, x1, (kneeY - hip) / (sy - 2 - hip));
+                    line(x0, hip, kneeX, kneeY, t, 6.4);
+                    line(x0, hip, kneeX, kneeY, c, 5.4);
+                    line(kneeX - 2.4, kneeY + .2, kneeX + 2.4, kneeY + .2, t, .7);
+                    continue;
+                }
                 line(x0, hip, x1, sy - 2.2, t, pants.style === 'jeans' ? 5.8 : 6.4);
                 line(x0, hip, x1, sy - 2.2, c, pants.style === 'jeans' ? 4.8 : 5.4);
                 if (pants.style === 'sweatpants') {
