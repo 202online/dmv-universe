@@ -66,8 +66,8 @@ test('detailed parking, waterfront and trees render finite scalable scenery with
         }
     };
     const ground = html.slice(html.indexOf('function drawGround('), html.indexOf('function groundCircle('));
-    const tree = html.slice(html.indexOf('function drawTree('), html.indexOf('function drawLamp('));
-    vm.runInNewContext(`${ground}\n${tree}\nglobalThis.ground=drawGround;globalThis.tree=drawTree;`, env);
+    const tree = html.slice(html.indexOf('function drawPlanting('), html.indexOf('function drawLamp('));
+    vm.runInNewContext(`${ground}\n${tree}\nglobalThis.ground=drawGround;globalThis.tree=drawTree;globalThis.planting=drawPlanting;`, env);
     const before = JSON.stringify(context.city.SW);
     env.ground(context.city.SW);
     assert.ok(polygons.filter(p => p.fill === '#b4e1d04d').length > 100, 'waterfront has layered wave highlights');
@@ -84,6 +84,44 @@ test('detailed parking, waterfront and trees render finite scalable scenery with
     env.P = (x, y, z = 0) => [(x - y) * 3.2, (x + y) * 1.6 - z * 2];
     env.tree({ x: 120, y: 210 });
     ellipses.forEach((args, i) => assert.ok(Math.abs(args[2] - normal[i] * 2) < 1e-8, 'foliage scales with map zoom'));
+    env.box=(...args)=>args.slice(0,6).forEach(n=>assert.ok(Number.isFinite(n)));
+    for(const setting of ['lawn','pit','raised','berm']) env.tree({x:120,y:210,setting});
+    for(const q of Object.values(context.city)) for(const bed of q.plantings) env.planting(bed);
+    assert.ok(polygons.some(p=>p.fill==='#4e3e30'),'urban trees have an exposed soil opening');
+    assert.ok(polygons.some(p=>p.fill==='#574330'),'root flares anchor tree trunks to the soil');
+});
+
+test('trees match their ground surface and planted gardens keep property access and parking clear', () => {
+    const settings=new Set(),species=new Set();
+    for(const q of Object.values(context.city)) {
+        assert.ok(q.plantings.length>=12,'every quadrant has several planted beds');
+        for(const tree of q.trees) {
+            settings.add(tree.setting);
+            assert.ok(['lawn','pit','raised','berm'].includes(tree.setting));
+            const area={x:tree.x-10,y:tree.y-10,w:20,d:20,roadAligned:true};
+            const natural=CityLayout.footprint(area).corners.every(p=>CityLayout.grassAt(q,...p));
+            assert.equal(tree.setting==='lawn',natural,'unboxed trees stand wholly on natural grass');
+            for(const a of q.approaches.filter(a=>a.vehicleEntrance))
+                assert.equal(CityLayout.polygonsOverlap(CityLayout.footprint(area).corners,
+                    a.polygon||CityLayout.footprint(a).corners),false,'tree bases never block a driveway entrance');
+        }
+        for(const building of CityLayout.targets(q).filter(b=>CityLayout.residentialPlan(b)))
+            assert.ok(q.plantings.some(p=>p.building===building),`${building.name} has front landscaping`);
+        for(const bed of q.plantings) {
+            species.add(bed.kind);
+            if(bed.building) {
+                const plan=CityLayout.residentialPlan(bed.building);
+                assert.ok(CityLayout.contains(bed.building,CityLayout.footprint(bed).corners,2));
+                for(const r of [...plan.parts,plan.path,plan.parking,...(plan.garden?[plan.garden]:[])])
+                    assert.equal(CityLayout.overlaps(bed,CityLayout.region(bed.building,r),2),false,'beds leave doors, walls and parking clear');
+            }
+            for(const a of q.approaches)
+                assert.equal(CityLayout.polygonsOverlap(CityLayout.footprint(bed).corners,
+                    a.polygon||CityLayout.footprint(a).corners),false,'flowers do not cross a vehicle or pedestrian entrance');
+        }
+    }
+    assert.deepEqual([...settings].sort(),['berm','lawn','pit','raised']);
+    assert.deepEqual([...species].sort(),['flowers','roses','shrubs']);
 });
 test('apartments and condos have broad, multi-family footprints proportional to the main apartment', () => {
     const homes = Object.values(context.city).flatMap(q => q.neighborhood.buildings).filter(b => b.type === 'crib');
@@ -166,8 +204,15 @@ test('every destination owns real parking containing sized, collision-free bays 
                 assert.ok(CityLayout.contains(bay.destination, CityLayout.footprint(bay).corners), 'Residential parking stays on its own plot');
             else {
                 assert.equal(bay.area.w * bay.area.d, 12600, 'Public lots are 140 by 90, with a broader maneuvering aisle');
-                assert.ok(Math.abs(CityLayout.distanceTo(bay.destination, ...CityLayout.point(bay.area, bay.area.x + bay.area.w / 2, bay.area.y + bay.area.d / 2)) - 45) < 1e-7, 'Lot attaches directly to its destination');
-                assert.ok(q.neighborhood.streets.some(r => CityLayout.intersects(r, bay.area)), 'The lot connects directly to an approach');
+                assert.ok(CityLayout.overlaps(bay.area,bay.destination,.001) && !CityLayout.overlaps(bay.area,bay.destination),
+                    'Lot shares an edge with its destination instead of becoming isolated');
+                const bounds=CityLayout.footprint(bay.area);
+                for(const road of CityLayout.streetBounds(q,12))
+                    assert.ok(bounds.e1<=road.e0 || bounds.e0>=road.e1 || bounds.s1<=road.s0 || bounds.s0>=road.s1,
+                        `${bay.destination.name}: full-size lot stays twelve units outside sidewalk perimeter`);
+                assert.ok(q.approaches.some(a=>a.vehicleEntrance && a.destination===bay.destination &&
+                    CityLayout.polygonsOverlap(a.polygon||CityLayout.footprint(a).corners,bounds.corners)),
+                    'Only an entrance apron connects the lot to the street');
             }
             for (const object of [...CityLayout.targets(q).filter(b => b !== bay.destination), ...q.playerParking.slice(i+1)])
                 assert.equal(intersects(bay,object), false, `Parking clears ${object.name || object.kind || 'another bay'}`);
@@ -425,4 +470,29 @@ test('parking entrances overlap both lot pavement and street asphalt instead of 
             `${b.name} driveway reaches the street, not just its sidewalk`);
         }
     }
+});
+
+test('street setbacks leave a visible entrance apron and building cutaways preserve driving sightlines', () => {
+    const stack=[],clips=[],alphas=[];
+    const ctx={globalAlpha:1,save(){stack.push(this.globalAlpha);},restore(){this.globalAlpha=stack.pop();},
+        beginPath(){},rect(){},lineTo(){},moveTo(){},closePath(){},clip(rule){clips.push(rule);}};
+    const env={ctx,WORLD,CityLayout,quadrants:context.city,currentQuadrant:'NW',
+        fromCompass:world,P:(x,y,z=0)=>[(x-y)*1.6,(x+y)*.8-z]};
+    const source=html.slice(html.indexOf('function buildingSightlines('),html.indexOf('function drawScene('));
+    vm.runInNewContext(source+';globalThis.sightlines=buildingSightlines;globalThis.draw=drawWithClearSightlines;',env);
+    let cutaways=0;
+    for(const [id,q]of Object.entries(context.city)) {
+        env.currentQuadrant=id;
+        for(const building of CityLayout.targets(q).filter(b=>b.h)) {
+            const areas=env.sightlines(building);
+            areas.flat(2).forEach(n=>assert.ok(Number.isFinite(n)));
+            if(!areas.length)continue;
+            cutaways++;
+            env.draw(building,()=>alphas.push(ctx.globalAlpha));
+            assert.deepEqual(alphas.splice(0),[.12,1],'obscuring surfaces become translucent without shrinking buildings');
+            assert.equal(ctx.globalAlpha,1,'cutaway never leaks alpha to vehicles or other scenery');
+        }
+    }
+    assert.ok(cutaways>10,'sightline protection applies across the city, not just one building');
+    assert.ok(clips.every(rule=>rule==='evenodd'));
 });

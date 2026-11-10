@@ -13,7 +13,7 @@
                 [300, 150, 'house'], [540, 150, 'condo'], [780, 150, 'apartment']],
             colors: ['#a16c55', '#b49779', '#827e73'],
             districts: [
-                { name: 'Uptown Rowhouses', e: -940, s: 40, w: 1880, d: 300, color: '#36543c' },
+                { name: 'Uptown Rowhouses', e: -940, s: 40, w: 1880, d: 300, color: '#36543c', grass: true },
                 { name: 'U Street Arts District', e: -940, s: 1200, w: 1880, d: 650, color: '#3e4144' }
             ]
         },
@@ -33,8 +33,8 @@
                 [-280, 1750, 'house'], [320, 1320, 'condo'], [760, 1320, 'apartment'], [-80, 1750, 'house']],
             colors: ['#956e5d', '#a27d65', '#87685b'],
             districts: [
-                { name: 'Library Commons', e: -940, s: 1210, w: 1880, d: 410, color: '#426752' },
-                { name: 'Garden Apartment Courts', e: -940, s: 1630, w: 1880, d: 360, color: '#526b45' }
+                { name: 'Library Commons', e: -940, s: 1210, w: 1880, d: 410, color: '#426752', grass: true },
+                { name: 'Garden Apartment Courts', e: -940, s: 1630, w: 1880, d: 360, color: '#526b45', grass: true }
             ]
         },
         SW: {
@@ -45,7 +45,7 @@
             districts: [
                 { name: 'Waterfront Neighborhood', e: -950, s: 1370, w: 230, d: 600, color: '#8a806a' },
                 { name: 'Civic & Arena District', e: 160, s: 150, w: 780, d: 650, color: '#56636b' },
-                { name: 'Harbor Homes', e: 180, s: 1740, w: 720, d: 240, color: '#647665' }
+                { name: 'Harbor Homes', e: 180, s: 1740, w: 720, d: 240, color: '#647665', grass: true }
             ]
         }
     };
@@ -350,17 +350,22 @@
                 y: destination.y + destination.d, w: 22, d: 80 });
             q.approaches.push({ ...entrance, destination, pedestrian: true });
             const candidates = [];
-            for (const side of ['front', 'right', 'left', 'rear']) for (const shift of [0, -20, 20, -40, 40, -60, 60]) {
+            for (const side of ['front', 'right', 'left', 'rear']) for (const shift of [0, -20, 20, -40, 40, -60, 60, -80, 80, -100, 100, -140, 140, -180, 180]) {
                 const sideways = side === 'right' || side === 'left';
                 const along = sideways ? destination.y + destination.d / 2 : destination.x + destination.w / 2;
                 const local = sideways ?
                     { x: side === 'right' ? destination.x + destination.w : destination.x - 90, y: along - 70 + shift, w: 90, d: 140 } :
                     { x: along - 70 + shift, y: side === 'front' ? destination.y + destination.d : destination.y - 90, w: 140, d: 90 };
+                const frontage=sideways ?
+                    Math.min(local.y+local.d,destination.y+destination.d)-Math.max(local.y,destination.y) :
+                    Math.min(local.x+local.w,destination.x+destination.w)-Math.max(local.x,destination.x);
+                if(frontage<28) continue;
                 const area = { ...region(destination, local), destination, kind: 'lot' };
                 if (!bounded(area) || objects.filter(b => b !== destination).some(b => overlaps(area, b)) ||
                     q.parkingAreas.some(b => overlaps(area, b))) continue;
-                if (!q.neighborhood.streets.some(r => intersects(r, area)) &&
-                    !nearRoad(q, area.x + area.w / 2, area.y + area.d / 2)) continue;
+                const bounds=footprint(area);
+                if(streetBounds(q,12).some(r=>bounds.e1>r.e0 && bounds.e0<r.e1 && bounds.s1>r.s0 && bounds.s0<r.s1)) continue;
+                if (!nearRoad(q, area.x + area.w / 2, area.y + area.d / 2, 200)) continue;
                 const bays = [4, 96].map(offset => {
                     let r;
                     if (side === 'front') r = { x: local.x + offset, y: local.y + 3, w: 40, d: 22, heading: [1, 0] };
@@ -389,6 +394,81 @@
                 { x: b.x + b.w - 48, y: b.y, w: 48, d: 2 },
                 { x: b.x + b.w - 48, y: b.y + b.d - 2, w: 48, d: 2 }].map(r => footprint(region(b, r))));
         addParkingAprons(q);
+    }
+
+    function streetBounds(q, margin = 0) {
+        return [
+            { e0: -120-margin, e1: 120+margin, s0: 0, s1: 2*WORLD },
+            { e0: -WORLD, e1: WORLD, s0: WORLD-165-margin, s1: WORLD+165+margin },
+            ...q.neighborhood.streets.map(r => ({
+                e0: Math.min(r.a[0],r.b[0])-HALF-margin, e1: Math.max(r.a[0],r.b[0])+HALF+margin,
+                s0: Math.min(r.a[1],r.b[1])-HALF-margin, s1: Math.max(r.a[1],r.b[1])+HALF+margin
+            }))
+        ];
+    }
+
+    function grassAt(q,x,y) {
+        const e=x-y,s=x+y;
+        if(streetBounds(q).some(r=>e>=r.e0 && e<=r.e1 && s>=r.s0 && s<=r.s1) ||
+            q.parkingAreas.some(a=>distanceTo(a,x,y)<1) || q.activities.some(a=>distanceTo(a,x,y)===0) ||
+            q.approaches.some(a=>a.vehicleEntrance && (a.polygon ?
+                polygonsOverlap(a.polygon,[[x-1,y-1],[x+1,y-1],[x+1,y+1],[x-1,y+1]]) : distanceTo(a,x,y)<1))) return false;
+        for(const b of targets(q)) {
+            const layout=residentialPlan(b);
+            if(!layout && distanceTo(b,x,y)===0) return false;
+            if(layout && distanceTo(b,x,y)===0) {
+                return ![...layout.parts,layout.parking,...(layout.garden?[layout.garden]:[])]
+                    .some(r=>distanceTo(region(b,r),x,y)===0);
+            }
+            if((q.houseYards||[]).some(a=>distanceTo(a,x,y)===0)) return true;
+        }
+        const district=q.districts.filter(d=>e>=d.e && e<=d.e+d.w && s>=d.s && s<=d.s+d.d).at(-1);
+        return district ? district.grass===true : true;
+    }
+
+    function landscape(q) {
+        const objects=targets(q), roads=streetBounds(q);
+        const blocked=area=>objects.some(b=>overlaps(area,b,8)) ||
+            q.activities.some(b=>overlaps(area,b,12)) ||
+            q.parkingAreas.some(a=>overlaps(area,a,8)) ||
+            q.approaches.some(a=>a.polygon ? polygonsOverlap(footprint(area).corners,a.polygon) : overlaps(area,a,8));
+        for(const side of [-1,1]) for(let s=300;s<2*WORLD-150;s+=360) {
+            if(Math.abs(s-WORLD)<220) continue;
+            const [x,y]=world(side*96,s), area={x:x-8,y:y-8,w:16,d:16,roadAligned:true};
+            if(!blocked(area) && !q.lamps.some(l=>Math.hypot(l.x-x,l.y-y)<30) &&
+                !q.trees.some(t=>Math.hypot(t.x-x,t.y-y)<40)) q.trees.push({x,y,scale:.82});
+        }
+        q.trees.forEach((tree,i)=>{
+            const area={x:tree.x-10,y:tree.y-10,w:20,d:20,roadAligned:true};
+            const onGrass=footprint(area).corners.every(([x,y])=>grassAt(q,x,y));
+            tree.setting=onGrass?'lawn':i%3===0?'raised':i%3===1?'pit':'berm';
+            const e=tree.x-tree.y,s=tree.x+tree.y;
+            if(roads.some(r=>e>=r.e0 && e<=r.e1 && s>=r.s0 && s<=r.s1)) tree.setting='pit';
+        });
+        q.plantings=[];
+        for(const building of objects) {
+            const layout=residentialPlan(building);
+            if(!layout) continue;
+            const reserved=[...layout.parts,layout.parking,layout.path,...(layout.garden?[layout.garden]:[])].map(r=>region(building,r));
+            let count=0;
+            for(const v of [.92,.78,.64]) for(const u of [.15,.58,.70,.05,.38,.86,.21,.35,.265]) {
+                if(count>=5) continue;
+                const kind=count%3===0?'roses':count%3===1?'shrubs':'flowers';
+                const width=layout.kind==='apartment'||layout.terrace?4:12;
+                const bed=region(building,{x:building.x+building.w*u-width/2,y:building.y+building.d*v-3,w:width,d:6});
+                if(!contains(building,footprint(bed).corners,2) || reserved.some(r=>overlaps(bed,r,2)) ||
+                    q.approaches.some(a=>a.polygon ? polygonsOverlap(footprint(bed).corners,a.polygon) : overlaps(bed,a,2)) ||
+                    q.plantings.some(p=>overlaps(bed,p,5))) continue;
+                q.plantings.push({...bed,kind,raised:layout.kind!=='house',building});
+                count++;
+            }
+        }
+        q.trees.filter((t,i)=>t.setting==='lawn' && i%4===0).forEach(tree=>{
+            const bed={x:tree.x+15,y:tree.y-4,w:18,d:10,roadAligned:true};
+            if(footprint(bed).corners.every(([x,y])=>grassAt(q,x,y)) && !blocked(bed) &&
+                !q.trees.some(t=>distanceTo(bed,t.x,t.y)<12) && !q.plantings.some(p=>overlaps(bed,p,5)))
+                q.plantings.push({...bed,kind:'flowers',raised:false});
+        });
     }
 
     function addParkingAprons(q) {
@@ -455,7 +535,7 @@
     }
 
     const api = { apply, targets, nearRoad, intersects, designs, point, footprint, overlaps, distanceTo, front, polygonsOverlap,
-        residentialPlan, region, vehicleCorners, contains, buildingSolids,
+        residentialPlan, region, vehicleCorners, contains, buildingSolids, streetBounds, grassAt, landscape,
         halfWidth: HALF, world: WORLD, scale: SCALE };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     root.CityLayout = api;

@@ -75,6 +75,19 @@ test('apartment parking has four full-size spaces, an aisle and a separate anima
     }
 });
 
+test('residential sightline cutaways apply to structures but keep parking and signs opaque', () => {
+    const b={x:100,y:200,w:160,d:110,h:150,kind:'apartment',variant:0,color:'#976b53',trim:'#e3ceb0'};
+    let clipping=false,clips=0,parking=0,structures=0,signs=0;
+    Art.draw(b,{
+        ctx:new Proxy({fillText(text){if(text==='P'){assert.equal(clipping,false);parking++;}
+            else {assert.equal(clipping,false);signs++;}}},{get:(target,key)=>target[key]||(()=>{})}),
+        P:(x,y,z=0)=>[x-y,(x+y)/2-z],poly(){},shade:c=>c,
+        box(x,y,z,w,d,h){if(h>50){assert.equal(clipping,true);structures++;}},
+        withSightlines(draw){clips++;clipping=true;draw();clipping=false;}
+    });
+    assert.equal(clips,1);assert.ok(structures>0);assert.equal(parking,2);assert.ok(signs>0);
+});
+
 test('listing text exactly follows visible sale and availability boards, including style-based buildings', () => {
     for (const kind of ['house', 'apartment', 'condo']) for (const variant of [0, 1, 2])
         for (const available of [undefined, false, true]) {

@@ -74,7 +74,7 @@ const ResidentialArt = (() => {
         return { kind, variant, terrace, parts, door, path, bays, decorativeCars,
             available, listed: listing(b) !== null, garden, parking };
     }
-    function draw(b, { ctx: c, P, poly, box, shade, entrances = [] }, active = false, time = 0) {
+    function draw(b, { ctx: c, P, poly, box, shade, entrances = [], withSightlines = draw => draw() }, active = false, time = 0) {
         const layout = plan(b), trim = b.trim, outline = '#17232899';
         const plane = (x, y, w, d, z, fill, stroke, width = 1) =>
             poly([P(x, y, z), P(x + w, y, z), P(x + w, y + d, z), P(x, y + d, z)], fill, stroke, width);
@@ -117,6 +117,7 @@ const ResidentialArt = (() => {
                 c.fillText('P', sx, sy); c.restore();
             }
         }
+        withSightlines(() => {
         for (const p of layout.parts) {
             const color = b.color;
             box(p.x, p.y, p.z, p.w, p.d, p.h, color, outline);
@@ -222,6 +223,7 @@ const ResidentialArt = (() => {
             plane(p.x + p.w * .1, p.y + p.d, p.w * .8, b.d * .14, z, '#9d8260', trim);
             for (const u of [.12, .88]) box(p.x + p.w * u, p.y + p.d + b.d * .1, 0, 2, 2, z, '#d6c6a3');
         }
+        });
         for (const car of layout.decorativeCars)
             vehicles.draw({ ...car, kind: 'car', trim: '#d3d9d4' }, { ctx: c, P, poly, shade });
         if (layout.kind === 'house' && layout.listed) {

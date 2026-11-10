@@ -226,6 +226,18 @@ Public venue lots measure 140 by 90 world units (about 70% more area than the
 previous 112 by 66 lots), with wider maneuvering space and separated parking
 bays. Continuous perimeter outlines and cross-lot border stripes are removed
 so the matching asphalt flows into the street without an entrance seam.
+Public lot pavement stays 12 units outside the street-side sidewalk edge, leaving a
+distinct entrance apron rather than a lot that visually intersects the road.
+Only the asphalt entrance crosses that setback. Buildings keep their full
+dimensions, but portions projected over streets, parking or vehicle entrances
+use a translucent cutaway so roofs cannot hide the driving surface.
+Trees on grass have visible root collars and spreading root flares. Trees on
+hardscape sit in soil-filled sidewalk openings, edged raised planters or
+landscaped berms rather than growing through unbroken paving. Main sidewalks
+also have regularly spaced urban tree pits. Home and apartment frontages have
+mulched flowerbeds, rose gardens and layered shrubs; grass areas receive small
+flower gardens. Planting placement reserves doors, foot access, driveways and
+parking entrances.
 
 The city uses consistent **compact arcade proportions**, not real-world map
 distances. All sedans, whether drivable, in a driveway or in a parking lot,
