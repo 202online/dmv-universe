@@ -670,6 +670,7 @@
 
         // ---------- State & input ----------
         let currentQuadrant = 'NW';
+        const WALK_SPEED_MULTIPLIER = 10; // Temporary testing boost; vehicle speeds remain unchanged.
         const player = { x: WORLD / 2, y: WORLD / 2, speed: (3.6 / 5) * 1.2 * 1.2, r: 9, fx: 0, fy: 1, moving: false, appearance: null };
         const keys = { up: false, down: false, left: false, right: false };
         const vehicles = {
@@ -1406,7 +1407,7 @@
                         showDrivingMessage('Not enough room to turn. Move away from obstacles.');
                     }
                 }
-                const speed = driving.active ? player.speed * ownCar.speed : player.speed;
+                const speed = driving.active ? player.speed * ownCar.speed : player.speed * WALK_SPEED_MULTIPLIER;
                 dx = dx / len * speed; dy = dy / len * speed;
                 const collision = driving.active ? carBlocked : blocked;
                 if (!collision(player.x + dx, player.y)) player.x += dx;
