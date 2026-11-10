@@ -40,16 +40,18 @@ stars to earn toward those vehicles. These are win counts, not guaranteed hours.
 Owned rides can be repainted for free with the swatches in the Vehicle Shop or
 Your Garage (`vehicle-paints.js`). The paint is saved and applies to the ride
 you are using and to rides parked around the city.
+Cars draw only the faces, windows, wheels and lights that face the camera, so
+parked cars look solid instead of showing their far side through the body.
 
 | Ride | Colors |
 | --- | --- |
-| The Bucket (starts red) | red, pink, black, sky blue |
-| Pickup truck (starts silver) | black, silver, blue, lavender |
-| Bicycle | sky blue, red, pink, lavender |
-| Electric scooter | purple, black, pink, lavender |
-| Electric bike | green, white, pink, lavender |
+| The Bucket (starts red) | red, pink, black, sky blue, white, burgundy |
+| Pickup truck (starts silver) | black, silver, blue, lavender, white, orange |
+| Bicycle | sky blue, red, pink, lavender, white, black |
+| Electric scooter | purple, black, pink, lavender, white, teal |
+| Electric bike | green, white, pink, lavender, black, yellow |
 
-Bikes and scooters start in a random color from their set. Saves from before
+Every ride has six colors, including white and black. Bikes and scooters start in a random color from their set. Saves from before
 paint existed get a random two-wheeler color and the default car colors.
 
 `clothing-catalog.js` defines the first wave of clothing: eight generic
