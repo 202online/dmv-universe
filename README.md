@@ -67,6 +67,19 @@ from the collar and keeps the face open). `wearState`, `toggleWear` and
 them over `drawAvatar` using the same anchor and facing. A fitted cap's brim
 stays visible under a raised hood.
 
+Every item is drawn to the avatar's own geometry and walk pose (`drawWorn`
+supports `top`, `bottom`, `shoes`, `hoodie` and `cap` slots). `drawAvatar`
+accepts an optional `dress(layer)` hook: garments are drawn in the `body` layer
+before the hair, so long hair falls over shirts and hoodies, and caps and hoods
+are drawn in the `head` layer after it. Caps and hoods size up over curly hair.
+
+### Avatar motion
+
+`avatar-motion.js` keeps the avatar fluid: walking eases in and out (the legs
+settle instead of freezing mid-stride), the body breathes gently while idle,
+eyes blink on an irregular rhythm, long hair bends and trails a beat behind each
+step, and curls bounce with the stride.
+
 The level picker shows a small moving window rather than an ever-growing list.
 Use Previous to revisit older levels or Latest unlocked to return to progression.
 There is no gameplay level cap. Levels after five use diminishing difficulty

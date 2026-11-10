@@ -98,5 +98,31 @@ test('drawWorn renders hoodies and caps in every direction and rejects wrong ite
     }
     assert.ok(calls.some(c => c[0] === 'fill' && c[1] === 'evenodd'), 'hood shell keeps the face open');
     assert.throws(() => Catalog.drawWorn(ctx, { hoodie: 'red-fittedcap' }, { sx: 0, sy: 0 }), /not a hoodie/);
+    assert.throws(() => Catalog.drawWorn(ctx, { top: 'red-sweatpants' }, { sx: 0, sy: 0 }), /not a T-shirt/);
+    assert.throws(() => Catalog.drawWorn(ctx, { gloves: 'red-tshirt' }, { sx: 0, sy: 0 }), /Unknown outfit slot/);
     assert.throws(() => Catalog.drawWorn(ctx, { cap: 'red-hoodie' }, { sx: 0, sy: 0 }), /not a fitted cap/);
+});
+
+test('every catalog item can be worn with every hair style, facing and walk frame', () => {
+    const ctx = new Proxy({}, { get: (t, k) => k in t ? t[k] : (...a) => a.filter(n => typeof n === 'number').forEach(n => assert.ok(Number.isFinite(n), `${String(k)} ${n}`)),
+        set: (t, k, v) => (t[k] = v, true) });
+    const slotFor = { tshirt: 'top', sweatpants: 'bottom', jeans: 'bottom', sneakers: 'shoes', hoodie: 'hoodie', fittedcap: 'cap' };
+    for (const i of Catalog.items) for (const hair of ['short', 'curly', 'long']) for (const [fx, fy] of [[0, 1], [1, 0], [0, -1], [-1, 0]])
+        for (const [bob, sw] of [[0, 0], [2, 5], [1, -5], [-.35, 0]])
+            Catalog.drawWorn(ctx, { [slotFor[i.style]]: i.id }, { sx: 40, sy: 80, bob, sw, fx, fy, hair });
+    Catalog.drawWorn(ctx, { top: 'red-tshirt', bottom: 'black-jeans', shoes: 'blue-sneakers', hoodie: 'black-hoodie', cap: 'pink-fittedcap',
+        state: Catalog.wearState({ zipped: false, hoodUp: true }) }, { sx: 40, sy: 80, hair: 'curly' });
+});
+
+test('drawWorn splits garments (under hair) from headwear (over hair)', () => {
+    const outfit = { top: 'red-tshirt', hoodie: 'blue-hoodie', cap: 'black-fittedcap', state: Catalog.wearState({ hoodUp: true }) };
+    const count = layer => { let n = 0; const ctx = new Proxy({}, { get: (t, k) => k in t ? t[k] : () => { if (k === 'fill') n++; }, set: (t, k, v) => (t[k] = v, true) });
+        Catalog.drawWorn(ctx, outfit, { sx: 0, sy: 0 }, layer); return n; };
+    assert.ok(count('body') > 0 && count('head') > 0);
+    assert.strictEqual(count('body') + count('head'), count('all'));
+    assert.throws(() => count('feet'), /Unknown clothing layer/);
+    const html = require('node:fs').readFileSync(__dirname + '/index.html', 'utf8');
+    const avatar = html.slice(html.indexOf('function drawAvatar('), html.indexOf('function drawTransitStation('));
+    assert.ok(avatar.indexOf("dress('body')") < avatar.indexOf("features.hair === 'long'"), 'garments are drawn before hair');
+    assert.ok(avatar.indexOf("dress('head')") > avatar.lastIndexOf("features.hair === 'short'"), 'headwear is drawn after hair');
 });

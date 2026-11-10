@@ -95,13 +95,29 @@ const ClothingCatalog = (() => {
     const toggleWear = (state, part, now) => setWear(state, part, state[part].to < .5, now);
     const animating = (state, now) => Object.keys(ANIM_MS).some(p => now - state[p].start < ANIM_MS[p]);
 
-    // Draws a worn hoodie and/or fitted cap over an avatar drawn with the game's drawAvatar,
-    // using the same anchor (sx, sy at the feet) and pose values (bob, sw, fx, fy).
-    function drawWorn(ctx, outfit, pose) {
-        const { sx, sy, bob = 0, sw = 0, fx = 0, fy = 1, skin = '#c68642', now = 0 } = pose;
-        const hoodie = outfit.hoodie && get(outfit.hoodie), cap = outfit.cap && get(outfit.cap);
-        if (hoodie && hoodie.style !== 'hoodie') throw new Error(`${hoodie.id} is not a hoodie`);
-        if (cap && cap.style !== 'fittedcap') throw new Error(`${cap.id} is not a fitted cap`);
+    const OUTFIT_SLOTS = { top: ['tshirt'], bottom: ['sweatpants', 'jeans'], shoes: ['sneakers'], hoodie: ['hoodie'], cap: ['fittedcap'] };
+    const SLOT_LABEL = { top: 'T-shirt', bottom: 'bottom', shoes: 'pair of shoes', hoodie: 'hoodie', cap: 'fitted cap' };
+    function outfitItems(outfit) {
+        const worn = {};
+        for (const key of Object.keys(outfit)) {
+            if (key === 'state' || !outfit[key]) continue;
+            if (!Object.hasOwn(OUTFIT_SLOTS, key)) throw new Error(`Unknown outfit slot: ${key}`);
+            const i = get(outfit[key]);
+            if (!OUTFIT_SLOTS[key].includes(i.style)) throw new Error(`${i.id} is not a ${SLOT_LABEL[key]}`);
+            worn[key] = i;
+        }
+        return worn;
+    }
+
+    // Draws worn clothing over an avatar drawn with the game's drawAvatar, using the same
+    // anchor (sx, sy at the feet) and pose (bob, sw, fx, fy) so every piece follows the walk.
+    // layer: 'body' (garments, drawn before hair), 'head' (cap and hood, after hair) or 'all'.
+    function drawWorn(ctx, outfit, pose, layer = 'all') {
+        if (!['all', 'body', 'head'].includes(layer)) throw new Error(`Unknown clothing layer: ${layer}`);
+        const body = layer !== 'head', head = layer !== 'body';
+        const { sx, sy, bob = 0, sw = 0, fx = 0, fy = 1, skin = '#c68642', now = 0, hair = 'short' } = pose;
+        const { top: tee, bottom: pants, shoes, hoodie, cap } = outfitItems(outfit);
+        const curly = hair === 'curly';
         const state = outfit.state || wearState();
         const zip = hoodie ? amount(state, 'zip', now) : 1, hood = hoodie ? amount(state, 'hood', now) : 0;
         const front = fy >= 0, top = sy - 36 - bob, bottom = sy - 14 - bob, hy = sy - 45 - bob;
@@ -114,7 +130,49 @@ const ClothingCatalog = (() => {
             ctx.fillStyle = fill; ctx.fill(); if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = .8; ctx.stroke(); }
         };
         ctx.save();
-        if (hoodie) {
+        if (pants && body) {
+            const c = pants.hex, t = pants.trim, hip = sy - 16 - bob;
+            ctx.save();
+            // Hips sit under the hem; clip so pants never cover the shirt.
+            ctx.beginPath(); ctx.rect(sx - 20, sy - 15 - bob, 40, 40); ctx.clip();
+            for (const side of [-1, 1]) {
+                const x0 = sx + side * 3, x1 = x0 - side * sw * .6;
+                line(x0, hip, x1, sy - 2.2, t, pants.style === 'jeans' ? 5.8 : 6.4);
+                line(x0, hip, x1, sy - 2.2, c, pants.style === 'jeans' ? 4.8 : 5.4);
+                if (pants.style === 'sweatpants') {
+                    line(x1 - .2 * (x1 - x0), sy - 4.4, x1, sy - 2.4, t, 5.2);
+                    line(x0 - side * 1.6, hip + 1, x1 - side * 1.6, sy - 5, shade(c, 1.25), .7);
+                } else {
+                    line(x0 + side * 1.4, hip + 1, x1 + side * 1.4, sy - 3, '#c9a35f', .45);
+                    line(x0 - side * 1, hip + 2, x1 - side * 1, sy - 5, shade(c, 1.6), .6);
+                }
+            }
+            ctx.restore();
+        }
+        if (shoes && body) {
+            const c = shoes.hex, t = shoes.trim;
+            for (const foot of [sx - 3 + sw * .6, sx + 3 - sw * .6]) {
+                ctx.fillStyle = c; ctx.strokeStyle = t; ctx.lineWidth = .6;
+                ctx.beginPath(); ctx.ellipse(foot, sy - 1, 4.7, 2.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                line(foot - 3.6, sy + .7, foot + 3.6, sy + .7, '#f3f4f6', 1);
+                if (fy >= 0) { line(foot - 1.4, sy - 2.2, foot + 1.2, sy - 2.2, '#f3f4f6', .5); line(foot - 1.2, sy - 1.3, foot + 1.4, sy - 1.3, '#f3f4f6', .5); }
+            }
+        }
+        if (tee && body) {
+            const c = tee.hex, b = bob, y = v => sy - v - b;
+            ctx.beginPath();
+            ctx.moveTo(sx - 4, y(37)); ctx.lineTo(sx - 8, y(36)); ctx.lineTo(sx - 13, y(29)); ctx.lineTo(sx - 9, y(27));
+            ctx.lineTo(sx - 7, y(30)); ctx.lineTo(sx - 8, y(15)); ctx.lineTo(sx + 8, y(15)); ctx.lineTo(sx + 7, y(30));
+            ctx.lineTo(sx + 9, y(27)); ctx.lineTo(sx + 13, y(29)); ctx.lineTo(sx + 8, y(36)); ctx.lineTo(sx + 4, y(37));
+            ctx.quadraticCurveTo(sx, y(33), sx - 4, y(37)); ctx.closePath();
+            ctx.fillStyle = c; ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 1; ctx.stroke();
+            ctx.beginPath(); ctx.arc(sx, y(37), 3.5, 0, Math.PI); ctx.strokeStyle = tee.trim; ctx.lineWidth = .9; ctx.stroke();
+            line(sx + 5, y(30), sx + 6, y(21), shade(c, .75), .8);
+            line(sx - 6, y(28), sx - 5, y(21), shade(c, 1.2), .8);
+            line(sx - 12.2, y(28.6), sx - 9.4, y(26.8), tee.trim, .8);
+            line(sx + 12.2, y(28.6), sx + 9.4, y(26.8), tee.trim, .8);
+        }
+        if (hoodie && body) {
             const c = hoodie.hex, t = hoodie.trim;
             for (const side of [-1, 1]) {
                 const hx = sx + side * 11, hyand = sy - 19 - bob - side * sw * .5;
@@ -136,22 +194,23 @@ const ClothingCatalog = (() => {
                 for (const side of [-1, 1]) line(sx + side * 3.4, bottom - 6, sx + side * 5.6, bottom - 3, shade(c, .6), .7);
             } else line(sx, top + 2, sx, bottom - 2, shade(c, .8), .6);
         }
-        if (cap) {
+        if (cap && head) {
             const c = cap.hex, t = cap.trim;
             ctx.fillStyle = c; ctx.strokeStyle = t; ctx.lineWidth = .8;
-            ctx.beginPath(); ctx.ellipse(sx, hy - 2.5, 7.8, 6.4, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
-            line(sx - 7.6, hy - 2.6, sx + 7.6, hy - 2.6, t, 1.2);
-            for (const ox of [-3.6, 0, 3.6]) line(sx + fx * 1.5, hy - 8.6, sx + ox * 1.7 + fx, hy - 3, shade(c, .75), .5);
-            ctx.fillStyle = c; ctx.beginPath(); ctx.arc(sx + fx * 1.5, hy - 8.9, 1, 0, Math.PI * 2); ctx.fill();
+            const crx = curly ? 9.4 : 7.8, cry = curly ? 10.4 : 6.4, crown = hy - 2.5 - cry;
+            ctx.beginPath(); ctx.ellipse(sx, hy - 2.5, crx, cry, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+            line(sx - crx + .2, hy - 2.6, sx + crx - .2, hy - 2.6, t, 1.2);
+            for (const ox of [-3.6, 0, 3.6]) line(sx + fx * 1.5, crown + 2, sx + ox * crx / 4.6 + fx, hy - 3, shade(c, .75), .5);
+            ctx.fillStyle = c; ctx.beginPath(); ctx.arc(sx + fx * 1.5, crown + 1.7, 1, 0, Math.PI * 2); ctx.fill();
         }
-        if (hoodie && (hood > .01 || front)) {
+        if (hoodie && head && (hood > .01 || front)) {
             const c = hoodie.hex, inner = shade(c, .45);
             // The face opening reaches the face early so the rising hood never covers it.
             const face = Math.min(1, hood * 2.6);
-            const cy = lerp(front ? top - .5 : top + 3, hy - 1.5, hood);
+            const cy = lerp(front ? top - .5 : top + 3, hy - (curly ? 3 : 1.5), hood);
             const ox = sx + fx * 1.4 * face, oy = lerp(front ? top : cy, hy + .2, face), orx = lerp(4.4, 6.4, face), ory = lerp(1.2, 7.4, face);
-            const rx = Math.max(lerp(front ? 6.4 : 7, 9.6, hood), front ? orx + 2 : 0);
-            const ry = Math.max(lerp(front ? 2.4 : 4, 10.2, hood), front ? Math.abs(cy - oy) + ory + 1.2 : 0);
+            const rx = Math.max(lerp(front ? 6.4 : 7, curly ? 10.8 : 9.6, hood), front ? orx + 2 : 0);
+            const ry = Math.max(lerp(front ? 2.4 : 4, curly ? 12.2 : 10.2, hood), front ? Math.abs(cy - oy) + ory + 1.2 : 0);
             ctx.beginPath(); ctx.ellipse(sx, cy, rx, ry, 0, 0, Math.PI * 2);
             if (front) ctx.ellipse(ox, oy, orx, ory, 0, 0, Math.PI * 2);
             ctx.fillStyle = c; ctx.fill('evenodd');
@@ -163,20 +222,22 @@ const ClothingCatalog = (() => {
                 for (const side of [-1, 1]) line(sx + side * 2.2, sy0, sx + side * 2.6, sy0 + 6, '#f3f4f6', .7);
             } else line(sx, cy - ry * .8, sx, cy + ry * .7, shade(c, .7), .6);
         }
-        if (cap && front) {
+        if (cap && head && front) {
             const c = cap.hex, t = cap.trim, side = Math.abs(fx) > .5 && Math.abs(fy) < .5;
+            ctx.save();
             ctx.fillStyle = c; ctx.strokeStyle = t; ctx.lineWidth = .8;
             ctx.beginPath();
-            if (side) ctx.ellipse(sx + fx * 8, hy - 2.4, 5.6, 1.5, 0, 0, Math.PI * 2);
-            else ctx.ellipse(sx + fx * 2.5, hy - 3.6, 7.6, 1.8, 0, 0, Math.PI * 2);
+            if (side) ctx.ellipse(sx + fx * (curly ? 8.4 : 7), hy - 2.4, 5, 1.5, 0, 0, Math.PI * 2);
+            else ctx.ellipse(sx + fx * 2.5, hy - 3.6, curly ? 8.6 : 7.6, 1.8, 0, 0, Math.PI * 2);
             ctx.fill(); ctx.stroke();
+            ctx.restore();
         }
         ctx.restore();
         return { zip, hood };
     }
 
     return { colors, slots, styles, items, get, bySlot, forSale, preview,
-        ANIM_MS, wearState, amount, setWear, toggleWear, animating, drawWorn };
+        ANIM_MS, OUTFIT_SLOTS, wearState, amount, setWear, toggleWear, animating, drawWorn };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = ClothingCatalog;

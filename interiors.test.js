@@ -59,7 +59,8 @@ test('oval arena and detailed avatars render finite geometry for all saved appea
     const env = {
         ctx: canvas, P: (x, y, z = 0) => [x - y, (x + y) / 2 - z],
         poly(points) { polygons++; points.flat().forEach(n => assert.ok(Number.isFinite(n))); },
-        shade: color => color, skinColors: { medium: '#a37654' }, hairColors: { black: '#23170f' }
+        shade: color => color, skinColors: { medium: '#a37654' }, hairColors: { black: '#23170f' },
+        AvatarMotion: require('./avatar-motion.js'), performance: { now: () => 1234 }
     };
     const arena = html.slice(html.indexOf('function drawOvalArena('), html.indexOf('function drawBuilding('));
     const avatar = html.slice(html.indexOf('function drawAvatar('), html.indexOf('function drawPlayer('));
@@ -70,5 +71,6 @@ test('oval arena and detailed avatars render finite geometry for all saved appea
         for (const facial of ['none', 'mustache', 'beard'])
             for (const appearance of ['boy', 'girl'])
                 for (const [fx, fy] of [[0, 1], [1, 0], [0, -1]])
-                    env.avatar(canvas, 100, 100, appearance, { hair, facial, color: 'black', skin: 'medium' }, '#eee', .5, 2, fx, fy);
+                    for (const motion of [undefined, { t: 3.12, walk: .6, phase: 1.3, blink: .9 }, { t: 7, walk: 1, phase: 4, blink: .3 }])
+                        env.avatar(canvas, 100, 100, appearance, { hair, facial, color: 'black', skin: 'medium' }, '#eee', .5, 2, fx, fy, motion);
 });

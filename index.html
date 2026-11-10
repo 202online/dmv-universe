@@ -310,6 +310,7 @@
         </div>
     </footer>
 
+    <script src="avatar-motion.js"></script>
     <script src="city-art.js"></script>
     <script src="travel-art.js"></script>
     <script src="gogo-music.js"></script>
@@ -695,6 +696,7 @@
             Object.hasOwn(hairColors, features.color) && Object.hasOwn(skinColors, features.skin) &&
             ['none', 'mustache', 'beard'].includes(features.facial);
         player.features = defaultFeatures('boy');
+        player.motion = AvatarMotion.create();
         const progress = { stars: 12, property: 1, owned: ['basic'], shirt: 'basic', ownedVehicles: ['bike'], vehicle: 'bike', paints: VehiclePaints.initial(), minigames: MinigameProgression.initial() };
         const rideLook = id => ({ ...vehicles[id], ...VehiclePaints.look(id, progress.paints[id]) });
         Object.assign(ownCar, VehiclePaints.look('bike', progress.paints.bike));
@@ -2017,8 +2019,9 @@
             ctx.fillStyle = '#fde68a'; ctx.beginPath(); ctx.arc(sx, sy - 66, 5, 0, 7); ctx.fill();
         }
 
-        function drawAvatar(ctx, sx, sy, appearance, features, shirtColor, bob, sw, fx, fy) {
+        function drawAvatar(ctx, sx, sy, appearance, features, shirtColor, bob, sw, fx, fy, motion = AvatarMotion.still(performance.now() / 1000), dress = null) {
             ctx.save();
+            const hairMotion = AvatarMotion.hair({ ...motion, fx }), blink = motion.blink || 0;
             const line = (x1, y1, x2, y2, col, w) => {
                 ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
                 ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.stroke();
@@ -2057,12 +2060,27 @@
             ctx.strokeStyle = shade(shirtColor, .8); ctx.lineWidth = .7; ctx.stroke();
             line(sx + 5, sy - 30 - bob, sx + 6, sy - 21 - bob, shade(shirtColor, .75), .8);
             line(sx - 6, sy - 28 - bob, sx - 5, sy - 21 - bob, shade(shirtColor, 1.2), .8);
+            // Optional clothing hooks: garments go under the hair, headwear over it.
+            if (dress) dress('body');
 
             const hy = sy - 45 - bob;
+            // Long hair locks bend toward a swaying tip so they trail the walk smoothly.
+            const lock = (x0, x1, top, bottom, color) => {
+                const dx = hairMotion.swayX, tipY = bottom - hairMotion.lift, mid = (top + tipY) / 2;
+                ctx.beginPath(); ctx.moveTo(x0, top); ctx.lineTo(x1, top);
+                ctx.quadraticCurveTo(x1, mid, x1 + dx, tipY - 1);
+                ctx.quadraticCurveTo((x0 + x1) / 2 + dx, tipY + 1.2, x0 + dx, tipY - 1);
+                ctx.quadraticCurveTo(x0, mid, x0, top); ctx.closePath();
+                ctx.fillStyle = color; ctx.fill();
+            };
+            const strand = (x, top, bottom, color) => {
+                const dx = hairMotion.swayX * .9, tipY = bottom - hairMotion.lift;
+                ctx.beginPath(); ctx.moveTo(x, top); ctx.quadraticCurveTo(x, (top + tipY) / 2, x + dx, tipY);
+                ctx.strokeStyle = color; ctx.lineWidth = .5; ctx.lineCap = 'round'; ctx.stroke();
+            };
             if (features.hair === 'long') {
-                ctx.fillStyle = hair;
-                ctx.beginPath(); ctx.roundRect(sx - 9, hy - 6, 4, 20, 2); ctx.fill();
-                ctx.beginPath(); ctx.roundRect(sx + 5, hy - 6, 4, 20, 2); ctx.fill();
+                lock(sx - 9, sx - 5, hy - 6, hy + 14, hair);
+                lock(sx + 5, sx + 9, hy - 6, hy + 14, hair);
             }
             ctx.fillStyle = shade(skin, .8);
             ctx.beginPath(); ctx.ellipse(sx - 7, hy + 1, 1.8, 2.4, 0, 0, 7); ctx.fill();
@@ -2073,9 +2091,13 @@
             if (fy >= 0) {
                 for (const eye of [-2.7, 2.3]) {
                     const ex = sx + eye + fx * 1.2;
-                    ctx.fillStyle = '#f7ede3'; ctx.beginPath(); ctx.ellipse(ex, hy -.4, 1.7, 1.3, 0, 0, 7); ctx.fill();
-                    ctx.fillStyle = '#30241d'; ctx.beginPath(); ctx.arc(ex + fx * .3, hy -.3, .95, 0, 7); ctx.fill();
-                    ctx.fillStyle = '#fff'; ctx.fillRect(ex - .3, hy -.8, .55, .55);
+                    if (blink > .6) line(ex - 1.6, hy - .2, ex + 1.6, hy - .2, shade(skin, .55), .8);
+                    else {
+                        const open = 1 - blink * .8;
+                        ctx.fillStyle = '#f7ede3'; ctx.beginPath(); ctx.ellipse(ex, hy -.4, 1.7, 1.3 * open, 0, 0, 7); ctx.fill();
+                        ctx.fillStyle = '#30241d'; ctx.beginPath(); ctx.ellipse(ex + fx * .3, hy -.3, .95, .95 * open, 0, 0, 7); ctx.fill();
+                        if (open > .6) { ctx.fillStyle = '#fff'; ctx.fillRect(ex - .3, hy -.8, .55, .55); }
+                    }
                     line(ex - 1.5, hy - 2.7, ex + 1.1, hy - 2.9, hair, .8);
                 }
                 line(sx + fx, hy + .5, sx + fx + .7, hy + 2.2, shade(skin, .7), .7);
@@ -2095,16 +2117,16 @@
             ctx.beginPath(); ctx.arc(sx, hy - 2, 7, Math.PI, 0); ctx.fill();
             if (features.hair === 'curly') {
                 for (const [ox, oy] of [[-6, -6], [-3, -9], [1, -10], [5, -8], [7, -5]]) {
-                    ctx.beginPath(); ctx.arc(sx + ox, hy + oy, 3, 0, Math.PI * 2); ctx.fill();
-                    line(sx + ox - 1, hy + oy - 1, sx + ox + .6, hy + oy - 1.4, shade(hair, 1.7), .6);
+                    const by = hy + oy + hairMotion.bounce * (oy < -7 ? 1 : .55);
+                    ctx.beginPath(); ctx.arc(sx + ox, by, 3, 0, Math.PI * 2); ctx.fill();
+                    line(sx + ox - 1, by - 1, sx + ox + .6, by - 1.4, shade(hair, 1.7), .6);
                 }
             }
             if (features.hair === 'long') {
-                ctx.fillRect(sx - 9, hy - 3, 3, 13);
-                ctx.fillRect(sx + 6, hy - 3, 3, 13);
+                lock(sx - 9, sx - 6, hy - 3, hy + 10, hair);
+                lock(sx + 6, sx + 9, hy - 3, hy + 10, hair);
                 for (const side of [-1, 1])
-                    for (let strand = 0; strand < 2; strand++)
-                        line(sx + side * (6.6 + strand), hy - 4, sx + side * (6.6 + strand), hy + 9, shade(hair, 1.45), .5);
+                    for (let k = 0; k < 2; k++) strand(sx + side * (6.6 + k), hy - 4, hy + 9, shade(hair, 1.45));
             }
             if (features.hair === 'short') {
                 for (let i = -4; i <= 4; i += 2)
@@ -2112,6 +2134,7 @@
                 line(sx - 6, hy - 2.5, sx - 6, hy + .5, hair, 1.6);
                 line(sx + 6, hy - 2.5, sx + 6, hy + .5, hair, 1.6);
             }
+            if (dress) dress('head');
             ctx.restore();
         }
 
@@ -2185,9 +2208,10 @@
             }
             const [sx, sy] = P(player.x, player.y);
             const t = performance.now() / 1000;
-            const bob = player.moving ? Math.abs(Math.sin(t * 10)) * 2 : 0;
-            const sw = player.moving ? Math.sin(t * 10) * 5 : 0;
-            drawAvatar(ctx, sx, sy, player.appearance, player.features, shirts[progress.shirt].color, bob, sw, player.fx, player.fy);
+            AvatarMotion.step(player.motion, player.moving, player.lastMotionT === undefined ? 0 : t - player.lastMotionT);
+            player.lastMotionT = t;
+            const m = AvatarMotion.pose(player.motion, t);
+            drawAvatar(ctx, sx, sy, player.appearance, player.features, shirts[progress.shirt].color, m.bob, m.sw, player.fx, player.fy, m);
         }
 
         function drawScene() {
