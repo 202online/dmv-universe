@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const CityLayout = require('./city-layout.js');
+const ResidentialArt = require('./residential-art.js');
 const html = fs.readFileSync(`${__dirname}/index.html`, 'utf8');
 const source = html.split('// ---------- World data ----------')[1].split('// ---------- State & input ----------')[0];
 const context = { WORLD: 1000, CityLayout };
@@ -44,6 +45,21 @@ test('apartments and condos have broad, multi-family footprints proportional to 
         assert.ok(b.w >= mainApartment.w * .8, 'Width is comparable to the existing main apartment');
         assert.ok(b.h / b.w <= 1.1, 'Residential blocks do not become thin towers');
     }
+});
+test('apartment garages attach flush to the rear wall, never a separate front or side outbuilding', () => {
+    for (const q of Object.values(context.city)) for (const garage of q.buildings.filter(b => b.garage)) {
+        const apartment = q.buildings.find(b => b.style === 'apartment');
+        assert.ok(apartment);
+        assert.equal(garage.x, apartment.x);
+        assert.equal(garage.w, apartment.w);
+        assert.equal(garage.y + garage.d, apartment.y, 'Rear garage shares the apartment wall without a gap');
+        const rearWall = ResidentialArt.plan({ ...apartment, variant: 1 }).parts.find(p => p.z === 0);
+        assert.equal(garage.x, rearWall.x);
+        assert.equal(garage.w, rearWall.w);
+        assert.equal(garage.y + garage.d, rearWall.y, 'Rendered structures touch, not just their collision lots');
+        assert.ok(garage.h < apartment.h);
+    }
+    assert.match(html, /if \(b\.garage\) ResidentialArt\.drawGarage/);
 });
 for (const [id, q] of Object.entries(context.city)) {
     test(`${id} has a distinct residential district, bounded properties and unobstructed streets to every destination`, () => {

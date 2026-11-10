@@ -18,15 +18,17 @@ const ResidentialArt = (() => {
             [[.04, .06, .64, .30, 0, .82, 'flat'], [.04, .36, .24, .52, 0, 1, 'flat'], [.44, .36, .24, .27, 0, .66, 'flat']]
         ][variant];
         else pieces = [
-            [[.04, .04, .92, .53, 0, 1, 'flat']],
-            [[.04, .04, .92, .62, 0, .78, 'flat'], [.14, .10, .72, .40, .78, .22, 'flat']],
-            [[.04, .04, .42, .61, 0, 1, 'flat'], [.54, .04, .42, .54, 0, .82, 'flat']]
+            [[.04, .04, .92, .48, 0, 1, 'flat']],
+            [[0, 0, 1, .52, 0, .78, 'flat'], [.14, .10, .72, .32, .78, .22, 'flat']],
+            [[.04, .04, .42, .48, 0, 1, 'flat'], [.54, .04, .42, .42, 0, .82, 'flat']]
         ][variant];
         const parts = pieces.map(([x, y, w, d, z, h, roof]) => ({
             x: b.x + x * b.w, y: b.y + y * b.d, w: w * b.w, d: d * b.d, z: z * b.h, h: h * b.h, roof
         }));
-        return { kind, variant, parts, parking: kind === 'apartment' ?
-            { x: b.x + b.w * .04, y: b.y + b.d * .72, w: b.w * .92, d: b.d * .24 } :
+        return { kind, variant, parts, garden: kind === 'apartment' ?
+            { x: b.x + b.w * .04, y: b.y + b.d * .56, w: b.w * .16, d: b.d * .34 } : null,
+            parking: kind === 'apartment' ?
+            { x: b.x + b.w * .24, y: b.y + b.d * .56, w: b.w * .72, d: b.d * .40, spaces: [6, 4, 5][variant] } :
             { x: b.x + b.w * .74, y: b.y + b.d * .04, w: b.w * .22, d: b.d * .92 } };
     }
     function draw(b, { ctx: c, P, poly, box, shade }, active = false, time = 0) {
@@ -44,15 +46,24 @@ const ResidentialArt = (() => {
         const lot = layout.parking;
         plane(lot.x, lot.y, lot.w, lot.d, .3, layout.kind === 'apartment' ? '#48515b' : '#a9a28d', '#d2c8a9');
         if (layout.kind === 'apartment') {
-            const count = layout.variant === 2 ? 4 : 3;
+            const count = lot.spaces, slot = lot.w / count;
             for (let i = 0; i <= count; i++) {
-                const x = lot.x + lot.w * i / count;
-                line([[x, lot.y, .6], [x, lot.y + lot.d * .85, .6]], '#efe1ad');
+                const x = lot.x + slot * i;
+                line([[x, lot.y, .6], [x, lot.y + lot.d * .66, .6]], '#efe1ad', 1.2);
+                if (i < count) box(x + slot * .20, lot.y + 1, .6, slot * .60, 1.5, 1, '#b8bcb6');
             }
-            if (layout.variant !== 1) {
-                const x = lot.x + lot.w * .12, y = lot.y + lot.d * .12;
-                box(x, y, 1, lot.w * .16, lot.d * .60, 3, '#63879a', outline);
-                plane(x + lot.w * .02, y + lot.d * .12, lot.w * .12, lot.d * .26, 4.1, '#a4c5cc');
+            line([[lot.x, lot.y + lot.d * .92, .6], [lot.x + lot.w, lot.y + lot.d * .92, .6]], '#d7dfdc');
+            for (const [i, color] of [[0, '#63879a'], [2, '#923d4b'], [count - 1, '#c6b38d']]) {
+                const x = lot.x + slot * (i + .18), y = lot.y + lot.d * .08;
+                const w = Math.min(14, slot * .60), d = lot.d * .54;
+                box(x, y, 1, w, d, 4, color, outline);
+                box(x + w * .10, y + d * .26, 5, w * .80, d * .42, 3, color, outline);
+                plane(x + w * .12, y + d * .27, w * .76, d * .14, 8.1, '#b2d8de');
+                plane(x + w * .12, y + d * .54, w * .76, d * .13, 8.1, '#688b9b');
+                for (const dx of [0, w - 1.5]) for (const dy of [d * .12, d * .75])
+                    box(x + dx, y + dy, .5, 1.5, 2, 2, '#202a35');
+                for (const dx of [w * .12, w * .70])
+                    plane(x + dx, y + d * .88, w * .18, d * .10, 5.1, '#fff0b5');
             }
         } else {
             for (let i = 1; i < 5; i++)
@@ -122,11 +133,26 @@ const ResidentialArt = (() => {
                 }
             }
         }
-        if (layout.kind === 'apartment' && layout.variant === 1) {
-            const p = layout.parts[0];
-            for (const u of [.38, .67]) {
-                front(p, u, u + .22, 1, 20, '#465768', trim);
-                for (let z = 4; z < 20; z += 4) front(p, u, u + .22, z, z + .7, '#aabac2');
+        if (layout.garden) {
+            const g = layout.garden, wallDepth = 3, height = 22;
+            plane(g.x, g.y, g.w, g.d, .4, '#607f58', '#a6aa8a');
+            box(g.x, g.y, 0, g.w, wallDepth, height, '#6d7f80', outline);
+            for (let z = 5; z < height; z += 6)
+                front({ x: g.x, y: g.y, w: g.w, d: wallDepth }, .04, .96, z, z + .8, '#b1b8aa');
+            plane(g.x + 2, g.y + wallDepth, g.w - 4, g.d - wallDepth - 2, 1, '#4fa6b6');
+            front({ x: g.x, y: g.y, w: g.w, d: wallDepth + .1 }, .22, .78, 2, height - 2, '#69c5d6');
+            for (let i = 0; i < 4; i++) {
+                const z = 3 + ((time * 9 + i * 4) % 16);
+                front({ x: g.x, y: g.y, w: g.w, d: wallDepth + .2 }, .29, .71, z, z + 1, '#c5f2eb');
+            }
+            box(g.x, g.y + g.d - 2, 0, g.w, 2, 4, '#a0a997', outline);
+            for (const x of [g.x, g.x + g.w - 2]) box(x, g.y + wallDepth, 0, 2, g.d - wallDepth, 4, '#919e8d');
+            for (const u of [.15, .55, .82])
+                line([[g.x + g.w * u, g.y + g.d * .65, 1.2], [g.x + g.w * Math.min(.95, u + .12), g.y + g.d * .65, 1.2]], '#b6e4de');
+            for (const x of [g.x + 1, g.x + g.w - 4]) {
+                box(x, g.y + g.d - 5, 0, 3, 3, 4, '#a07854');
+                box(x, g.y + g.d - 5, 4, 3, 3, 4, '#4d814d');
+                box(x + 1, g.y + g.d - 4, 8, 1, 1, 1, '#e6c876');
             }
         }
         if (layout.kind === 'house' && layout.variant === 2) {
@@ -140,38 +166,60 @@ const ResidentialArt = (() => {
             box(x, y, 41, w + 4, 2, 2, '#f0e5cf', outline);
             for (const u of [.22, .83])
                 line([[x + w * u, y + 1, 41], [x + w * u, y + 1, 37]], '#687076', 1.2);
-            sign(x + 4, y, 17, w, 20, 'FOR SALE', 'CHOCOLATE CITY', '#8e3442');
+            sign(x + 4, y, 17, w, 20, 'FOR SALE', 'CHOCOLATE CITY', '#8e3442', { ctx: c, P, box }, true);
         } else if (layout.kind !== 'house') {
-            const x = b.x + b.w * .05, y = b.y + b.d * .94, w = b.w * .62;
+            const apartment = layout.kind === 'apartment';
+            const x = b.x + b.w * (apartment ? .24 : .05), y = b.y + b.d * (apartment ? .54 : .94);
+            const w = b.w * (apartment ? .68 : .62);
             for (const u of [.08, .92]) {
                 box(x + w * u, y, 0, 2, 2, 46, '#c6b89d', outline);
                 box(x + w * u - .5, y - .5, 46, 3, 3, 1, '#e3d4b8', outline);
             }
-            sign(x, y, 23, w, 22, '1-4 BEDROOMS', 'AVAILABLE', '#215657');
-        }
-        function sign(x, y, z, w, h, title, subtitle, color) {
-            box(x, y, z, w, 2, h, '#eee3cb', '#34434b');
-            const origin = P(x, y + 2, z + h);
-            const right = P(x + 1, y + 2, z + h), down = P(x, y + 2, z + h - 1);
-            c.save();
-            c.transform(right[0] - origin[0], right[1] - origin[1], down[0] - origin[0], down[1] - origin[1], ...origin);
-            c.fillStyle = color; c.fillRect(1.5, 1.5, w - 3, h * .55);
-            c.fillStyle = '#fff7e6'; c.textAlign = 'center'; c.textBaseline = 'middle';
-            c.font = `800 ${layout.kind === 'house' ? 6.5 : 8}px system-ui`;
-            c.fillText(title, w / 2, h * .32, w - 6);
-            c.fillStyle = '#254047'; c.font = `800 ${layout.kind === 'house' ? 4.2 : 6.5}px system-ui`;
-            c.fillText(subtitle, w / 2, h * .80, w - 6);
-            for (const u of [3, w - 3]) {
-                c.fillStyle = '#697675'; c.fillRect(u, h - 3, 1, 1);
-            }
-            c.restore();
+            sign(x, y, 23, w, 22, '1-4 BEDROOMS', 'AVAILABLE', '#215657', { ctx: c, P, box });
         }
         if (active) {
             const [sx, sy] = P(b.x + b.w / 2, b.y + b.d, 34 + Math.sin(time * 5) * 3);
             poly([[sx - 7, sy - 10], [sx + 7, sy - 10], [sx, sy]], '#34d399', '#15392d');
         }
     }
-    return { plan, draw };
+    function sign(x, y, z, w, h, title, subtitle, color, { ctx: c, P, box }, small = false, side = false) {
+        box(side ? x - 2 : x, y, z, side ? 2 : w, side ? w : 2, h, '#eee3cb', '#34434b');
+        const origin = side ? P(x, y + w, z + h) : P(x, y + 2, z + h);
+        const right = side ? P(x, y + w - 1, z + h) : P(x + 1, y + 2, z + h);
+        const down = side ? P(x, y + w, z + h - 1) : P(x, y + 2, z + h - 1);
+        c.save();
+        c.transform(right[0] - origin[0], right[1] - origin[1], down[0] - origin[0], down[1] - origin[1], ...origin);
+        c.fillStyle = color; c.fillRect(1.5, 1.5, w - 3, h * .55);
+        c.fillStyle = '#fff7e6'; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.font = `800 ${small ? 6.5 : 8}px system-ui`;
+        c.fillText(title, w / 2, h * .32, w - 6);
+        c.fillStyle = '#254047'; c.font = `800 ${small ? 4.2 : 6.5}px system-ui`;
+        c.fillText(subtitle, w / 2, h * .80, w - 6);
+        for (const u of [3, w - 3]) {
+            c.fillStyle = '#697675'; c.fillRect(u, h - 3, 1, 1);
+        }
+        c.restore();
+    }
+    function drawGarage(b, env, active = false, time = 0) {
+        const { P, poly, box } = env;
+        box(b.x, b.y, 0, b.w, b.d, b.h, b.color, '#34434b');
+        poly([P(b.x, b.y, b.h), P(b.x + b.w, b.y, b.h),
+            P(b.x + b.w, b.y + b.d, b.h), P(b.x, b.y + b.d, b.h)], '#718184', b.trim, 2);
+        const side = (u0, u1, z0, z1, color) =>
+            poly([P(b.x + b.w, b.y + b.d * u0, z0), P(b.x + b.w, b.y + b.d * u1, z0),
+                P(b.x + b.w, b.y + b.d * u1, z1), P(b.x + b.w, b.y + b.d * u0, z1)], color, b.trim);
+        for (const u of [.08, .39, .70]) {
+            side(u, u + .23, 0, b.h * .52, '#425965');
+            for (let z = 4; z < b.h * .52; z += 5) side(u, u + .23, z, z + .6, '#a7b5b4');
+        }
+        sign(b.x + b.w, b.y + b.d * .10, b.h * .62, b.d * .80, 18,
+            'PARK HERE', 'GARAGE', '#215657', env, false, true);
+        if (active) {
+            const [sx, sy] = P(b.x + b.w, b.y + b.d / 2, b.h + 12 + Math.sin(time * 5) * 3);
+            poly([[sx - 7, sy - 10], [sx + 7, sy - 10], [sx, sy]], '#34d399', '#15392d');
+        }
+    }
+    return { plan, draw, drawGarage };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = ResidentialArt;

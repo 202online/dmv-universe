@@ -27,7 +27,7 @@
         },
         SE: {
             identity: 'Garden-apartment courts, library commons and community recreation',
-            homes: [[-800, 1300], [-800, 1690], [-280, 1750], [-600, 1870], [320, 1320], [760, 1320]],
+            homes: [[-800, 1300], [-800, 1690], [-280, 1750], [-600, 1850], [320, 1320], [760, 1320]],
             kind: 'apartment', colors: ['#956e5d', '#a27d65', '#87685b'],
             districts: [
                 { name: 'Library Commons', e: -940, s: 1210, w: 1880, d: 410, color: '#426752' },
@@ -141,15 +141,17 @@
             const b = { name: `${id} ${design.kind === 'house' ? 'Rowhouse' : design.kind === 'condo' ? 'Waterfront Home' : 'Garden Apartment'} ${i + 1}`,
                 kind: design.kind, variant: i % 3, type: 'crib',
                 w: design.kind === 'apartment' ? 160 : design.kind === 'condo' ? 140 : 80,
-                d: design.kind === 'apartment' ? 90 : design.kind === 'condo' ? 100 : 60,
+                d: design.kind === 'apartment' ? 110 : design.kind === 'condo' ? 100 : 60,
                 h: design.kind === 'house' ? 78 + i % 3 * 8 : design.kind === 'apartment' ? 140 + i % 3 * 12 : 120 + i % 3 * 10,
                 color: design.colors[i % design.colors.length], trim: '#e3ceb0' };
             center(b, e, s);
             return b;
         }).concat(shops);
         if (id === 'SE') {
-            center(q.buildings[0], 650, 1740);
-            center(q.buildings[1], 330, 1700);
+            const apartment = q.buildings[0], garage = q.buildings[1];
+            center(apartment, 650, 1740);
+            garage.w = apartment.w; garage.d = 70; garage.h = 55;
+            garage.x = apartment.x; garage.y = apartment.y - garage.d;
         }
         if (id === 'NE') {
             center(shops[0], 560, 1850);

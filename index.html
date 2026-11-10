@@ -1399,8 +1399,9 @@
 
         function drawBuilding(b, active, t) {
             const { x, y, w, d, h } = b, Y = y + d;
-            if (b.type === 'crib' && !b.garage) {
-                ResidentialArt.draw({ ...b, kind: 'apartment', variant: 1 }, { ctx, P, poly, box, shade }, active, t);
+            if (b.type === 'crib') {
+                if (b.garage) ResidentialArt.drawGarage(b, { ctx, P, poly, box, shade }, active, t);
+                else ResidentialArt.draw({ ...b, kind: 'apartment', variant: 1 }, { ctx, P, poly, box, shade }, active, t);
                 return;
             }
             if (b.shape === 'oval') { drawOvalArena(b, active, t); return; }
@@ -1468,7 +1469,7 @@
                     }
                     poly(faceR(x, y, w, d, .1, .9, 47 + row * 25, 50 + row * 25), b.trim);
                 }
-            } else if (['lounge', 'gym', 'garage'].includes(b.style)) {
+            } else if (['lounge', 'gym'].includes(b.style)) {
                 for (let z = 48; z < h - 12; z += b.style === 'gym' ? 16 : 22) {
                     poly(faceR(x, y, w, d, 0.04, 0.96, z, z + 3), b.trim);
                 }
@@ -1497,16 +1498,7 @@
                 poly(faceR(x, y, w, d, (c + 0.15) / colsR, (c + 0.85) / colsR, 10, 36), 'rgba(125,211,252,.45)', 'rgba(0,0,0,.5)');
 
             // ground floor on the left face
-            if (b.garage) {
-                poly(faceL(x, y, w, d, 0.12, 0.88, 0, 38), '#cbd5e1', 'rgba(0,0,0,.6)');
-                for (let i = 1; i < 6; i++) {
-                    const z = i * 6.3;
-                    ctx.beginPath();
-                    const a = P(x + 0.12 * w, Y, z), c2 = P(x + 0.88 * w, Y, z);
-                    ctx.moveTo(a[0], a[1]); ctx.lineTo(c2[0], c2[1]);
-                    ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1; ctx.stroke();
-                }
-            } else if (b.style === 'club') {
+            if (b.style === 'club') {
                 poly(faceL(x, y, w, d, 0.06, 0.37, 8, 39), '#261e31', b.trim, 1.5);
                 poly(faceL(x, y, w, d, 0.63, 0.94, 8, 39), '#261e31', b.trim, 1.5);
                 poly(faceL(x, y, w, d, 0.4, 0.6, 0, 40), '#101018', active ? '#34d399' : b.trim, 2);

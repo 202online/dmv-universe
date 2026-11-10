@@ -97,17 +97,22 @@ yellow markings at a narrower neighborhood scale. Trees stay off the streets.
 Neighborhood homes open the same saved home/computer/TV menu as The Crib.
 Each residential type now has three distinct silhouettes: bay-front, L-shaped
 and porch/setback houses; L-wing, stepped-tower and courtyard condos; slab,
-garage-podium and twin-block apartments. Pitched/hipped roofs, terraces,
+setback and twin-block apartments. Pitched/hipped roofs, terraces,
 balcony railings, planters and varied window bands distinguish them. Homes
 and condos have visible driveways, some with decorative parked cars or a
-small garage; apartments have marked parking courts or garage doors. Selected
+small garage; apartment lots have **4–6 individually marked spaces**, wheel
+stops, an access aisle and several detailed parked cars. The main apartment's
+garage shares its full rear wall, with side-facing roll-up doors and a physical
+**PARK HERE / GARAGE** board mounted on the garage wall. Apartment fronts have
+stone waterfall walls, animated falling water, catch pools and landscaped
+garden islands, separate from the parking bays. Selected
 houses carry hanging **FOR SALE** boards on cross-arm posts; apartments and
 condos advertise **1–4 BEDROOMS AVAILABLE** on framed, twin-post leasing
 boards. Sign panels have physical depth and lettering projected onto their
 isometric faces, not floating screen labels. These are world-building signs, not new property
 purchases or separate bedroom inventories. Parking cars are decorative;
 the existing saved vehicle/garage menu is unchanged.
-Apartments use broad 160×90 lots and condos 140×100, compared with 80×60
+Apartments use broad 160×110 lots and condos 140×100, compared with 80×60
 rowhouses and the main apartment's 170×130 footprint. Their heights remain
 proportional rather than stretching into thin towers. Apartment courts are
 spaced around the library commons and southern lots are repositioned to keep
