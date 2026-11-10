@@ -3,10 +3,11 @@
 Browser-based city and arcade game. Touch gestures on mobile and mouse drags on
 desktop use the same controls. Progress saves in this browser on this device.
 
-## Sports and lounge levels
+## Arcade, business and lounge levels
 
 Basketball, driving, football, soccer, tennis, golf, boxing, pool, air hockey and
-chess have endless numbered levels. Win a level to unlock the next; select a cleared
+chess, Lemonade Stand, Sub Shop, Carryout Craze, Resell Hub and Courier Lane Sprint
+have endless numbered levels. Win a level to unlock the next; select a cleared
 level to practice. The panel above each game shows its clear goal and reward.
 Tennis retains automatic movement, serving and hitting, with optional swipe aiming.
 
@@ -19,13 +20,13 @@ Tennis retains automatic movement, serving and hitting, with optional swipe aimi
   Saves from before campaigns start at level 1; existing campaign saves keep
   their clears and unlock the next level, including level 6 after five clears.
 
-The first five levels pay 36 stars per game (360 across all ten games). Existing
+The first five levels pay 36 stars per game (540 across all fifteen games). Existing
 shirts cost 6–8 stars, scooters/e-bikes 60/180, and the Impala/pickup 720/1440. Replaying easy
-levels therefore cannot fund purchases. Other city activities are unchanged.
+levels therefore cannot fund purchases.
 Existing balances and owned vehicles are preserved; the new prices apply only
 to new purchases. Starting from zero, buying the Impala using just one game's
 first clears takes 62 wins, and the pickup takes 122 (without other spending).
-Across all ten games, clearing their first five levels still leaves 360/1080
+Across all fifteen games, clearing their first five levels still leaves 180/900
 stars to earn toward those vehicles. These are win counts, not guaranteed hours.
 
 The level picker shows a small moving window rather than an ever-growing list.
@@ -42,9 +43,42 @@ pressure; driving speed and boss strength; boxing stamina and punch speed; and
 chess accuracy/lookahead. Pool has fewer shots; golf requires fewer strokes,
 softer cup entry and faster windmill timing.
 
+The five business/street games use the same touch canvas, visual feedback,
+level picker and first-clear rewards as the sports games. Older ten-game saves
+keep their clears and initialize the five additions at level one.
+Arcades fill the viewport on mobile; level-selection controls hide during play
+and return with the result, leaving more room for touch controls.
+
+- **Lemonade Stand**: squeeze, mix, hold/release to pour, set prices, serve and
+  restock from sales. Meet both cup and profit targets; stand cash is separate
+  from city stars.
+- **Sub Shop**: assemble the exact visible ingredient ticket before patience
+  expires. Toggle ingredients to remove extras; remakes cost patience.
+- **Carryout Craze**: time the fryer, choose the requested sauce and pack wing
+  boxes. The timing is fictional arcade play, not cooking instruction.
+- **Resell Hub**: compare three details against a reference and buy matching
+  items or pass mismatches. Fictional sneakers are not real authentication
+  training; displayed resale margin is practice money only.
+- **Courier Lane Sprint**: steer between three lanes, pick up parcels, avoid
+  cones and deliver at green zones. Three bumps end the route.
+
 This is a local, client-side economy, not a tamper-proof online wallet. Clearing
 browser storage resets progress; editing saves or the device clock cannot be
 securely prevented without server-side accounts and reward validation.
+
+## Quadrant neighborhoods and streets
+
+NW has leafy rowhouse blocks and a cultural district; NE has a residential grid
+separate from its market, carryouts and sports; SE has garden-apartment courts
+and library commons; SW has waterfront homes beside civic and arena areas.
+All existing venues remain in their quadrants. Every home, venue, neighborhood
+shop and sports destination has an obstacle-free local street approach joining
+the main crossroads. Local streets use the main road's asphalt, sidewalks and
+yellow markings at a narrower neighborhood scale. Trees stay off the streets.
+Neighborhood homes open the same saved home/computer/TV menu as The Crib.
+
+The city map shows the local streets, tan home markers, blue neighborhood-shop
+markers and numbered venues, with descriptions of each district.
 
 ## Betting Practice Lab
 
@@ -103,7 +137,7 @@ existing balances, purchases or minigame clears.
 
 ## Library shelves, documentaries, TV, theater and the DMV
 
-`library-data.js` holds 111 short, neutral **fact cards**, each with a source
+`library-data.js` holds 129 short, neutral **fact cards**, each with a source
 link. Generated content only selects and orders those cards; it never writes new
 historical claims. To add content, add a cited card and reuse an existing
 category.
@@ -113,7 +147,7 @@ still needs a complete editorial fact-check; its in-game notice says so. Study
 current agency manuals for driving, licensing and safety rules. Historical
 summaries are not current news, professional training or legal advice.
 
-- **Bookshelves** (SE Library) have four aisles:
+- **Bookshelves** (SE Library) have five aisles:
   - **Chocolate City Collection**: go-go; art, style and scenes; the hard years,
     with a content note; sports; entertainment; Black politics.
   - **Early-2000s DC News Archive**: headlines and entertainment, presented as
@@ -121,6 +155,10 @@ summaries are not current news, professional training or legal advice.
   - **History & Education**: African American history, Native American history,
     DC through Black Americans and DMV regional history.
   - **Sports**.
+  - **Modern Entertainment Archive**: separate music, sports and TV/film
+    shelves with 18 dated events from **2021–2024**. This curated archive
+    includes original summaries and source links, not current headlines,
+    a live feed or automatic news fetching.
 
   Each shelf rotates deterministic editions every Monday at 00:00 UTC. Books
   contain 400–800 words (2–4 minutes at 200 words/minute), including active-recall
@@ -129,6 +167,7 @@ summaries are not current news, professional training or legal advice.
 - **Movie room** (SE Library): nine original 2–4 minute documentaries are rebuilt
   weekly as narrated scene slides, with optional browser text-to-speech. A
   real-film guide offers original summaries and source links; nothing is streamed.
+  YouTube embeds, hosted video and device-selected video files are not implemented.
   Playback supports pause, back, next and replay. Reading players pause when
   the tab is hidden; narration resumes when playback does, and unavailable
   browser speech is reported on screen.

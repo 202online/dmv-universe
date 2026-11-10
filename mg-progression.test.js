@@ -83,7 +83,27 @@ test('early levels pay 36 per game and later rewards stay capped at 12', () => {
             assert.equal(Campaign.settle(state, name, level, true).stars, 0);
         }
     }
-    assert.equal(total, 360);
+    assert.equal(total, 36 * Campaign.games.length);
+});
+
+test('older ten-game saves gain five new campaigns without changing prior clears or replay data', () => {
+    const old = Campaign.initial();
+    for (const name of ['lemonade', 'subshop', 'carryout', 'resale', 'courier']) delete old.cleared[name];
+    old.cleared.tennis = 19;
+    old.replay = { day: '2026-01-01', paid: 2 };
+    assert.ok(Campaign.valid(old));
+    const loaded = Campaign.restore(old);
+    assert.equal(loaded.cleared.tennis, 19);
+    assert.deepEqual(loaded.replay, old.replay);
+    assert.ok(!Object.hasOwn(old.cleared, 'lemonade'), 'migration does not mutate old data');
+    for (const name of ['lemonade', 'subshop', 'carryout', 'resale', 'courier']) {
+        assert.equal(Campaign.info(loaded, name).unlocked, 1);
+        assert.equal(Campaign.settle(loaded, name, 1, true).stars, 3);
+        assert.equal(Campaign.settle(loaded, name, 1, true).stars, 0);
+    }
+    loaded.cleared.courier = -1;
+    assert.ok(!Campaign.valid(loaded));
+    assert.throws(() => Campaign.restore(loaded), /Invalid/);
 });
 
 test('invalid saved progression is rejected', () => {

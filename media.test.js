@@ -36,6 +36,23 @@ test('Chocolate City aisle covers the requested subjects', () => {
     assert.ok(Data.sections.some(s => s.id === 'news2000s'));
 });
 
+test('modern entertainment archive has separate dated music, sports and TV/film shelves', () => {
+    const section = Data.sections.find(s => s.id === 'modern-entertainment');
+    assert.match(section.note, /not current headlines or a live feed/);
+    const shelves = Data.shelves.filter(s => s.section === section.id);
+    assert.equal(shelves.length, 3);
+    for (const id of ['modern-music', 'modern-sports', 'modern-screen']) assert.ok(shelves.some(s => s.id === id));
+    const cards = Data.capsules.filter(c => shelves.some(s => s.categories.includes(c.category)));
+    assert.equal(cards.length, 18);
+    for (const card of cards) {
+        assert.match(card.era, /^202[1-4]-\d{2}-\d{2}$/);
+        assert.ok(Number.isFinite(Date.parse(card.era)));
+        assert.ok(httpUrl(card.source));
+    }
+    assert.ok(cards.some(c => /Commanders/.test(c.fact)));
+    assert.ok(cards.some(c => /Ledecky/.test(c.fact)));
+});
+
 test('generated books are deterministic per UTC week, readable in 2-4 minutes and change weekly', () => {
     for (const shelf of Data.shelves) {
         const a = Media.shelfBooks(shelf.id, new Date('2026-11-09T00:00:00Z'));
@@ -250,7 +267,7 @@ test('sensitive topics carry notes on bookshelves and individual media scenes', 
 test('theater (NW) and DMV (SW) are clear of roads and objects, solid and reachable', () => {
     const html = fs.readFileSync(`${__dirname}/index.html`, 'utf8');
     const world = html.split('// ---------- World data ----------')[1].split('// ---------- State & input ----------')[0];
-    const context = { WORLD: 1000 };
+    const context = { WORLD: 1000, CityLayout: require('./city-layout.js') };
     vm.runInNewContext(`${world}\nglobalThis.city = quadrants;`, context);
     for (const [qid, type] of [['NW', 'theater'], ['SW', 'dmv']]) {
         const q = context.city[qid], b = q.buildings.find(x => x.type === type);

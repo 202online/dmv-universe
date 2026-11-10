@@ -15,9 +15,10 @@ function harness(name, seed = 1, level = 1) {
     const math = Object.create(Math);
     math.random = random;
     let factory, result, awards = 0, time = 0;
-    vm.runInNewContext(fs.readFileSync(path.join(__dirname, `mg-${name}.js`), 'utf8'), {
+    const module = ['lemonade', 'subshop', 'carryout'].includes(name) ? 'food' : ['resale', 'courier'].includes(name) ? 'street' : name;
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, `mg-${module}.js`), 'utf8'), {
         Math: math,
-        Minigames: { register(key, fn) { assert.equal(key, name); factory = fn; } }
+        Minigames: { register(key, fn) { if (key === name) factory = fn; } }
     });
     const utils = {
         ...U,
@@ -59,6 +60,176 @@ function harness(name, seed = 1, level = 1) {
     };
 }
 
+function tapGame(h, x, y, cancelled = false) {
+    const p = { id: 1, x, y, sx: x, sy: y, len: 0, cancelled };
+    h.game.down(p); h.game.up(p);
+}
+
+function advance(h, seconds) {
+    for (let t = 0; t < seconds && !h.result; t += 1 / 60) h.step(1 / 60);
+}
+
+test('lemonade recipes, canceled pours, restocking and profit goals work at beginner and extreme levels', () => {
+    for (const level of [1, 5, 1000000]) {
+        const h = harness('lemonade', 1, level);
+        tapGame(h, 180, 420, true);
+        assert.equal(h.game._state().stock, 6);
+        tapGame(h, 180, 420); tapGame(h, 180, 420);
+        const canceled = { id: 2, x: 180, y: 420, len: 0 };
+        h.game.down(canceled); advance(h, .5); canceled.cancelled = true; h.game.up(canceled);
+        assert.equal(h.game._state().stage, 2);
+        assert.equal(h.game._state().fill, 0);
+        const bad = { id: 3, x: 180, y: 420, len: 0 };
+        h.game.down(bad); h.game.up(bad);
+        assert.equal(h.game._state().stage, 0);
+        assert.equal(h.game._state().revenue, 0);
+        while (!h.result) {
+            let s = h.game._state();
+            if (!s.stock) {
+                const cash = s.cash;
+                tapGame(h, 80, 505);
+                assert.equal(h.game._state().cash, cash - 6);
+                assert.equal(h.game._state().stock, 5);
+            }
+            tapGame(h, 180, 420); tapGame(h, 180, 420);
+            const p = { id: 4, x: 180, y: 420, len: 0 };
+            h.game.down(p); advance(h, 1); h.game.up(p);
+            assert.equal(h.game._state().stage, 3);
+            while (!h.game._state().customer && !h.result) h.step();
+            tapGame(h, 260, 505);
+            s = h.game._state();
+            assert.equal(s.cash, 20 + s.revenue - s.expenses);
+        }
+        assert.equal(h.result.win, true, `Lemonade level ${level} achievable`);
+        assert.equal(h.result.stars, 0);
+        const s = h.game._state();
+        assert.ok(s.sold >= s.target && s.revenue - s.expenses >= s.profitGoal);
+        assert.equal(h.awards, 1);
+    }
+});
+
+test('sub shop requires the exact ticket, supports removing extras, resets abandoned tickets and wins at high levels', () => {
+    for (const level of [1, 5, 1000000]) {
+        const h = harness('subshop', 3, level);
+        const ingredient = i => tapGame(h, 45 + (i % 4) * 86, 350 + Math.floor(i / 4) * 64);
+        const before = h.game._state();
+        tapGame(h, 260, 505);
+        assert.equal(h.game._state().mistakes, 1);
+        assert.equal(h.game._state().patience, before.patience - 2);
+        assert.equal(h.game._state().served, 0);
+        advance(h, before.limit);
+        assert.equal(h.game._state().lost, 1);
+        tapGame(h, 45, 350, true);
+        assert.equal(h.game._state().selected.length, 0);
+        while (!h.result) {
+            const s = h.game._state();
+            s.order.forEach(ingredient);
+            const extra = Array.from({ length: 8 }, (_, i) => i).find(i => !s.order.includes(i));
+            ingredient(extra); ingredient(extra);
+            assert.equal(h.game._state().selected.length, s.order.length);
+            tapGame(h, 260, 505);
+            if (!h.result) advance(h, .75);
+        }
+        assert.equal(h.result.win, true);
+        assert.equal(h.result.stars, 0);
+        assert.equal(h.awards, 1);
+    }
+});
+
+test('carryout handles early lifts, burns, wrong sauces and correct high-level orders', () => {
+    for (const level of [1, 5, 1000000]) {
+        const h = harness('carryout', 2, level);
+        tapGame(h, 180, 350, true);
+        assert.equal(h.game._state().stage, 0);
+        tapGame(h, 180, 350); tapGame(h, 180, 350);
+        assert.equal(h.game._state().stage, 0, 'Early batch discarded');
+        tapGame(h, 180, 350); advance(h, 4);
+        assert.equal(h.game._state().burnt, 1);
+        while (!h.result) {
+            tapGame(h, 180, 350);
+            advance(h, .65 / h.game._state().cookRate);
+            tapGame(h, 180, 350);
+            assert.equal(h.game._state().stage, 2);
+            const s = h.game._state(), wrong = (s.wanted + 1) % 3;
+            tapGame(h, 60 + wrong * 110, 425); tapGame(h, 180, 505);
+            assert.equal(h.game._state().served, s.served);
+            assert.equal(h.game._state().patience, s.patience - 2);
+            tapGame(h, 60 + s.wanted * 110, 425); tapGame(h, 180, 505);
+            if (!h.result) advance(h, .75);
+        }
+        assert.equal(h.result.win, true);
+        assert.equal(h.result.stars, 0);
+        assert.equal(h.awards, 1);
+    }
+});
+
+test('resale tickets really differ, inspect tabs work and correct or wrong decisions settle once', () => {
+    for (const level of [1, 1000000]) {
+        for (const correct of [true, false]) {
+            const h = harness('resale', 7, level);
+            tapGame(h, 60, 500, true);
+            assert.equal(h.game._state().round, 0);
+            while (!h.result) {
+                const s = h.game._state();
+                for (let i = 0; i < 3; i++) {
+                    tapGame(h, 60 + i * 114, 350);
+                    assert.equal(h.game._state().tab, i);
+                }
+                assert.equal(s.ticket.reference.every((v, i) => v === s.ticket.actual[i]), s.ticket.genuine);
+                const buy = correct ? s.ticket.genuine : !s.ticket.genuine;
+                tapGame(h, buy ? 80 : 260, 500);
+                if (!h.result) advance(h, 1.35);
+            }
+            assert.equal(h.result.win, correct);
+            assert.equal(h.result.stars, 0);
+            assert.equal(h.awards, 1);
+            assert.equal(h.game._state().correct, correct ? h.game._state().total : 0);
+        }
+    }
+});
+
+test('courier steering, canceled drags, deliveries and three-bump losses work at low and high levels', () => {
+    for (const level of [1, 1000000]) {
+        for (const safe of [true, false]) {
+            const h = harness('courier', 5, level);
+            const p = { id: 2, x: 80, y: 300, len: 0 };
+            h.game.down(p);
+            assert.equal(h.game._state().lane, 0);
+            p.x = 280; h.game.move(p);
+            assert.equal(h.game._state().lane, 2);
+            p.cancelled = true; h.game.up(p);
+            assert.equal(h.game._state().lane, 1);
+            for (let f = 0; f < 65 * 60 && !h.result; f++) {
+                const row = h.game._state().rows.find(r => !r.done);
+                if (row && !row.delivery) {
+                    assert.notEqual(row.parcel, row.blocked);
+                    tapGame(h, [80, 180, 280][safe ? row.parcel : row.blocked], 300);
+                }
+                h.step();
+            }
+            assert.ok(h.result);
+            assert.equal(h.result.win, safe);
+            assert.equal(h.result.stars, 0);
+            assert.equal(h.awards, 1);
+            if (safe) assert.ok(h.game._state().delivered >= h.game._state().target);
+            else assert.equal(h.game._state().lives, 0);
+        }
+    }
+});
+
+test('all five new arcades time out without passive rewards and stop accepting input', () => {
+    for (const name of ['lemonade', 'subshop', 'carryout', 'resale', 'courier']) {
+        const h = harness(name);
+        advance(h, 90);
+        assert.ok(h.result, name);
+        assert.equal(h.result.win, false, name);
+        assert.equal(h.result.stars, 0, name);
+        tapGame(h, 180, 505);
+        advance(h, 1);
+        assert.equal(h.awards, 1, name);
+    }
+});
+
 for (const outcome of ['goal', 'save', 'wall', 'post', 'bar', 'over', 'wide']) {
     test(`soccer renders ${outcome} immediately and completes all six kicks`, () => {
         const h = harness('soccer');
@@ -89,7 +260,7 @@ for (const outcome of ['goal', 'save', 'wall', 'post', 'bar', 'over', 'wide']) {
     });
 }
 
-test('all ten games initialize and render early and very high campaign levels', () => {
+test('all games initialize and render early and very high campaign levels', () => {
     const Progression = require('./mg-progression.js');
     for (const name of Progression.games) {
         for (const level of [1, 2, 3, 4, 5, 6, 25, 100, 1000, 1000000]) {

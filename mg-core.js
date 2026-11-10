@@ -181,6 +181,7 @@ const Minigames = (() => {
         if (!S) return;
         const overlay = S.api.overlay;
         const wrap = S.host.querySelector('.mg-wrap');
+        if (wrap) wrap.dataset.phase = S.phase;
         const chrome = wrap ? Array.from(wrap.children).reduce((sum, child) =>
             sum + (child === S.canvas ? 0 : child.offsetHeight), 0) + (wrap.children.length - 1) * 6 + 34 : 240;
         const availW = Math.max(180, (overlay ? overlay.clientWidth : W + 40) - 38);
@@ -324,6 +325,7 @@ const Minigames = (() => {
         S.phase = 'play';
         sfx('whistle');
         if (S.game.start) S.game.start();
+        fit();
     }
 
     function end(result) {
@@ -343,6 +345,7 @@ const Minigames = (() => {
         sfx(result.win ? 'cheer' : 'sad');
         const again = S.host.querySelector('#mg-again');
         if (again) again.hidden = false;
+        fit();
     }
 
     // ---------- Effects ----------

@@ -34,7 +34,7 @@ test('weekly shelf stays stable during the UTC week and rotates at Monday midnig
 test('SE library clears roads and other destinations, is solid, and has a walkable approach from the crossroads', () => {
     const html = fs.readFileSync(`${__dirname}/index.html`, 'utf8');
     const world = html.split('// ---------- World data ----------')[1].split('// ---------- State & input ----------')[0];
-    const context = { WORLD: 1000 };
+    const context = { WORLD: 1000, CityLayout: require('./city-layout.js') };
     vm.runInNewContext(`${world}\nglobalThis.city = quadrants;`, context);
     const q = context.city.SE, library = q.buildings.find(b => b.type === 'library');
     assert.ok(library);

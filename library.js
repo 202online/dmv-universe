@@ -125,10 +125,10 @@ const CommunityLibrary = (() => {
             const shelves = M.data.shelves.filter(sh => sh.section === id);
             content.innerHTML = `<div class="sports-game sportsbook library-reader"><h2>${sec.icon} ${escape(sec.name)}</h2>
                 <p class="book-muted">This week's editions · ${week.date}</p>
+                ${sec.note ? `<p class="book-warning">${escape(sec.note)}</p>` : ''}
                 ${shelves.map(sh => `<details class="book-card"><summary><strong>${escape(sh.name)}</strong> — ${escape(sh.blurb)}</summary>
                 ${M.shelfBooks(sh.id).map((bk, i) => `<article class="book-card"><h3>${escape(bk.title)}</h3><p>${bk.chapters.length} chapters · about ${bk.minutes} min</p>
                 <button type="button" data-book="${sh.id}:${i}">Read</button></article>`).join('')}</details>`).join('')}
-                ${sec.note ? `<p class="book-warning">${escape(sec.note)}</p>` : ''}
                 <button type="button" id="section-back">All aisles</button></div>`;
             content.querySelectorAll('[data-book]').forEach(btn => btn.addEventListener('click', () => {
                 const [shelfId, i] = btn.dataset.book.split(':');
