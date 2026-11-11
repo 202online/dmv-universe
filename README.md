@@ -179,8 +179,9 @@ green blocks. Sparse grass-blade details replace the old ground checkerboard;
 soil, bark, planter rims and paved districts keep their distinct materials.
 Single-family homes have raised concrete door landings, three descending front
 steps and a light-grey walkway to the street sidewalk, with an intersecting
-branch to the driveway. Driveways are wider than the sidewalks; pedestrian paths
-remain separate from the marked parking bay.
+branch that meets the driveway edge without crossing its pavement. Driveways are
+wider than the sidewalks; pedestrian paths remain separate from the marked
+parking bay.
 Neighborhood homes open the same saved home/computer/TV menu as The Crib.
 Each residential type now has three distinct silhouettes: bay-front, L-shaped
 and porch/setback houses; L-wing, stepped-tower and courtyard condos; slab,

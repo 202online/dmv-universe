@@ -37,7 +37,7 @@ test('houses, condos and apartments share one borderless lawn color', () => {
     }
 });
 
-test('house steps and both intersecting walkways use sidewalk concrete', () => {
+test('house steps and walkways connect without crossing the driveway', () => {
     for(const variant of [0,1,2]) {
         const b={x:100,y:200,w:100,d:104,h:90,kind:'house',variant,color:'#976b53',trim:'#e3ceb0'};
         const concrete=[],steps=[],landings=[];
@@ -59,6 +59,10 @@ test('house steps and both intersecting walkways use sidewalk concrete', () => {
         assert.deepEqual(landings[0],{...plan.landing,z:0},'landing aligns with the threshold');
         assert.equal(steps[0].y,plan.landing.y+plan.landing.d,'stairs continue from the landing');
         assert.equal(steps[0].x,plan.path.x,'stairs remain centered on the walkway');
+        assert.equal(plan.drivewayPath.x+plan.drivewayPath.w,plan.parking.x,
+            'the pedestrian branch ends at the driveway edge');
+        assert.equal(Layout.polygonsOverlap(Layout.footprint(plan.drivewayPath).corners,
+            Layout.footprint(plan.parking).corners),false,'the pedestrian branch does not cross the driveway');
     }
 });
 

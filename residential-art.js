@@ -56,7 +56,7 @@ const ResidentialArt = (() => {
         const path = { x: door.x - 10, y: door.y, w: 20, d: b.y + b.d - door.y };
         const landing = kind === 'house' ? { x: door.x - 12, y: door.y, w: 24, d: 4, h: 6 } : null;
         const drivewayPath = kind === 'house' ? {
-            x: path.x, y: parking.y + parking.d, w: parking.x + parking.w - path.x,
+            x: path.x, y: parking.y + parking.d, w: parking.x - path.x,
             d: Math.min(18, b.y + b.d - parking.y - parking.d)
         } : null;
         const steps = kind === 'house' ? Array.from({length:3},(_,i)=>({

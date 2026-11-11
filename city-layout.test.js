@@ -166,7 +166,13 @@ test('single-family houses line up with small side yards and generous grassy fro
             assert.equal(layout.drivewayPath.y,layout.parking.y+layout.parking.d,'branch meets the driveway front edge');
             assert.ok(layout.drivewayPath.x < layout.path.x+layout.path.w &&
                 layout.drivewayPath.x+layout.drivewayPath.w>layout.path.x,'walkways intersect');
+            assert.equal(layout.drivewayPath.x+layout.drivewayPath.w,layout.parking.x,
+                'the walkway meets the side edge of the driveway');
             const paths=q.approaches.filter(a=>a.pedestrian && a.destination===b);
+            const drivewayEntrance=q.approaches.find(a=>a.vehicleEntrance && a.destination===b);
+            assert.ok(paths.every(p=>!CityLayout.polygonsOverlap(CityLayout.footprint(p).corners,
+                drivewayEntrance.polygon||CityLayout.footprint(drivewayEntrance).corners)),
+            'pedestrian paths do not cross the vehicle driveway entrance');
             assert.ok(paths.some(p=>CityLayout.footprint(p).corners.some(([x,y])=>{
                 const e=x-y,s=x+y;
                 return CityLayout.streetBounds(q).some(r=>e>=r.e0 && e<=r.e1 && s>=r.s0 && s<=r.s1);
