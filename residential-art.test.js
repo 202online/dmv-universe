@@ -40,19 +40,25 @@ test('houses, condos and apartments share one borderless lawn color', () => {
 test('house steps and both intersecting walkways use sidewalk concrete', () => {
     for(const variant of [0,1,2]) {
         const b={x:100,y:200,w:100,d:104,h:90,kind:'house',variant,color:'#976b53',trim:'#e3ceb0'};
-        const concrete=[],steps=[];
+        const concrete=[],steps=[],landings=[];
         Art.draw(b,{
             ctx:new Proxy({}, {get:()=>()=>{}}),P:(x,y,z=0)=>[x,y,z],
             poly(points,fill){if(fill==='#c3c6c5')concrete.push(points);},
-            box(x,y,z,w,d,h,color){if(color==='#c3c6c5')steps.push({x,y,z,w,d,h});},
+            box(x,y,z,w,d,h,color){if(color==='#c3c6c5') {
+                const piece={x,y,z,w,d,h};
+                if(w===24)landings.push(piece);else steps.push(piece);
+            }},
             shade:c=>c
         });
         assert.equal(concrete.length,2,'front walk and driveway branch are rendered');
+        assert.equal(landings.length,1,'front door has a raised concrete landing');
         assert.equal(steps.length,3,'each tread is a solid concrete step');
         assert.deepEqual(steps.map(s=>s.h),[6,4,2],'steps descend toward the walkway');
         const plan=Art.plan(b);
         assert.ok(concrete.every(points=>points.every(([x,y])=>x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.d)));
-        assert.equal(steps[0].y,plan.door.y,'stairs start at the front door');
+        assert.deepEqual(landings[0],{...plan.landing,z:0},'landing aligns with the threshold');
+        assert.equal(steps[0].y,plan.landing.y+plan.landing.d,'stairs continue from the landing');
+        assert.equal(steps[0].x,plan.path.x,'stairs remain centered on the walkway');
     }
 });
 
