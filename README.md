@@ -195,9 +195,10 @@ and condos have visible driveways, some with decorative parked cars or a
 small garage; apartment lots have **4–6 individually marked spaces**, wheel
 stops, an access aisle and several detailed parked cars. The main apartment's
 garage attaches beside the apartment, outside its projected roofline. Its
-open-sky parking deck has three bays and a separate 48-unit driving aisle,
-with an opaque roofed service wing and a wall-mounted **PARK HERE / GARAGE**
-board. Cars enter through the aisle, not through another parking space. Apartment fronts have
+open-sky parking deck has three internal vehicle placements and a separate
+48-unit driving aisle, with an opaque roofed service wing and a wall-mounted
+**PARK HERE / GARAGE** board. Cars enter through the aisle and park inside the
+open garage, without painted stall markings. Apartment fronts have
 stone waterfall walls, animated falling water, catch pools and landscaped
 garden islands placed beside entrances, with clear door approaches even in
 the isometric projection. Selected
@@ -230,6 +231,9 @@ stalls around the center aisle; its two decorative cars keep their own spaces.
 The larger marked-bay treatment is limited to parking lots; garage markers and
 residential driveway spaces stay compact. Bus stops have pedestrian approaches
 but no parking lots or car placements.
+Parking stalls use a consistent outlined bay, compact stop stripes and centered
+P marker across public lots, venues and residential driveways. Garage vehicles
+park inside the open deck at the door openings, without painted stall markers.
 Parking aisles use the same plain asphalt as their bays, without street-style
 centerlines or contrasting road strips.
 Sidewalks remain along street sides, and pedestrian connector paths to front

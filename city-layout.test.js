@@ -50,10 +50,11 @@ test('every outdoor sport renders its equipment and a defined map sign', () => {
 });
 
 test('detailed parking, waterfront and trees render finite scalable scenery without changing access geometry', () => {
-    const polygons = [], ellipses = [];
+    const polygons = [], ellipses = [], parkingLabels = [];
     const canvas = new Proxy({}, { get: (target, key) => key in target ? target[key] : (...args) => {
         args.filter(a => typeof a === 'number').forEach(n => assert.ok(Number.isFinite(n), `${key}: ${n}`));
         if (key === 'ellipse') ellipses.push(args);
+        if (key === 'fillText' && args[0] === 'P') parkingLabels.push(args[0]);
     } });
     const env = {
         ctx: canvas, WORLD, TILE: 100, W: 1200, H: 900, KX: 1.6, KY: .8,
@@ -75,11 +76,20 @@ test('detailed parking, waterfront and trees render finite scalable scenery with
     assert.ok(polygons.some(p => p.fill === '#26333b'), 'attached lots include storm drains');
     assert.ok(!polygons.some(p => p.fill === '#353b46' || p.fill === '#e1c468'),
         'parking aisles use lot pavement without street-style lane overlays or dashed centerlines');
+    assert.ok(!html.includes("parkingAreas.filter(a => ['lot', 'garage'].includes(a.kind)"),
+        'garages do not render as marked surface lots');
     assert.ok(polygons.some(p => p.fill === '#a5abaa'), 'waterfront has a paved urban promenade');
     assert.ok(polygons.some(p => p.fill === '#555a55'), 'piers project out into the channel');
     assert.ok(polygons.some(p => p.fill === '#d5ddd5'), 'moored boat hulls sit in the water');
     assert.ok(!polygons.some(p => p.fill === '#a89a80'), 'the SW waterfront has no sandy shoreline');
     assert.equal(JSON.stringify(context.city.SW), before, 'decorative details do not change parking or collisions');
+    for (const id of ['NW', 'SE']) {
+        parkingLabels.length = 0;
+        env.ground(context.city[id]);
+        const expected = context.city[id].playerParking.filter(bay =>
+            bay.area.kind === 'overflow' || (bay.area.kind !== 'garage' && !CityLayout.residentialPlan(bay.destination))).length;
+        assert.equal(parkingLabels.length, expected, `${id} renders lot markers but no internal garage stalls`);
+    }
     env.tree({ x: 120, y: 210 });
     assert.equal(ellipses.length, 52, 'trees have dense shaded crowns and individual leaf clusters');
     const normal = ellipses.map(args => args[2]);
@@ -653,6 +663,8 @@ test('garage lane stays separate from every aligned bay and connects to its entr
             const localHeading=CityLayout.region(area,{x:0,y:0,w:1,d:1,heading:[1,0]}).heading;
             assert.deepEqual(bay.heading,localHeading,'parked vehicles run parallel to the long sides of the garage markings');
             const [bx,by]=CityLayout.point(area,bay.x+bay.w/2,bay.y+bay.d/2,true);
+            assert.ok(bay.x + bay.w / 2 >= area.destination.x + area.destination.w - 100,
+                'vehicle placements stay inside the open garage deck, behind its entrance');
             for(let x=area.destination.x+area.destination.w-72;x<=bx;x+=3) {
                 const center=CityLayout.point(area.destination,x,by);
                 const corners=CityLayout.vehicleCorners(...center,bay.heading,context.VehicleArt.sizes.truck);

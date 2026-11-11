@@ -146,16 +146,18 @@ const ResidentialArt = (() => {
             line([[drainX + .5, drainY + i, .5], [drainX + 3.5, drainY + i, .5]], '#a2aca1', .5);
         for (const [i, bay] of layout.bays.entries()) {
             plane(bay.x, bay.y, bay.w, bay.d, .6, null, '#d6d5ca', 1.2);
-            if (layout.kind !== 'house') {
-                const vertical = Math.abs(bay.heading[1]) > Math.abs(bay.heading[0]);
-                const stop = vertical ?
-                    { x: bay.x + 3, y: bay.y + 2, w: bay.w - 6, d: 1.5 } :
-                    { x: bay.x + 2, y: bay.y + 3, w: 1.5, d: bay.d - 6 };
-                plane(stop.x, stop.y, stop.w, stop.d, .8, '#d6c69b', '#84795f', .5);
-            }
+            const horizontal = bay.w > bay.d;
+            const stop = horizontal ?
+                { x: bay.x + 3, y: bay.y + 4, w: 1.2, d: bay.d - 8 } :
+                { x: bay.x + 4, y: bay.y + 3, w: bay.w - 8, d: 1.2 };
+            const stopInset = horizontal ? { ...stop, x: stop.x + 1.5, w: .8 } :
+                { ...stop, y: stop.y + 1.5, d: .8 };
+            plane(stop.x, stop.y, stop.w, stop.d, .8, '#d6c69b', '#84795f', .5);
+            plane(stopInset.x, stopInset.y, stopInset.w, stopInset.d, .85, '#84795f');
             if (i < (layout.kind === 'apartment' ? 2 : layout.bays.length)) {
                 const [sx, sy] = P(bay.x + bay.w / 2, bay.y + bay.d / 2, .7);
-                c.save(); c.font = 'bold 10px system-ui'; c.fillStyle = '#e2e8d8'; c.textAlign = 'center';
+                c.save(); c.font = `900 ${Math.min(10, Math.max(7, Math.min(bay.w, bay.d) * .4))}px system-ui`;
+                c.fillStyle = '#e2e8d8'; c.textAlign = 'center';
                 c.fillText('P', sx, sy); c.restore();
             }
         }

@@ -1657,9 +1657,15 @@
                 groundRect(x + 44, y + 4, 2, d - 8, '#7b7c7255');
                 groundRect(x + w - 46, y + 4, 2, d - 8, '#7b7c7255');
                 for (const bx of [x + 5, x + w - 41]) {
-                    for (let i = 0; i <= 8; i++) groundRect(bx, y + i * 24, 36, 1, '#ddd2bd');
                     for (let i = 0; i < 8; i++) {
-                        groundRect(bx + 2, y + i * 24 + 4, 2, 16, '#c6b995', '#736c5c');
+                        const bay = q.playerParking.find(p => {
+                            if (p.area.kind !== 'overflow') return false;
+                            const [localX, localY] = CityLayout.point(q.parkingLot,
+                                p.x + p.w / 2, p.y + p.d / 2, true);
+                            return Math.abs(localX - (bx + 18)) < 1e-7 &&
+                                Math.abs(localY - (y + i * 24 + 12)) < 1e-7;
+                        });
+                        drawParkingBay({ x: bx, y: y + i * 24, w: 36, d: 24 }, Boolean(bay));
                         groundRect(bx + 5, y + i * 24 + 6, 10, 4, '#25292d44');
                     }
                 }
@@ -1669,7 +1675,7 @@
                         [x + w / 2 - 2, py]].map(p => P(...p)), '#ddd2bd');
                 });
             }
-            for (const area of q.parkingAreas.filter(a => ['lot', 'garage'].includes(a.kind) && !CityLayout.residentialPlan(a.destination))) {
+            for (const area of q.parkingAreas.filter(a => a.kind === 'lot' && !CityLayout.residentialPlan(a.destination))) {
                 roadAligned(area, () => {
                     groundRect(area.x, area.y, area.w, area.d, '#2e3340');
                     for (let x = area.x + 8; x < area.x + area.w - 4; x += 16)
@@ -1679,17 +1685,9 @@
                         groundRect(area.x + area.w - 7.5, area.y + area.d - 8 + i, 4, .4, '#9ba79c');
                 });
             }
-            for (const bay of q.playerParking.filter(b => !CityLayout.residentialPlan(b.destination))) {
-                roadAligned(bay,()=>{
-                    groundRect(bay.x, bay.y, bay.w, bay.d, '#2e3340', '#d6d5ca', 1.5);
-                    if(bay.w>bay.d) groundRect(bay.x + bay.w-4, bay.y + 3, 2, bay.d - 6, '#d6d5bd');
-                    else groundRect(bay.x+3,bay.y+2,bay.w-6,2,'#d6d5bd');
-                    const [sx, sy] = P(bay.x + bay.w / 2, bay.y + bay.d / 2);
-                    const rx=P(bay.x+bay.w/2+1,bay.y+bay.d/2), down=P(bay.x+bay.w/2,bay.y+bay.d/2+1);
-                    ctx.save(); ctx.transform(rx[0]-sx,rx[1]-sy,down[0]-sx,down[1]-sy,sx,sy);
-                    ctx.font = `900 ${bay.destination.garage ? 10 : 15}px system-ui`; ctx.textAlign = 'center'; ctx.fillStyle = '#d3e8e4';
-                    ctx.fillText('P', 0, 5); ctx.restore();
-                });
+            for (const bay of q.playerParking.filter(b =>
+                !['overflow', 'garage'].includes(b.area.kind) && !CityLayout.residentialPlan(b.destination))) {
+                roadAligned(bay, () => drawParkingBay(bay));
             }
             for (const approach of q.approaches.filter(a => !a.pedestrian)) roadAligned(approach, () => {
                 if (approach.polygon) poly(approach.polygon.map(p => P(...p)), '#2e3340');
@@ -1701,6 +1699,26 @@
 
         function groundRect(x, y, w, d, fill, stroke, width = 1) {
             poly([P(x, y), P(x + w, y), P(x + w, y + d), P(x, y + d)], fill, stroke, width);
+        }
+        function drawParkingBay(bay, showLabel = true) {
+            groundRect(bay.x, bay.y, bay.w, bay.d, null, '#d6d5ca', 1.5);
+            const horizontal = bay.w > bay.d;
+            if (horizontal) {
+                const x = bay.x + Math.min(3, bay.w * .12);
+                groundRect(x, bay.y + 4, .8, Math.max(2, bay.d - 8), '#d6c69b');
+                groundRect(x + 1.5, bay.y + 4, .6, Math.max(2, bay.d - 8), '#84795f');
+            } else {
+                const y = bay.y + Math.min(3, bay.d * .12);
+                groundRect(bay.x + 4, y, Math.max(2, bay.w - 8), .8, '#d6c69b');
+                groundRect(bay.x + 4, y + 1.5, Math.max(2, bay.w - 8), .6, '#84795f');
+            }
+            if (!showLabel) return;
+            const [sx, sy] = P(bay.x + bay.w / 2, bay.y + bay.d / 2);
+            const right = P(bay.x + bay.w / 2 + 1, bay.y + bay.d / 2);
+            const down = P(bay.x + bay.w / 2, bay.y + bay.d / 2 + 1);
+            ctx.save(); ctx.transform(right[0] - sx, right[1] - sy, down[0] - sx, down[1] - sy, sx, sy);
+            ctx.font = `900 ${Math.min(15, Math.max(7, Math.min(bay.w, bay.d) * .48))}px system-ui`;
+            ctx.textAlign = 'center'; ctx.fillStyle = '#d3e8e4'; ctx.fillText('P', 0, 5); ctx.restore();
         }
         function concreteRect(x,y,w,d) {
             groundRect(x,y,w,d,'#c3c6c5');
