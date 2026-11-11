@@ -642,16 +642,23 @@
             q.lamps = [];
             const sidewalkCenter=(CityLayout.roadHalfWidth+CityLayout.halfWidth)/2;
             for (const side of [-1, 1]) {
-                for (let s = 180; s < 2 * WORLD; s += 240)
+                for (let s = 180; s < 2 * WORLD; s += 480)
                     if (Math.abs(s - WORLD) > CityLayout.halfWidth+35) { const [x, y] = fromCompass(side*sidewalkCenter,s); q.lamps.push({ x, y }); }
-                for (let e = -WORLD + 180; e < WORLD; e += 240)
+                for (let e = -WORLD + 180; e < WORLD; e += 480)
                     if (Math.abs(e) > CityLayout.halfWidth+35) { const [x, y] = fromCompass(e,WORLD+side*sidewalkCenter); q.lamps.push({ x, y }); }
             }
+            const signAreas=CityLayout.targets(q).map(b=>{
+                const plan=CityLayout.residentialPlan(b);
+                return plan?.signClearance ? CityLayout.region(b,plan.signClearance) : null;
+            }).filter(Boolean);
             q.lamps=q.lamps.filter(l=>!CityLayout.streetBounds(q,6,true).some(r=>
                 l.x-l.y>=r.e0 && l.x-l.y<=r.e1 && l.x+l.y>=r.s0 && l.x+l.y<=r.s1) &&
-                !near(q.parkingAreas,l.x,l.y,8) && !near(q.approaches,l.x,l.y,8));
+                !near(q.parkingAreas,l.x,l.y,8) && !near(q.approaches,l.x,l.y,8) &&
+                !q.trees.some(t=>Math.hypot(t.x-l.x,t.y-l.y)<90) &&
+                !signAreas.some(area=>CityLayout.distanceTo(area,l.x,l.y)<20));
             const billboardSpots = [];
             CityLayout.landscape(q);
+            q.lamps=q.lamps.filter(l=>!q.trees.some(t=>Math.hypot(t.x-l.x,t.y-l.y)<90));
             for (const side of [1, -1]) {
                 for (let s = 330; s < 2 * WORLD; s += 240) billboardSpots.push(fromCompass(side * 160, s));
                 for (let e = -WORLD + 330; e < WORLD; e += 240) billboardSpots.push(fromCompass(e, WORLD + side * 200));
@@ -2183,13 +2190,15 @@
             VehicleArt.draw(c, { ctx, P, poly, shade });
         }
 
-        function drawPlanting(bed) {
+        function drawPlanting(bed, foliageOnly = false) {
             roadAligned(bed,()=>{
                 const z=bed.raised?3:0;
-                if(bed.raised) box(bed.x,bed.y,0,bed.w,bed.d,z,'#8e8170','#c3b9a2');
-                groundRect(bed.x-1,bed.y-1,bed.w+2,bed.d+2,bed.raised?'#8a806b':CityLayout.grassColor);
-                poly([[bed.x,bed.y],[bed.x+bed.w,bed.y],[bed.x+bed.w,bed.y+bed.d],[bed.x,bed.y+bed.d]]
-                    .map(p=>P(...p,z+.2)),'#48382e','#8d7860',.7);
+                if(!foliageOnly) {
+                    if(bed.raised) box(bed.x,bed.y,0,bed.w,bed.d,z,'#8e8170','#c3b9a2');
+                    groundRect(bed.x-1,bed.y-1,bed.w+2,bed.d+2,bed.raised?'#8a806b':CityLayout.grassColor);
+                    poly([[bed.x,bed.y],[bed.x+bed.w,bed.y],[bed.x+bed.w,bed.y+bed.d],[bed.x,bed.y+bed.d]]
+                        .map(p=>P(...p,z+.2)),'#48382e','#8d7860',.7);
+                }
                 const [ox,oy]=P(bed.x,bed.y),[px,py]=P(bed.x+1,bed.y);
                 const unit=Math.hypot(px-ox,py-oy)/Math.hypot(KX,KY);
                 const dot=(x,y,r,color)=>{ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,r*unit,r*.8*unit,0,0,Math.PI*2);ctx.fill();};
@@ -2634,6 +2643,9 @@
             objs.filter(o => !inFront(o)).forEach(o => o.draw());
             if (player.appearance && !driving.active) drawPlayer();
             objs.filter(inFront).forEach(o => o.draw());
+            if(player.appearance && !driving.active) for(const bed of q.plantings)
+                if(!inFront(CityLayout.footprint(bed)) && CityLayout.distanceTo(bed,player.x,player.y)<14)
+                    drawPlanting(bed,true);
             ctx.restore();
 
             const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);

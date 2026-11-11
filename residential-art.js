@@ -68,12 +68,13 @@ const ResidentialArt = (() => {
             { x: b.x + b.w * .40, y: b.y + b.d * .48, w: b.w * .56, d: b.d * .50, spaces: 4 } :
             terrace ? { x: b.x + b.w * .30, y: b.y + b.d * .66, w: b.w * .66, d: b.d * .32, spaces: 2 } :
             { x: b.x + b.w * (kind === 'house' ? .73 : .78), y: b.y + b.d * (kind === 'house' ? .10 : .04),
-                w: b.w * (kind === 'house' ? .27 : .20), d: b.d * (kind === 'house' ? .73 : .94), spaces: 1 };
+                w: b.w * (kind === 'house' ? .27 : .20), d: b.d * (kind === 'house' ? .80 : .94), spaces: 1 };
         const entrancePart = parts.filter(p => !p.z).sort((a, c) => c.y + c.d - a.y - a.d)[0];
         const doorX = kind === 'apartment' ? b.x + b.w * .30 :
             terrace ? b.x + b.w * .16 : entrancePart.x + entrancePart.w * .5;
         const door = { x: doorX, y: entrancePart.y + entrancePart.d, w: Math.min(16, entrancePart.w * .4), h: 28 };
-        const path = { x: door.x - 10, y: door.y, w: 20, d: b.y + b.d - door.y };
+        const pathWidth = 28;
+        const path = { x: door.x - pathWidth / 2, y: door.y, w: pathWidth, d: b.y + b.d - door.y };
         const paths = frontLayout === 'garden-court' ? (() => {
             const turnDepth = Math.min(8, path.d / 3), upperDepth = (path.d - turnDepth) / 2;
             const lowerX = path.x - 12, lowerY = path.y + upperDepth + turnDepth;
@@ -83,11 +84,18 @@ const ResidentialArt = (() => {
                 { x: lowerX, y: lowerY, w: path.w, d: path.y + path.d - lowerY }
             ];
         })() : [path];
-        const landing = kind === 'house' ? { x: door.x - 12, y: door.y, w: 24, d: 4, h: 6 } : null;
-        const drivewayPathDepth = kind === 'house' ? Math.min(18, parking.y + parking.d - paths.at(-1).y) : 0;
+        const landing = kind === 'house' ? { x: door.x - 16, y: door.y, w: 32, d: 4, h: 6 } : null;
+        const drivewayPathDepth = kind === 'house' ? Math.min(18, parking.d) : 0;
+        const drivewayPathY = parking.y + parking.d - drivewayPathDepth;
+        const drivewayAttachment = kind === 'house' ? paths.map(p => ({
+            path: p, overlap: Math.max(0, Math.min(p.y + p.d, drivewayPathY + drivewayPathDepth) -
+                Math.max(p.y, drivewayPathY))
+        })).sort((a, c) => c.overlap - a.overlap)[0] : null;
+        if (kind === 'house' && (!drivewayAttachment?.overlap || drivewayAttachment.path.x + drivewayAttachment.path.w >= parking.x))
+            throw new Error('House driveway path cannot reach the front walk');
         const drivewayPath = kind === 'house' ? {
-            x: paths.at(-1).x, y: parking.y + parking.d - drivewayPathDepth,
-            w: parking.x - paths.at(-1).x,
+            x: drivewayAttachment.path.x + drivewayAttachment.path.w, y: drivewayPathY,
+            w: parking.x - drivewayAttachment.path.x - drivewayAttachment.path.w,
             d: drivewayPathDepth
         } : null;
         const steps = kind === 'house' ? Array.from({length:3},(_,i)=>({
@@ -111,10 +119,23 @@ const ResidentialArt = (() => {
             y: bay.y + bay.d / 2 - vehicles.sizes.car.d / 2, heading: bay.heading, color: ['#63879a', '#923d4b'][i]
         })) : [];
         const available = b.available ?? variant === 0;
+        const listed = listing({ ...b, variant }) !== null;
+        const sign = !listed ? null : kind === 'house' ?
+            { x: b.x + b.w * .04, y: b.y + b.d * .94, w: b.w * .16 } : (() => {
+                const apartment = kind === 'apartment';
+                return {
+                    x: b.x + b.w * (apartment || terrace ? .40 : .38),
+                    y: b.y + b.d * (apartment ? .46 : terrace ? .60 : .94),
+                    w: b.w * (apartment || terrace ? .55 : .30)
+                };
+            })();
+        const signClearance = sign && {
+            x: sign.x - 10, y: sign.y - 20, w: sign.w + 20, d: 44
+        };
         return { kind, variant, architecture: kind === 'house' ?
             architecture?.id ?? houseDesigns.find(design => design.variant === variant).id : null,
             frontLayout, terrace, parts, door, path, paths, landing, drivewayPath, steps, bays, decorativeCars,
-            available, listed: listing(b) !== null, garden, parking };
+            available, listed, sign, signClearance, garden, parking };
     }
     function draw(b, { ctx: c, P, poly, box, shade, entrances = [] }, active = false, time = 0) {
         const layout = plan(b), trim = b.trim, outline = '#17232899';
@@ -292,7 +313,7 @@ const ResidentialArt = (() => {
         for (const car of layout.decorativeCars)
             vehicles.draw({ ...car, kind: 'car', trim: '#d3d9d4' }, { ctx: c, P, poly, shade });
         if (layout.kind === 'house' && layout.listed) {
-            const x = b.x + b.w * .04, y = b.y + b.d * .94, w = b.w * .16;
+            const { x, y, w } = layout.sign;
             box(x, y, 0, 2, 2, 43, '#f0e5cf', outline);
             box(x, y, 41, w + 4, 2, 2, '#f0e5cf', outline);
             for (const u of [.22, .83])
@@ -300,8 +321,7 @@ const ResidentialArt = (() => {
             sign(x + 4, y, 17, w, 20, 'FOR SALE', 'CHOCOLATE CITY', '#8e3442', { ctx: c, P, box }, true);
         } else if (layout.kind !== 'house' && layout.listed) {
             const apartment = layout.kind === 'apartment';
-            const x = b.x + b.w * (apartment || layout.terrace ? .40 : .38), y = b.y + b.d * (apartment ? .46 : layout.terrace ? .60 : .94);
-            const w = b.w * (apartment || layout.terrace ? .55 : .30);
+            const { x, y, w } = layout.sign;
             for (const u of [.08, .92]) {
                 box(x + w * u, y, 0, 2, 2, 46, '#c6b89d', outline);
                 box(x + w * u - .5, y - .5, 46, 3, 3, 1, '#e3d4b8', outline);

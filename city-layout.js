@@ -414,17 +414,25 @@
             for (const path of paths)
                 q.approaches.push({ ...region(destination, path), destination, pedestrian: true });
             const access = q.roadAccess.find(a => a.building === destination);
-            const [ax, ay] = point(destination, ...world(...access.path[0]), true);
             if(layout.kind==='house') {
                 q.approaches.push({...region(destination,layout.drivewayPath),destination,pedestrian:true});
                 const streetPath=paths.at(-1), bottom=streetPath.y+streetPath.d;
-                const end=Math.max(bottom,ay-HALF*Math.SQRT1_2+2);
+                const left=streetPath.x,right=streetPath.x+streetPath.w;
+                const sidewalkEdge=streetBounds(q).map(r=>{
+                    const corners=[[r.e0,r.s0],[r.e1,r.s0],[r.e1,r.s1],[r.e0,r.s1]]
+                        .map(([e,s])=>point(destination,...world(e,s),true));
+                    const xs=corners.map(p=>p[0]),ys=corners.map(p=>p[1]);
+                    return {left:Math.min(...xs),right:Math.max(...xs),top:Math.min(...ys),bottom:Math.max(...ys)};
+                }).filter(r=>r.right>left && r.left<right && r.bottom>bottom)
+                    .map(r=>r.top).sort((a,b)=>a-b)[0];
+                const end=Math.max(bottom,Number.isFinite(sidewalkEdge)?sidewalkEdge+2:bottom);
                 if(end>bottom) q.approaches.push({...region(destination,{
                     x:streetPath.x,y:bottom,w:streetPath.w,d:end-bottom
                 }),destination,pedestrian:true});
                 for(const bay of layout.bays) addBay(destination,area,region(destination,bay));
                 continue;
             }
+            const [ax, ay] = point(destination, ...world(...access.path[0]), true);
             const r = layout.path, bottom = r.y + r.d, end = Math.max(bottom, ay);
             if (end > bottom) q.approaches.push({ ...region(destination, { x: r.x, y: bottom, w: r.w, d: end - bottom }), destination, pedestrian: true });
             const mid = r.x + r.w / 2;
@@ -499,10 +507,16 @@
 
     function landscape(q) {
         const objects=targets(q), roads=streetBounds(q);
+        const signAreas=objects.map(building=>{
+            const layout=residentialPlan(building);
+            return layout?.signClearance ? region(building,layout.signClearance) : null;
+        }).filter(Boolean);
         const blocked=area=>objects.some(b=>overlaps(area,b,8)) ||
             q.activities.some(b=>overlaps(area,b,12)) ||
             q.parkingAreas.some(a=>overlaps(area,a,8)) ||
+            signAreas.some(a=>overlaps(area,a,8)) ||
             q.approaches.some(a=>a.polygon ? polygonsOverlap(footprint(area).corners,a.polygon) : overlaps(area,a,8));
+        q.trees=q.trees.filter(tree=>!signAreas.some(area=>distanceTo(area,tree.x,tree.y)<20));
         for(const side of [-1,1]) for(let s=300;s<2*WORLD-150;s+=360) {
             if(Math.abs(s-WORLD)<220) continue;
             const [x,y]=world(side*(ROAD+HALF)/2,s), area={x:x-10,y:y-10,w:20,d:20,roadAligned:true};
@@ -523,8 +537,9 @@
             if(!layout) continue;
             const reserved=[...layout.parts,layout.parking,...(layout.paths||[layout.path]),...(layout.drivewayPath?[layout.drivewayPath]:[]),
                 ...(layout.garden?[layout.garden]:[])].map(r=>region(building,r));
+            if(layout.signClearance) reserved.push(region(building,layout.signClearance));
             let count=0;
-            for(const v of [.92,.78,.64]) for(const u of [.15,.58,.70,.05,.38,.86,.21,.35,.265]) {
+            for(const v of [.92,.78,.64,.50]) for(const u of [.15,.58,.70,.05,.38,.86,.21,.35,.265]) {
                 if(count>=5) continue;
                 const kind=count%3===0?'roses':count%3===1?'shrubs':'flowers';
                 const width=layout.kind==='apartment'||layout.terrace?4:12;

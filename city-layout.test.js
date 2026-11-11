@@ -50,11 +50,12 @@ test('every outdoor sport renders its equipment and a defined map sign', () => {
 });
 
 test('detailed parking, waterfront and trees render finite scalable scenery without changing access geometry', () => {
-    const polygons = [], ellipses = [], parkingLabels = [];
+    const polygons = [], ellipses = [], parkingLabels = [], plantStrokes = [];
     const canvas = new Proxy({}, { get: (target, key) => key in target ? target[key] : (...args) => {
         args.filter(a => typeof a === 'number').forEach(n => assert.ok(Number.isFinite(n), `${key}: ${n}`));
         if (key === 'ellipse') ellipses.push(args);
         if (key === 'fillText' && args[0] === 'P') parkingLabels.push(args[0]);
+        if (key === 'stroke') plantStrokes.push(args);
     } });
     const env = {
         ctx: canvas, WORLD, TILE: 100, W: 1200, H: 900, KX: 1.6, KY: .8,
@@ -105,6 +106,10 @@ test('detailed parking, waterfront and trees render finite scalable scenery with
             assert.equal(polygons[start].fill,CityLayout.grassColor,'tree turf blends with the surrounding lawn');
     }
     for(const q of Object.values(context.city)) for(const bed of q.plantings) env.planting(bed);
+    const bedBase=polygons.length,stemCount=plantStrokes.length;
+    env.planting({x:120,y:210,w:12,d:6,kind:'flowers'},true);
+    assert.equal(polygons.length,bedBase,'walking-over flower overlay does not redraw its ground bed');
+    assert.ok(plantStrokes.length>stemCount,'flower stems remain visible when the avatar crosses a bed');
     assert.ok(polygons.some(p=>p.fill==='#4e3e30'),'urban trees have an exposed soil opening');
     assert.ok(polygons.some(p=>p.fill==='#574330'),'root flares anchor tree trunks to the soil');
     for(const color of ['#526240','#81926a','#596f47','#59734b','#63845322'])
@@ -124,7 +129,24 @@ test('all quadrants and natural districts use the unchanged residential lawn col
 test('trees match their ground surface and planted gardens keep property access and parking clear', () => {
     const settings=new Set(),species=new Set();
     for(const q of Object.values(context.city)) {
-        assert.ok(q.plantings.length>=12,'every quadrant has several planted beds');
+        assert.ok(q.plantings.length>=10,'every quadrant keeps multiple planted beds');
+        assert.ok(q.lamps.length<=30,'streetlights are spaced more widely');
+        for(const lamp of q.lamps) for(const tree of q.trees)
+            assert.ok(Math.hypot(lamp.x-tree.x,lamp.y-tree.y)>=90,'streetlights stay clear of tree crowns');
+        const signedHomes=CityLayout.targets(q).map(building=>({
+            building,plan:CityLayout.residentialPlan(building)
+        })).filter(entry=>entry.plan?.signClearance);
+        for(const {building,plan} of signedHomes) {
+            const sign=CityLayout.region(building,plan.signClearance);
+            assert.ok(q.plantings.filter(bed=>bed.building===building).every(bed=>
+                !CityLayout.overlaps(bed,sign,2)),`${building.name} keeps flowers clear of its listing sign`);
+            assert.ok(q.plantings.every(bed=>!CityLayout.overlaps(bed,sign,2)),
+                `${building.name} listing sign is not hidden by neighboring flowers`);
+            for(const tree of q.trees)
+                assert.ok(CityLayout.distanceTo(sign,tree.x,tree.y)>=20,`${building.name} listing sign stays clear of trees`);
+            for(const lamp of q.lamps)
+                assert.ok(CityLayout.distanceTo(sign,lamp.x,lamp.y)>=20,`${building.name} listing sign stays clear of streetlights`);
+        }
         for(const tree of q.trees) {
             settings.add(tree.setting);
             assert.ok(['lawn','pit','raised','berm'].includes(tree.setting));
@@ -135,8 +157,6 @@ test('trees match their ground surface and planted gardens keep property access 
                 assert.equal(CityLayout.polygonsOverlap(CityLayout.footprint(area).corners,
                     a.polygon||CityLayout.footprint(a).corners),false,'tree bases never block a driveway entrance');
         }
-        for(const building of CityLayout.targets(q).filter(b=>CityLayout.residentialPlan(b)))
-            assert.ok(q.plantings.some(p=>p.building===building),`${building.name} has front landscaping`);
         for(const bed of q.plantings) {
             species.add(bed.kind);
             if(bed.building) {
@@ -177,15 +197,21 @@ test('single-family houses line up with small side yards and generous grassy fro
             assert.equal(layout.steps.length,3,'front door has three concrete steps');
             assert.equal(layout.drivewayPath.y+layout.drivewayPath.d,layout.parking.y+layout.parking.d,
                 'branch stops at the driveway entry edge');
-            assert.ok(layout.drivewayPath.x < layout.path.x+layout.path.w &&
-                layout.drivewayPath.x+layout.drivewayPath.w>layout.path.x,'walkways intersect');
+            assert.ok(layout.paths.some(path=>layout.drivewayPath.x===path.x+path.w &&
+                path.y<layout.drivewayPath.y+layout.drivewayPath.d &&
+                path.y+path.d>layout.drivewayPath.y),'driveway branch meets the walkway at its side');
             assert.equal(layout.drivewayPath.x+layout.drivewayPath.w,layout.parking.x,
                 'the walkway meets the side edge of the driveway');
             const paths=q.approaches.filter(a=>a.pedestrian && a.destination===b);
             const drivewayEntrance=q.approaches.find(a=>a.vehicleEntrance && a.destination===b);
+            const asphalt=CityLayout.streetBounds(q,0,true).map(r=>
+                [[r.e0,r.s0],[r.e1,r.s0],[r.e1,r.s1],[r.e0,r.s1]].map(([e,s])=>world(e,s)));
             assert.ok(paths.every(p=>!CityLayout.polygonsOverlap(CityLayout.footprint(p).corners,
                 drivewayEntrance.polygon||CityLayout.footprint(drivewayEntrance).corners)),
             'pedestrian paths do not cross the vehicle driveway entrance');
+            assert.ok(paths.every(p=>asphalt.every(road=>
+                !CityLayout.polygonsOverlap(CityLayout.footprint(p).corners,road))),
+            'the front walk stops at the sidewalk instead of entering the street');
             assert.ok(paths.some(p=>CityLayout.footprint(p).corners.some(([x,y])=>{
                 const e=x-y,s=x+y;
                 return CityLayout.streetBounds(q).some(r=>e>=r.e0 && e<=r.e1 && s>=r.s0 && s<=r.s1);

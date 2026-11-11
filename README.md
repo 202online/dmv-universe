@@ -180,9 +180,10 @@ soil, bark, planter rims and paved districts keep their distinct materials.
 Single-family homes have raised concrete door landings, three descending front
 steps and a light-grey walkway to the street sidewalk, with an intersecting
 branch that stops at the driveway entry edge without crossing its pavement.
-Sidewalk and path surfaces have subtle concrete texture and expansion-joint
-seams. Driveways are wider than the sidewalks; pedestrian paths remain separate
-from the marked parking bay.
+House walks and matching steps are 28 units wide; driveway spurs meet a walk at
+its side, while the street approach stops at the sidewalk edge. Sidewalk and path
+surfaces have subtle concrete texture and expansion-joint seams. Driveways are
+wider than the sidewalks; pedestrian paths remain separate from parking bays.
 Neighborhood homes open the same saved home/computer/TV menu as The Crib.
 Single-family home design options include bay-front, L-shaped, porch/setback and
 Craftsman architecture, with straight-entry and garden-court front layouts.
@@ -241,6 +242,9 @@ doors are not painted; clear, walkable access is retained. Water gardens have sh
 jointed stone coping. the SW waterfront has deep channel-green water, layered moving wave highlights
 and a grey stone seawall instead of a sandy shore. Trees use layered shaded crowns,
 leaf clusters, branching trunks and ground shadows that scale with map zoom.
+Streetlights are spaced farther apart and cleared from tree crowns; planted beds
+stay clear of visible home listings, and their flowers remain visible as the
+player walks past.
 The SW shoreline is inspired by the Washington Channel waterfront: broad,
 dark blue-green water extends offshore from a jointed concrete promenade,
 stone retaining wall, railings, floating finger piers and moored sailboats.

@@ -37,31 +37,37 @@ test('houses, condos and apartments share one borderless lawn color', () => {
     }
 });
 
-test('house steps and walkways connect without crossing the driveway', () => {
-    for(const variant of [0,1,2]) {
-        const b={x:100,y:200,w:100,d:104,h:90,kind:'house',variant,color:'#976b53',trim:'#e3ceb0'};
+test('house steps and widened walks connect to the driveway side without crossing its pavement', () => {
+    for(const variant of [0,1,2,3]) for(const frontLayout of ['straight','garden-court']) {
+        const b={x:100,y:200,w:100,d:104,h:90,kind:'house',variant,frontLayout,color:'#976b53',trim:'#e3ceb0'};
         const concrete=[],steps=[],landings=[];
         Art.draw(b,{
             ctx:new Proxy({}, {get:()=>()=>{}}),P:(x,y,z=0)=>[x,y,z],
             poly(points,fill){if(fill==='#c3c6c5')concrete.push(points);},
             box(x,y,z,w,d,h,color){if(color==='#c3c6c5') {
                 const piece={x,y,z,w,d,h};
-                if(w===24)landings.push(piece);else steps.push(piece);
+                if(d===4)landings.push(piece);else steps.push(piece);
             }},
             shade:c=>c
         });
-        assert.equal(concrete.length,2,'front walk and driveway branch are rendered');
+        const plan=Art.plan(b);
+        assert.equal(concrete.length,plan.paths.length+1,'all front-walk segments and the driveway branch are rendered');
         assert.equal(landings.length,1,'front door has a raised concrete landing');
         assert.equal(steps.length,3,'each tread is a solid concrete step');
         assert.deepEqual(steps.map(s=>s.h),[6,4,2],'steps descend toward the walkway');
-        const plan=Art.plan(b);
+        assert.equal(plan.path.w,28,'the front walkway is wide enough to match its stairs');
+        assert.equal(steps[0].w,plan.path.w,'stairs align across the complete walkway');
         assert.ok(concrete.every(points=>points.every(([x,y])=>x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.d)));
         assert.deepEqual(landings[0],{...plan.landing,z:0},'landing aligns with the threshold');
         assert.equal(steps[0].y,plan.landing.y+plan.landing.d,'stairs continue from the landing');
         assert.equal(steps[0].x,plan.path.x,'stairs remain centered on the walkway');
+        assert.ok(plan.drivewayPath.d>0,'the driveway spur has a positive, connected depth');
+        const connector=plan.paths.find(path=>path.x+path.w===plan.drivewayPath.x &&
+            path.y<plan.drivewayPath.y+plan.drivewayPath.d && path.y+path.d>plan.drivewayPath.y);
+        assert.ok(connector,'the spur joins the side of the nearest front-walk segment, not the stair edge');
         assert.equal(plan.drivewayPath.x+plan.drivewayPath.w,plan.parking.x,
             'the pedestrian branch ends at the driveway edge');
-        assert.equal(plan.drivewayPath.y+plan.drivewayPath.d,plan.parking.y+plan.parking.d,
+        assert.ok(plan.drivewayPath.y+plan.drivewayPath.d<=plan.parking.y+plan.parking.d,
             'the pedestrian branch stops at the driveway entry edge');
         assert.equal(Layout.polygonsOverlap(Layout.footprint(plan.drivewayPath).corners,
             Layout.footprint(plan.parking).corners),false,'the pedestrian branch does not cross the driveway');
