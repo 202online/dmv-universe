@@ -573,7 +573,8 @@
                 const cluster = { w: 340, d: 195 };
                 placeCenter(cluster, ...layout.buildings[0]);
                 q.buildings[0].x = cluster.x; q.buildings[0].y = cluster.y;
-                q.parkingLot = { x: cluster.x + lotOffset.x, y: cluster.y + lotOffset.y, w: 130, d: 195 };
+                q.parkingLot = { name: 'Uptown Public Parking Lot', type: 'parking',
+                    x: cluster.x + lotOffset.x, y: cluster.y + lotOffset.y, w: 130, d: 195 };
                 placeCenter(q.buildings[1], ...layout.buildings[1]);
             } else if (id === 'SE') {
                 const cluster = { w: 290, d: 130 };
@@ -1537,7 +1538,20 @@
                 groundRect(yard.x, yard.y, yard.w, yard.d, CityLayout.grassColor);
             });
             const roads=CityLayout.streets(q), asphalt=CityLayout.streetBounds(q,0,true), half=CityLayout.roadHalfWidth;
-            for(const r of CityLayout.streetBounds(q)) compassRect(r.e0,r.e1,r.s0,r.s1,'#c3c6c5');
+            for(const [index,r] of CityLayout.streetBounds(q).entries()) {
+                const road=roads[index], vertical=road.a[0]===road.b[0];
+                const start=vertical?Math.min(road.a[1],road.b[1]):Math.min(road.a[0],road.b[0]);
+                const end=vertical?Math.max(road.a[1],road.b[1]):Math.max(road.a[0],road.b[0]);
+                compassRect(r.e0,r.e1,r.s0,r.s1,'#c3c6c5');
+                for(let joint=Math.ceil((start+40)/48)*48;joint<end;joint+=48) {
+                    if(vertical) compassRect(r.e0,r.e1,joint-.7,joint+.7,'#87908c88');
+                    else compassRect(joint-.7,joint+.7,r.s0,r.s1,'#87908c88');
+                }
+                for(let mark=start+17;mark<end;mark+=37) {
+                    if(vertical) compassRect(r.e0+9,r.e0+10.5,mark,mark+2,'#e5e7e333');
+                    else compassRect(mark,mark+2,r.s0+9,r.s0+10.5,'#e5e7e333');
+                }
+            }
             for(const r of asphalt) compassRect(r.e0,r.e1,r.s0,r.s1,'#2e3340');
             for (const [index,r] of roads.entries()) {
                 const vertical = r.a[0] === r.b[0], axis = vertical ? 1 : 0;
@@ -1673,29 +1687,29 @@
                     const [sx, sy] = P(bay.x + bay.w / 2, bay.y + bay.d / 2);
                     const rx=P(bay.x+bay.w/2+1,bay.y+bay.d/2), down=P(bay.x+bay.w/2,bay.y+bay.d/2+1);
                     ctx.save(); ctx.transform(rx[0]-sx,rx[1]-sy,down[0]-sx,down[1]-sy,sx,sy);
-                    ctx.font = '900 15px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#d3e8e4';
+                    ctx.font = `900 ${bay.destination.garage ? 10 : 15}px system-ui`; ctx.textAlign = 'center'; ctx.fillStyle = '#d3e8e4';
                     ctx.fillText('P', 0, 5); ctx.restore();
                 });
             }
-            for(const area of q.parkingAreas.filter(a=>a.lane)) roadAligned(area.lane,()=>{
-                const lane=area.lane;
-                groundRect(lane.x,lane.y,lane.w,lane.d,'#353b46');
-                for(let y=lane.y+10;y<lane.y+lane.d-6;y+=18)
-                    groundRect(lane.x+lane.w/2-1,y,2,8,'#e1c468');
-                const x=lane.x+lane.w/2,y=lane.y+lane.d*.6;
-                poly([[x-2,y+9],[x+2,y+9],[x+2,y-2],[x+6,y-2],[x,y-9],[x-6,y-2],[x-2,y-2]]
-                    .map(p=>P(...p)),'#dddac8');
-            });
             for (const approach of q.approaches.filter(a => !a.pedestrian)) roadAligned(approach, () => {
                 if (approach.polygon) poly(approach.polygon.map(p => P(...p)), '#2e3340');
                 else groundRect(approach.x, approach.y, approach.w, approach.d, '#2e3340');
             });
             for(const path of q.approaches.filter(a=>a.pedestrian && a.destination.kind==='house'))
-                roadAligned(path,()=>groundRect(path.x,path.y,path.w,path.d,'#c3c6c5'));
+                roadAligned(path,()=>concreteRect(path.x,path.y,path.w,path.d));
         }
 
         function groundRect(x, y, w, d, fill, stroke, width = 1) {
             poly([P(x, y), P(x + w, y), P(x + w, y + d), P(x, y + d)], fill, stroke, width);
+        }
+        function concreteRect(x,y,w,d) {
+            groundRect(x,y,w,d,'#c3c6c5');
+            for(let offset=16;offset<d-2;offset+=20)
+                groundRect(x+1,y+offset,w-2,.8,'#87908c88');
+            for(let offset=20;offset<w-2;offset+=28)
+                groundRect(x+offset,y+1,.7,d-2,'#e8eae833');
+            for(let mark=11;mark<w-4;mark+=23)
+                groundRect(x+mark,y+d*.28,1.2,1.4,'#90989555');
         }
 
         function residentialEntrances(building) {

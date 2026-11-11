@@ -182,12 +182,13 @@
                 const [dx,dy]=world(de,ds);
                 group.forEach((b,i)=>{b.x=original[i][0]+dx;b.y=original[i][1]+dy;});
                 const surfaces=group.flatMap(b=>[b,...visualSolids(b)]);
-                const lots=group.filter(b=>!residentialPlan(b) && !b.garage).map(b=>{
+                const lots=group.filter(b=>!residentialPlan(b) && !b.garage && b.type!=='busstop').map(b=>{
                     const lot=region(b,{x:b.x+b.w,y:b.y+b.d-140,w:90,d:140});
                     return {building:b,lot};
                 });
                 surfaces.push(...lots.map(a=>a.lot));
-                const frontages=group.map(b=>region(b,{x:b.x,y:b.y+b.d,w:b.w+(!residentialPlan(b)&&!b.garage?90:0),d:160}));
+                const frontages=group.map(b=>region(b,{x:b.x,y:b.y+b.d,
+                    w:b.w+(!residentialPlan(b)&&!b.garage&&b.type!=='busstop'?90:0),d:160}));
                 if(surfaces.some(s=>{
                     const f=footprint(s);
                     return f.e0<-WORLD+8 || f.e1>WORLD-8 || f.s0<8 || f.s1>2*WORLD-8 ||
@@ -317,11 +318,15 @@
         }
         const shops = q.neighborhood.buildings.filter(b => ['shop', 'restaurant'].includes(b.kind));
         const availability = new Set();
+        const houseCount = design.homes.filter(([, , kind]) => kind === 'house').length;
         q.neighborhood.buildings = design.homes.map(([e, s, kind, terrace = false], i) => {
+            const houseOrdinal = design.homes.slice(0, i).filter(([, , homeKind]) => homeKind === 'house').length;
             const available = kind !== 'house' && i % 2 === 0 && !availability.has(kind);
             if (available) availability.add(kind);
             const b = { name: `${id} ${kind === 'house' ? 'Rowhouse' : kind === 'condo' ? 'Waterfront Home' : 'Garden Apartment'} ${i + 1}`,
-                kind, terrace, available, variant: i % 3, type: 'crib',
+                kind, terrace, available,
+                variant: kind === 'house' ? houseOrdinal === houseCount - 1 ? 3 : houseOrdinal % 3 : i % 3,
+                frontLayout: kind === 'house' && houseOrdinal % 2 ? 'garden-court' : 'straight', type: 'crib',
                 w: kind === 'apartment' ? 160 : kind === 'condo' ? 140 : 80,
                 d: kind === 'apartment' ? 110 : kind === 'condo' ? 100 : 60,
                 h: kind === 'house' ? 78 + i % 3 * 8 : kind === 'apartment' ? 140 + i % 3 * 12 : terrace ? 120 : 120 + i % 3 * 10,
@@ -386,25 +391,36 @@
     }
     function assignParking(q) {
         q.playerParking = [];
-        q.parkingAreas = q.parkingLot ? [{ ...q.parkingLot, destination: q.buildings[0], kind: 'overflow' }] : [];
+        q.parkingAreas = q.parkingLot ? [{ ...q.parkingLot, destination: q.parkingLot, kind: 'overflow' }] : [];
         if(q.parkingLot) q.parkingAreas[0].lane=region(q.parkingLot,{
             x:q.parkingLot.x+46,y:q.parkingLot.y+2,w:q.parkingLot.w-92,d:q.parkingLot.d-4});
         q.approaches = [];
         const addBay = (destination, area, bay) => q.playerParking.push({ ...bay, destination, area });
+        if (q.parkingLot) {
+            for (const [column, x] of [q.parkingLot.x + 5, q.parkingLot.x + q.parkingLot.w - 41].entries())
+                for (let row = 0; row < 8; row++) {
+                    if (column === 0 && row === 0 || column === 1 && row === 6) continue;
+                    addBay(q.parkingLot, q.parkingAreas[0], region(q.parkingLot, {
+                        x, y: q.parkingLot.y + row * 24, w: 36, d: 24, heading: [1, 0]
+                    }));
+                }
+        }
         for (const destination of targets(q)) {
             const layout = residentialPlan(destination);
             if (!layout) continue;
             const area = { ...region(destination, layout.parking), destination, kind: layout.kind === 'house' ? 'driveway' : 'lot' };
             q.parkingAreas.push(area);
-            q.approaches.push({ ...region(destination, layout.path), destination, pedestrian: true });
+            const paths = layout.paths || [layout.path];
+            for (const path of paths)
+                q.approaches.push({ ...region(destination, path), destination, pedestrian: true });
             const access = q.roadAccess.find(a => a.building === destination);
             const [ax, ay] = point(destination, ...world(...access.path[0]), true);
             if(layout.kind==='house') {
                 q.approaches.push({...region(destination,layout.drivewayPath),destination,pedestrian:true});
-                const bottom=layout.path.y+layout.path.d;
+                const streetPath=paths.at(-1), bottom=streetPath.y+streetPath.d;
                 const end=Math.max(bottom,ay-HALF*Math.SQRT1_2+2);
                 if(end>bottom) q.approaches.push({...region(destination,{
-                    x:layout.path.x,y:bottom,w:layout.path.w,d:end-bottom
+                    x:streetPath.x,y:bottom,w:streetPath.w,d:end-bottom
                 }),destination,pedestrian:true});
                 for(const bay of layout.bays) addBay(destination,area,region(destination,bay));
                 continue;
@@ -431,6 +447,7 @@
             const entrance = region(destination, { x: destination.x + destination.w / 2 - 11,
                 y: destination.y + destination.d, w: 22, d: 80 });
             q.approaches.push({ ...entrance, destination, pedestrian: true });
+            if (destination.type === 'busstop') continue;
             if(!destination.siteParking) throw new Error(`No planned parking lot for ${destination.name || destination.kind}`);
             const area={...destination.siteParking,destination,kind:'lot'};
             area.lane=region(area,{x:area.x+30,y:area.y+2,w:58,d:area.d-2});
@@ -504,7 +521,7 @@
         for(const building of objects) {
             const layout=residentialPlan(building);
             if(!layout) continue;
-            const reserved=[...layout.parts,layout.parking,layout.path,...(layout.drivewayPath?[layout.drivewayPath]:[]),
+            const reserved=[...layout.parts,layout.parking,...(layout.paths||[layout.path]),...(layout.drivewayPath?[layout.drivewayPath]:[]),
                 ...(layout.garden?[layout.garden]:[])].map(r=>region(building,r));
             let count=0;
             for(const v of [.92,.78,.64]) for(const u of [.15,.58,.70,.05,.38,.86,.21,.35,.265]) {

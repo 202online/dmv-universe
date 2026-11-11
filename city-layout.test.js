@@ -73,6 +73,8 @@ test('detailed parking, waterfront and trees render finite scalable scenery with
     assert.ok(polygons.some(p=>p.fill==='#d0d5aa0d'),'natural ground has subtle blade texture rather than alternating green tiles');
     assert.ok(polygons.filter(p => p.fill === '#b4e1d04d').length > 100, 'waterfront has layered wave highlights');
     assert.ok(polygons.some(p => p.fill === '#26333b'), 'attached lots include storm drains');
+    assert.ok(!polygons.some(p => p.fill === '#353b46' || p.fill === '#e1c468'),
+        'parking aisles use lot pavement without street-style lane overlays or dashed centerlines');
     assert.ok(polygons.some(p => p.fill === '#a5abaa'), 'waterfront has a paved urban promenade');
     assert.ok(polygons.some(p => p.fill === '#555a55'), 'piers project out into the channel');
     assert.ok(polygons.some(p => p.fill === '#d5ddd5'), 'moored boat hulls sit in the water');
@@ -130,7 +132,7 @@ test('trees match their ground surface and planted gardens keep property access 
             if(bed.building) {
                 const plan=CityLayout.residentialPlan(bed.building);
                 assert.ok(CityLayout.contains(bed.building,CityLayout.footprint(bed).corners,2));
-                for(const r of [...plan.parts,plan.path,plan.parking,...(plan.garden?[plan.garden]:[])])
+                for(const r of [...plan.parts,...plan.paths,plan.parking,...(plan.garden?[plan.garden]:[])])
                     assert.equal(CityLayout.overlaps(bed,CityLayout.region(bed.building,r),2),false,'beds leave doors, walls and parking clear');
             }
             for(const a of q.approaches)
@@ -163,7 +165,8 @@ test('single-family houses line up with small side yards and generous grassy fro
             assert.ok(layout.parking.w >= (CityLayout.halfWidth-CityLayout.roadHalfWidth)*Math.SQRT1_2*1.15,
                 'driveway is visibly wider than the street sidewalk');
             assert.equal(layout.steps.length,3,'front door has three concrete steps');
-            assert.equal(layout.drivewayPath.y,layout.parking.y+layout.parking.d,'branch meets the driveway front edge');
+            assert.equal(layout.drivewayPath.y+layout.drivewayPath.d,layout.parking.y+layout.parking.d,
+                'branch stops at the driveway entry edge');
             assert.ok(layout.drivewayPath.x < layout.path.x+layout.path.w &&
                 layout.drivewayPath.x+layout.drivewayPath.w>layout.path.x,'walkways intersect');
             assert.equal(layout.drivewayPath.x+layout.drivewayPath.w,layout.parking.x,
@@ -190,9 +193,10 @@ test('single-family houses line up with small side yards and generous grassy fro
                 'each house faces its street across the front lawn, never a rear or side service road');
         }
     }
-    assert.match(html, /for\(const r of CityLayout.streetBounds\(q\)\) compassRect\(r.e0,r.e1,r.s0,r.s1,'#c3c6c5'\)/);
+    assert.match(html, /for\(const \[index,r\] of CityLayout\.streetBounds\(q\)\.entries\(\)\)/,
+        'sidewalk slabs receive regularly spaced concrete joints');
     assert.match(html, /q.approaches.filter\(a=>a.pedestrian && a.destination.kind==='house'\)/,
-        'house pedestrian paths render separately from asphalt vehicle entrances');
+        'house pedestrian paths render with concrete seams, separately from asphalt vehicle entrances');
     assert.ok(!html.includes('leaveStreetGap'), 'parking entrances must not be clipped away from streets');
 });
 test('outdoor activities use a consistent arcade size hierarchy and parked cars match the Bucket', () => {
@@ -224,13 +228,37 @@ test('district distances expand by 60 percent without enlarging venues or rides;
 test('every destination owns real parking containing sized, collision-free bays instead of isolated markers', () => {
     const intersects = CityLayout.overlaps;
     for (const q of Object.values(context.city)) {
-        const destinations = CityLayout.targets(q).filter(b => !b.privateHome);
+        const destinations = [
+            ...CityLayout.targets(q).filter(b => !b.privateHome && b.type !== 'busstop'),
+            ...(q.parkingLot ? [q.parkingLot] : [])
+        ];
         for (const destination of destinations) assert.ok(q.playerParking.some(b => b.destination === destination), destination.name || destination.kind);
+        for (const stop of CityLayout.targets(q).filter(b => b.type === 'busstop')) {
+            assert.ok(q.roadAccess.some(access => access.building === stop), 'Bus stops keep a pedestrian street approach');
+            assert.equal(stop.siteParking, undefined, 'Bus stops do not allocate lot pavement');
+            assert.equal(q.parkingAreas.some(area => area.destination === stop), false, 'Bus stops do not reserve parking lots');
+            assert.equal(q.playerParking.some(bay => bay.destination === stop), false, 'Bus stops do not get car parking placements');
+            assert.equal(q.approaches.some(approach => approach.vehicleEntrance && approach.destination === stop), false,
+                'Bus stops have no parking driveway');
+        }
+        if (q.parkingLot) {
+            const lotBays=q.playerParking.filter(bay=>bay.area.kind==='overflow');
+            assert.equal(lotBays.length,14,'The large public lot has an assigned placement in each unoccupied painted stall');
+            for(const bay of lotBays) {
+                const [x,y]=CityLayout.point(q.parkingLot,bay.x+bay.w/2,bay.y+bay.d/2,true);
+                assert.ok(Math.abs((y-q.parkingLot.y-12)/24-Math.round((y-q.parkingLot.y-12)/24))<1e-8,
+                    'Parking placements align with painted stall rows');
+                assert.ok(Math.abs(x-(x<q.parkingLot.x+q.parkingLot.w/2?q.parkingLot.x+23:q.parkingLot.x+107))<1e-8,
+                    'Parking placements align with both sides of the public lot');
+            }
+        }
         for (const [i, bay] of q.playerParking.entries()) {
             assert.ok(destinations.includes(bay.destination));
             assert.ok(q.parkingAreas.includes(bay.area));
             assert.equal(bay.area.destination, bay.destination);
             assert.ok(CityLayout.contains(bay.area, CityLayout.footprint(bay).corners));
+            assert.ok(CityLayout.contains(bay.area, [[bay.x+bay.w/2,bay.y+bay.d/2]]),
+                'Each parking placement marker is centered inside its own lot');
             const corners = CityLayout.vehicleCorners(bay.x + bay.w / 2, bay.y + bay.d / 2, bay.heading, context.VehicleArt.sizes.truck);
             assert.ok(CityLayout.contains(bay, corners, 1), `${bay.destination.name || bay.destination.kind} fits a pickup with clearance`);
             for (const solid of q.solids)
@@ -238,6 +266,10 @@ test('every destination owns real parking containing sized, collision-free bays 
             const residential = CityLayout.residentialPlan(bay.destination);
             if (residential || bay.destination.garage)
                 assert.ok(CityLayout.contains(bay.destination, CityLayout.footprint(bay).corners), 'Residential parking stays on its own plot');
+            else if (bay.area.kind === 'overflow') {
+                assert.equal(bay.destination, q.parkingLot, 'Public overflow placements belong to the painted lot');
+                assert.ok(CityLayout.contains(q.parkingLot, CityLayout.footprint(bay).corners));
+            }
             else {
                 assert.equal(bay.area.w * bay.area.d, 12600, 'Public lots are 140 by 90, with a broader maneuvering aisle');
                 assert.ok(CityLayout.overlaps(bay.area,bay.destination,.001) && !CityLayout.overlaps(bay.area,bay.destination),
@@ -347,6 +379,11 @@ test('every quadrant keeps its homes and mixes houses, apartments and condos wit
         assert.equal(new Set(homes.map(b => b.kind)).size, 3);
         const multi = homes.filter(b => b.kind !== 'house');
         assert.ok(multi.some(b => !ResidentialArt.plan(b).available), 'Not every multi-family building has a sign');
+        const houses=homes.filter(b=>b.kind==='house');
+        assert.ok(houses.some(b=>ResidentialArt.plan(b).architecture==='craftsman'),
+            'The new single-family architecture is visible in each neighborhood');
+        assert.ok(houses.some(b=>ResidentialArt.plan(b).frontLayout==='garden-court'),
+            'The alternate single-family front layout is visible in each neighborhood');
         for (const kind of ['apartment', 'condo'])
             assert.ok(homes.filter(b => b.kind === kind && b.available).length <= 1);
     }

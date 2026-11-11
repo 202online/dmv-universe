@@ -3,6 +3,16 @@
 const ResidentialArt = (() => {
     const vehicles = typeof module !== 'undefined' && module.exports ? require('./vehicle-art.js') : VehicleArt;
     const grassColor = (typeof module !== 'undefined' && module.exports ? require('./city-layout.js') : CityLayout).grassColor;
+    const houseDesigns = [
+        { id: 'bay-front', name: 'Bay-front Bungalow', variant: 0 },
+        { id: 'l-shaped', name: 'L-shaped Cottage', variant: 1 },
+        { id: 'porch-setback', name: 'Porch & Setback', variant: 2 },
+        { id: 'craftsman', name: 'Craftsman Porch', variant: 3 }
+    ];
+    const frontLayouts = [
+        { id: 'straight', name: 'Straight Entry Walk' },
+        { id: 'garden-court', name: 'Garden-court Walk' }
+    ];
     function listing(b) {
         const kind = b.kind || b.style, variant = b.variant ?? (b.kind ? 0 : 1);
         if (b.garage || !['house', 'apartment', 'condo'].includes(kind)) return null;
@@ -12,13 +22,23 @@ const ResidentialArt = (() => {
     function plan(b) {
         const kind = b.kind || b.style;
         if (!['house', 'apartment', 'condo'].includes(kind)) throw new Error('Unknown residential kind');
-        const variant = b.variant ?? (b.kind ? 0 : 1);
-        if (![0, 1, 2].includes(variant)) throw new Error('Unknown residential variant');
+        const architecture = kind === 'house' && b.architecture !== undefined ?
+            houseDesigns.find(design => design.id === b.architecture) : null;
+        if (kind === 'house' && b.architecture !== undefined && !architecture)
+            throw new Error('Unknown house architecture');
+        const variant = architecture?.variant ?? (b.variant ?? (b.kind ? 0 : 1));
+        if (!(kind === 'house' ? houseDesigns : [0, 1, 2]).some(design =>
+            typeof design === 'number' ? design === variant : design.variant === variant))
+            throw new Error('Unknown residential variant');
+        const frontLayout = kind === 'house' ? b.frontLayout ?? 'straight' : null;
+        if (kind === 'house' && !frontLayouts.some(layout => layout.id === frontLayout))
+            throw new Error('Unknown house front layout');
         let pieces;
         if (kind === 'house') pieces = [
             [[.04, .06, .65, .70, 0, 1, 'gable'], [.20, .76, .30, .14, 0, .60, 'flat']],
             [[.04, .06, .64, .43, 0, .85, 'hip'], [.04, .49, .38, .41, 0, .65, 'gable']],
-            [[.04, .06, .65, .70, 0, .78, 'flat'], [.12, .12, .49, .50, .78, .22, 'gable']]
+            [[.04, .06, .65, .70, 0, .78, 'flat'], [.12, .12, .49, .50, .78, .22, 'gable']],
+            [[.08, .06, .60, .68, 0, .82, 'hip']]
         ][variant];
         else if (kind === 'condo') pieces = [
             [[.04, .06, .64, .47, 0, 1, 'flat'], [.04, .53, .39, .36, 0, .72, 'flat']],
@@ -54,10 +74,21 @@ const ResidentialArt = (() => {
             terrace ? b.x + b.w * .16 : entrancePart.x + entrancePart.w * .5;
         const door = { x: doorX, y: entrancePart.y + entrancePart.d, w: Math.min(16, entrancePart.w * .4), h: 28 };
         const path = { x: door.x - 10, y: door.y, w: 20, d: b.y + b.d - door.y };
+        const paths = frontLayout === 'garden-court' ? (() => {
+            const turnDepth = Math.min(8, path.d / 3), upperDepth = (path.d - turnDepth) / 2;
+            const lowerX = path.x - 12, lowerY = path.y + upperDepth + turnDepth;
+            return [
+                { ...path, d: upperDepth },
+                { x: lowerX, y: path.y + upperDepth, w: path.w + 12, d: turnDepth },
+                { x: lowerX, y: lowerY, w: path.w, d: path.y + path.d - lowerY }
+            ];
+        })() : [path];
         const landing = kind === 'house' ? { x: door.x - 12, y: door.y, w: 24, d: 4, h: 6 } : null;
+        const drivewayPathDepth = kind === 'house' ? Math.min(18, parking.y + parking.d - paths.at(-1).y) : 0;
         const drivewayPath = kind === 'house' ? {
-            x: path.x, y: parking.y + parking.d, w: parking.x - path.x,
-            d: Math.min(18, b.y + b.d - parking.y - parking.d)
+            x: paths.at(-1).x, y: parking.y + parking.d - drivewayPathDepth,
+            w: parking.x - paths.at(-1).x,
+            d: drivewayPathDepth
         } : null;
         const steps = kind === 'house' ? Array.from({length:3},(_,i)=>({
             x:path.x,y:door.y+landing.d+i*3,w:path.w,d:3,h:6-i*2
@@ -80,7 +111,9 @@ const ResidentialArt = (() => {
             y: bay.y + bay.d / 2 - vehicles.sizes.car.d / 2, heading: bay.heading, color: ['#63879a', '#923d4b'][i]
         })) : [];
         const available = b.available ?? variant === 0;
-        return { kind, variant, terrace, parts, door, path, landing, drivewayPath, steps, bays, decorativeCars,
+        return { kind, variant, architecture: kind === 'house' ?
+            architecture?.id ?? houseDesigns.find(design => design.variant === variant).id : null,
+            frontLayout, terrace, parts, door, path, paths, landing, drivewayPath, steps, bays, decorativeCars,
             available, listed: listing(b) !== null, garden, parking };
     }
     function draw(b, { ctx: c, P, poly, box, shade, entrances = [] }, active = false, time = 0) {
@@ -127,8 +160,13 @@ const ResidentialArt = (() => {
             }
         }
         if(layout.kind==='house') {
-            for(const p of [layout.path,layout.drivewayPath])
+            for(const p of [...layout.paths,layout.drivewayPath]) {
                 plane(p.x,p.y,p.w,p.d,.7,'#c3c6c5');
+                for(let y=p.y+18;y<p.y+p.d-2;y+=24)
+                    line([[p.x+1,y,.8],[p.x+p.w-1,y,.8]],'#89918d88',.8);
+                for(let x=p.x+18;x<p.x+p.w-2;x+=24)
+                    line([[x,p.y+1,.8],[x,p.y+p.d-1,.8]],'#89918d55',.7);
+            }
         }
         for (const p of layout.parts) {
             const color = b.color;
@@ -182,6 +220,15 @@ const ResidentialArt = (() => {
                     box(right - 6, y - depth * .7, z + 1, 4, Math.max(2, depth * .6), 3, '#9c6a48');
                 }
             }
+        }
+        if (layout.kind === 'house' && layout.architecture === 'craftsman') {
+            const p = layout.parts[0], porch = {
+                x: p.x + p.w * .1, y: p.y + p.d, w: p.w * .8, d: b.d * .10
+            }, roof = p.h * .56;
+            plane(porch.x, porch.y, porch.w, porch.d, .5, '#a98b6f', trim);
+            for (const x of [porch.x + 2, porch.x + porch.w / 2 - 1, porch.x + porch.w - 4])
+                box(x, porch.y + porch.d - 3, 0, 2, 2, roof - 2, '#d6c6a3', outline);
+            plane(porch.x - 3, porch.y - 2, porch.w + 6, porch.d + 4, roof, '#705448', trim, 1.5);
         }
         if (layout.landing)
             box(layout.landing.x, layout.landing.y, 0, layout.landing.w, layout.landing.d,
@@ -298,7 +345,7 @@ const ResidentialArt = (() => {
             poly([[sx - 7, sy - 10], [sx + 7, sy - 10], [sx, sy]], '#34d399', '#15392d');
         }
     }
-    return { plan, listing, draw, drawGarage, grassColor };
+    return { plan, listing, draw, drawGarage, grassColor, houseDesigns, frontLayouts };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = ResidentialArt;

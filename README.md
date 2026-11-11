@@ -179,12 +179,16 @@ green blocks. Sparse grass-blade details replace the old ground checkerboard;
 soil, bark, planter rims and paved districts keep their distinct materials.
 Single-family homes have raised concrete door landings, three descending front
 steps and a light-grey walkway to the street sidewalk, with an intersecting
-branch that meets the driveway edge without crossing its pavement. Driveways are
-wider than the sidewalks; pedestrian paths remain separate from the marked
-parking bay.
+branch that stops at the driveway entry edge without crossing its pavement.
+Sidewalk and path surfaces have subtle concrete texture and expansion-joint
+seams. Driveways are wider than the sidewalks; pedestrian paths remain separate
+from the marked parking bay.
 Neighborhood homes open the same saved home/computer/TV menu as The Crib.
-Each residential type now has three distinct silhouettes: bay-front, L-shaped
-and porch/setback houses; L-wing, stepped-tower and courtyard condos; slab,
+Single-family home design options include bay-front, L-shaped, porch/setback and
+Craftsman architecture, with straight-entry and garden-court front layouts.
+Stable design IDs keep architecture and yard choices independently customizable
+when home purchasing is added. Condos have L-wing, stepped-tower and courtyard
+silhouettes; apartments have slab,
 setback and twin-block apartments. Pitched/hipped roofs, terraces,
 balcony railings, planters and varied window bands distinguish them. Homes
 and condos have visible driveways, some with decorative parked cars or a
@@ -221,6 +225,13 @@ clear bay outlines; larger lots also have directional arrows and worn asphalt
 details. All parking and driveway pavement matches the street's dark asphalt,
 with concrete-colored space outlines. Parking pavement joins the street through open vehicle entrances that cut
 across the sidewalk, rather than leaving a gap or a sidewalk barrier.
+Uptown's public lot has 14 player parking placements aligned with its painted
+stalls around the center aisle; its two decorative cars keep their own spaces.
+The larger marked-bay treatment is limited to parking lots; garage markers and
+residential driveway spaces stay compact. Bus stops have pedestrian approaches
+but no parking lots or car placements.
+Parking aisles use the same plain asphalt as their bays, without street-style
+centerlines or contrasting road strips.
 Sidewalks remain along street sides, and pedestrian connector paths to front
 doors are not painted; clear, walkable access is retained. Water gardens have shaded pool depths, ripples, falling-water foam and
 jointed stone coping. the SW waterfront has deep channel-green water, layered moving wave highlights

@@ -61,9 +61,36 @@ test('house steps and walkways connect without crossing the driveway', () => {
         assert.equal(steps[0].x,plan.path.x,'stairs remain centered on the walkway');
         assert.equal(plan.drivewayPath.x+plan.drivewayPath.w,plan.parking.x,
             'the pedestrian branch ends at the driveway edge');
+        assert.equal(plan.drivewayPath.y+plan.drivewayPath.d,plan.parking.y+plan.parking.d,
+            'the pedestrian branch stops at the driveway entry edge');
         assert.equal(Layout.polygonsOverlap(Layout.footprint(plan.drivewayPath).corners,
             Layout.footprint(plan.parking).corners),false,'the pedestrian branch does not cross the driveway');
     }
+});
+
+test('single-family architecture and front-yard layouts are independent customization options', () => {
+    assert.deepEqual(Art.houseDesigns.map(design => design.id),
+        ['bay-front', 'l-shaped', 'porch-setback', 'craftsman']);
+    assert.deepEqual(Art.frontLayouts.map(layout => layout.id), ['straight', 'garden-court']);
+    const b={x:100,y:200,w:100,d:104,h:90,kind:'house',color:'#976b53',trim:'#e3ceb0'};
+    const classic=Art.plan({...b,architecture:'bay-front'});
+    const craftsman=Art.plan({...b,architecture:'craftsman'});
+    const straight=Art.plan({...b,architecture:'craftsman',frontLayout:'straight'});
+    const garden=Art.plan({...b,architecture:'craftsman',frontLayout:'garden-court'});
+    assert.notDeepEqual(classic.parts,craftsman.parts,'new architecture has its own massing');
+    assert.deepEqual(straight.parts,garden.parts,'front-yard choices do not change the house architecture');
+    assert.equal(craftsman.architecture,'craftsman');
+    assert.equal(garden.frontLayout,'garden-court');
+    assert.equal(garden.paths.length,3,'garden-court walk has an upper run, turn and lower run');
+    assert.equal(garden.paths[0].y+garden.paths[0].d,garden.paths[1].y);
+    assert.equal(garden.paths[1].y+garden.paths[1].d,garden.paths[2].y);
+    assert.ok(garden.paths[1].x<garden.paths[0].x,'garden-court walk turns away from the driveway');
+    assert.equal(garden.drivewayPath.x+garden.drivewayPath.w,garden.parking.x);
+    assert.equal(garden.drivewayPath.y+garden.drivewayPath.d,garden.parking.y+garden.parking.d);
+    assert.equal(Layout.polygonsOverlap(Layout.footprint(garden.drivewayPath).corners,
+        Layout.footprint(garden.parking).corners),false);
+    assert.throws(()=>Art.plan({...b,architecture:'unknown'}),/Unknown house architecture/);
+    assert.throws(()=>Art.plan({...b,frontLayout:'unknown'}),/Unknown house front layout/);
 });
 
 test('roofs, balconies, driveways, garages and apartment spaces draw within each property boundary', () => {
